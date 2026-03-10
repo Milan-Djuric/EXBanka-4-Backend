@@ -24,6 +24,7 @@ const (
 	EmployeeService_GetEmployeeCredentials_FullMethodName = "/employee.EmployeeService/GetEmployeeCredentials"
 	EmployeeService_CreateEmployee_FullMethodName         = "/employee.EmployeeService/CreateEmployee"
 	EmployeeService_GetEmployeeById_FullMethodName        = "/employee.EmployeeService/GetEmployeeById"
+	EmployeeService_UpdateEmployee_FullMethodName         = "/employee.EmployeeService/UpdateEmployee"
 )
 
 // EmployeeServiceClient is the client API for EmployeeService service.
@@ -35,6 +36,7 @@ type EmployeeServiceClient interface {
 	GetEmployeeCredentials(ctx context.Context, in *GetEmployeeCredentialsRequest, opts ...grpc.CallOption) (*GetEmployeeCredentialsResponse, error)
 	CreateEmployee(ctx context.Context, in *CreateEmployeeRequest, opts ...grpc.CallOption) (*CreateEmployeeResponse, error)
 	GetEmployeeById(ctx context.Context, in *GetEmployeeByIdRequest, opts ...grpc.CallOption) (*GetEmployeeByIdResponse, error)
+	UpdateEmployee(ctx context.Context, in *UpdateEmployeeRequest, opts ...grpc.CallOption) (*UpdateEmployeeResponse, error)
 }
 
 type employeeServiceClient struct {
@@ -95,6 +97,16 @@ func (c *employeeServiceClient) GetEmployeeById(ctx context.Context, in *GetEmpl
 	return out, nil
 }
 
+func (c *employeeServiceClient) UpdateEmployee(ctx context.Context, in *UpdateEmployeeRequest, opts ...grpc.CallOption) (*UpdateEmployeeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateEmployeeResponse)
+	err := c.cc.Invoke(ctx, EmployeeService_UpdateEmployee_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // EmployeeServiceServer is the server API for EmployeeService service.
 // All implementations must embed UnimplementedEmployeeServiceServer
 // for forward compatibility.
@@ -104,6 +116,7 @@ type EmployeeServiceServer interface {
 	GetEmployeeCredentials(context.Context, *GetEmployeeCredentialsRequest) (*GetEmployeeCredentialsResponse, error)
 	CreateEmployee(context.Context, *CreateEmployeeRequest) (*CreateEmployeeResponse, error)
 	GetEmployeeById(context.Context, *GetEmployeeByIdRequest) (*GetEmployeeByIdResponse, error)
+	UpdateEmployee(context.Context, *UpdateEmployeeRequest) (*UpdateEmployeeResponse, error)
 	mustEmbedUnimplementedEmployeeServiceServer()
 }
 
@@ -128,6 +141,9 @@ func (UnimplementedEmployeeServiceServer) CreateEmployee(context.Context, *Creat
 }
 func (UnimplementedEmployeeServiceServer) GetEmployeeById(context.Context, *GetEmployeeByIdRequest) (*GetEmployeeByIdResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetEmployeeById not implemented")
+}
+func (UnimplementedEmployeeServiceServer) UpdateEmployee(context.Context, *UpdateEmployeeRequest) (*UpdateEmployeeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateEmployee not implemented")
 }
 func (UnimplementedEmployeeServiceServer) mustEmbedUnimplementedEmployeeServiceServer() {}
 func (UnimplementedEmployeeServiceServer) testEmbeddedByValue()                         {}
@@ -240,6 +256,24 @@ func _EmployeeService_GetEmployeeById_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _EmployeeService_UpdateEmployee_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateEmployeeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EmployeeServiceServer).UpdateEmployee(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: EmployeeService_UpdateEmployee_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EmployeeServiceServer).UpdateEmployee(ctx, req.(*UpdateEmployeeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // EmployeeService_ServiceDesc is the grpc.ServiceDesc for EmployeeService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -266,6 +300,10 @@ var EmployeeService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetEmployeeById",
 			Handler:    _EmployeeService_GetEmployeeById_Handler,
+		},
+		{
+			MethodName: "UpdateEmployee",
+			Handler:    _EmployeeService_UpdateEmployee_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
