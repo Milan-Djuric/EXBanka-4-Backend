@@ -45,12 +45,18 @@ func (s *AuthServer) Login(ctx context.Context, req *pb_auth.LoginRequest) (*pb_
 		return nil, status.Error(codes.Unauthenticated, "invalid credentials")
 	}
 
-	accessToken, err := generateToken(creds.Id, req.Username, "access", creds.Dozvole, 15*time.Minute)
+	empResp, err := s.EmployeeClient.GetEmployeeById(ctx, &pb_emp.GetEmployeeByIdRequest{Id: creds.Id})
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to fetch employee")
+	}
+	emp := empResp.Employee
+
+	accessToken, err := generateToken(creds.Id, req.Username, "access", creds.Dozvole, emp.Ime, emp.Prezime, emp.Email, 15*time.Minute)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to generate token")
 	}
 
-	refreshToken, err := generateToken(creds.Id, req.Username, "refresh", creds.Dozvole, 7*24*time.Hour)
+	refreshToken, err := generateToken(creds.Id, req.Username, "refresh", creds.Dozvole, emp.Ime, emp.Prezime, emp.Email, 7*24*time.Hour)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to generate token")
 	}
@@ -92,6 +98,10 @@ func (s *AuthServer) Refresh(_ context.Context, req *pb_auth.RefreshRequest) (*p
 	userID := int64(userIDRaw)
 	username := usernameRaw
 
+	firstName, _ := claims["first_name"].(string)
+	lastName, _ := claims["last_name"].(string)
+	email, _ := claims["email"].(string)
+
 	var dozvole []string
 	if raw, ok := claims["dozvole"].([]interface{}); ok {
 		for _, d := range raw {
@@ -101,7 +111,7 @@ func (s *AuthServer) Refresh(_ context.Context, req *pb_auth.RefreshRequest) (*p
 		}
 	}
 
-	accessToken, err := generateToken(userID, username, "access", dozvole, 15*time.Minute)
+	accessToken, err := generateToken(userID, username, "access", dozvole, firstName, lastName, email, 15*time.Minute)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to generate token")
 	}
@@ -109,13 +119,16 @@ func (s *AuthServer) Refresh(_ context.Context, req *pb_auth.RefreshRequest) (*p
 	return &pb_auth.RefreshResponse{AccessToken: accessToken}, nil
 }
 
-func generateToken(userID int64, username, tokenType string, dozvole []string, d time.Duration) (string, error) {
+func generateToken(userID int64, username, tokenType string, dozvole []string, firstName, lastName, email string, d time.Duration) (string, error) {
 	claims := jwt.MapClaims{
-		"user_id":  userID,
-		"username": username,
-		"type":     tokenType,
-		"dozvole":  dozvole,
-		"exp":      time.Now().Add(d).Unix(),
+		"user_id":    userID,
+		"username":   username,
+		"first_name": firstName,
+		"last_name":  lastName,
+		"email":      email,
+		"type":       tokenType,
+		"dozvole":    dozvole,
+		"exp":        time.Now().Add(d).Unix(),
 	}
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(jwtSecret))
 }

@@ -352,7 +352,7 @@ func CreateEmployee(empClient pb.EmployeeServiceClient, authClient authpb.AuthSe
 			return
 		}
 
-		link := fmt.Sprintf("http://localhost:8081/auth/activate?token=%s", tokenResp.Token)
+		link := fmt.Sprintf("http://localhost:5173/set-password?token=%s", tokenResp.Token)
 		go func() {
 			_, err := emailClient.SendActivationEmail(context.Background(),
 				&emailpb.SendActivationEmailRequest{
