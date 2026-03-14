@@ -30,3 +30,23 @@ CREATE TABLE companies (
     address             VARCHAR,
     owner_client_id     BIGINT NOT NULL
 );
+
+CREATE TABLE accounts (
+    id                  BIGSERIAL PRIMARY KEY,
+    account_number      VARCHAR NOT NULL UNIQUE,
+    account_name        VARCHAR,
+    owner_id            BIGINT NOT NULL,
+    employee_id         BIGINT NOT NULL,
+    currency_id         BIGINT NOT NULL,
+    account_type        VARCHAR NOT NULL,
+    status              VARCHAR NOT NULL DEFAULT 'ACTIVE',
+    balance             NUMERIC(20, 2) NOT NULL DEFAULT 0,
+    available_balance   NUMERIC(20, 2) NOT NULL DEFAULT 0,
+    created_date        DATE NOT NULL DEFAULT CURRENT_DATE,
+    expiration_date     DATE,
+    daily_limit         NUMERIC(20, 2),
+    monthly_limit       NUMERIC(20, 2),
+    daily_spent         NUMERIC(20, 2) NOT NULL DEFAULT 0,
+    monthly_spent       NUMERIC(20, 2) NOT NULL DEFAULT 0,
+    maintenance_fee     NUMERIC(20, 2) NOT NULL DEFAULT 0
+);
