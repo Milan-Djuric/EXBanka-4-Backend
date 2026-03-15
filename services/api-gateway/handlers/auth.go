@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	pb "github.com/exbanka/backend/shared/pb/auth"
-	pb_email "github.com/exbanka/backend/shared/pb/email"
+	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/auth"
+	pb_email "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/email"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

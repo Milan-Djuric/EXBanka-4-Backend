@@ -7,11 +7,11 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	authdb "github.com/exbanka/backend/services/auth-service/db"
-	"github.com/exbanka/backend/services/auth-service/handlers"
-	pb_auth "github.com/exbanka/backend/shared/pb/auth"
-	pb_email "github.com/exbanka/backend/shared/pb/email"
-	pb_emp "github.com/exbanka/backend/shared/pb/employee"
+	authdb "github.com/RAF-SI-2025/EXBanka-4-Backend/services/auth-service/db"
+	"github.com/RAF-SI-2025/EXBanka-4-Backend/services/auth-service/handlers"
+	pb_auth "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/auth"
+	pb_email "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/email"
+	pb_emp "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/employee"
 )
 
 func main() {

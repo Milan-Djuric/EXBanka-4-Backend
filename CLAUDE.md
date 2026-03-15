@@ -3,9 +3,11 @@
 ## Project overview
 Go-based microservices backend for EXBanka. Services communicate via gRPC. The API Gateway is the only HTTP-facing service.
 
-## Go module
-- Module path: `github.com/exbanka/backend`
-- `go.mod` and `go.sum` at the repo root (single-module monorepo)
+## Go modules
+- Multi-module workspace (`go.work` at repo root)
+- One `go.mod` per service: `services/<name>/go.mod`
+- Shared protobuf bindings: `shared/go.mod` → `github.com/RAF-SI-2025/EXBanka-4-Backend/shared`
+- Service module paths: `github.com/RAF-SI-2025/EXBanka-4-Backend/services/<name>`
 
 ## Repository structure
 ```

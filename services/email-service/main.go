@@ -11,9 +11,9 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 	"google.golang.org/grpc"
 
-	pb "github.com/exbanka/backend/shared/pb/email"
-	"github.com/exbanka/backend/services/email-service/handlers"
-	"github.com/exbanka/backend/services/email-service/queue"
+	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/email"
+	"github.com/RAF-SI-2025/EXBanka-4-Backend/services/email-service/handlers"
+	"github.com/RAF-SI-2025/EXBanka-4-Backend/services/email-service/queue"
 )
 
 func mustEnv(key string) string {
