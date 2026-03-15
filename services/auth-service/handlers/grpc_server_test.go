@@ -16,9 +16,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	pb_auth "github.com/exbanka/backend/shared/pb/auth"
-	pb_email "github.com/exbanka/backend/shared/pb/email"
-	pb_emp "github.com/exbanka/backend/shared/pb/employee"
+	pb_auth "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/auth"
+	pb_email "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/email"
+	pb_emp "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/employee"
 )
 
 // ---- Mock gRPC clients ----

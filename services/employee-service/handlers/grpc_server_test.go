@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	pb "github.com/exbanka/backend/shared/pb/employee"
+	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/employee"
 )
 
 // ---- paginate tests ----

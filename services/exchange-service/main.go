@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	exdb "github.com/exbanka/backend/services/exchange-service/db"
+	exdb "github.com/RAF-SI-2025/EXBanka-4-Backend/services/exchange-service/db"
 )
 
 func main() {
