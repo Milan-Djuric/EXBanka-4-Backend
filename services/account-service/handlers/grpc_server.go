@@ -153,6 +153,78 @@ func (s *AccountServer) RenameAccount(ctx context.Context, req *pb.RenameAccount
 	return &pb.RenameAccountResponse{}, nil
 }
 
+func (s *AccountServer) GetAllAccounts(ctx context.Context, _ *pb.GetAllAccountsRequest) (*pb.GetAllAccountsResponse, error) {
+	rows, err := s.DB.QueryContext(ctx,
+		`SELECT id, account_number, account_name, owner_id, account_type, currency_id, available_balance
+		 FROM accounts
+		 ORDER BY id DESC`)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to query accounts: %v", err)
+	}
+	defer rows.Close()
+
+	type row struct {
+		id               int64
+		accountNumber    string
+		accountName      string
+		ownerID          int64
+		accountType      string
+		currencyID       int64
+		availableBalance float64
+	}
+	var accs []row
+	for rows.Next() {
+		var r row
+		if err := rows.Scan(&r.id, &r.accountNumber, &r.accountName, &r.ownerID, &r.accountType, &r.currencyID, &r.availableBalance); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to scan account: %v", err)
+		}
+		accs = append(accs, r)
+	}
+
+	// Build currency_id → code map
+	currencyMap := map[int64]string{}
+	for _, a := range accs {
+		if _, ok := currencyMap[a.currencyID]; !ok {
+			var code string
+			if err := s.ExchangeDB.QueryRowContext(ctx,
+				`SELECT code FROM currencies WHERE id = $1`, a.currencyID,
+			).Scan(&code); err == nil {
+				currencyMap[a.currencyID] = code
+			}
+		}
+	}
+
+	// Build owner_id → name map
+	ownerMap := map[int64][2]string{}
+	for _, a := range accs {
+		if _, ok := ownerMap[a.ownerID]; !ok {
+			var firstName, lastName string
+			if err := s.ClientDB.QueryRowContext(ctx,
+				`SELECT first_name, last_name FROM clients WHERE id = $1`, a.ownerID,
+			).Scan(&firstName, &lastName); err == nil {
+				ownerMap[a.ownerID] = [2]string{firstName, lastName}
+			}
+		}
+	}
+
+	items := make([]*pb.AccountListItem, 0, len(accs))
+	for _, a := range accs {
+		owner := ownerMap[a.ownerID]
+		items = append(items, &pb.AccountListItem{
+			Id:               a.id,
+			AccountNumber:    a.accountNumber,
+			AccountName:      a.accountName,
+			OwnerId:          a.ownerID,
+			OwnerFirstName:   owner[0],
+			OwnerLastName:    owner[1],
+			AccountType:      a.accountType,
+			CurrencyCode:     currencyMap[a.currencyID],
+			AvailableBalance: a.availableBalance,
+		})
+	}
+	return &pb.GetAllAccountsResponse{Accounts: items}, nil
+}
+
 // accountTypeCode maps account type string to 2-digit code used in account number generation.
 func accountTypeCode(accountType string) string {
 	switch accountType {

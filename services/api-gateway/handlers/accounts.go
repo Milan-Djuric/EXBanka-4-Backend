@@ -190,6 +190,45 @@ func RenameAccount(accountClient pb.AccountServiceClient) gin.HandlerFunc {
 	}
 }
 
+// GetAllAccounts godoc
+// @Summary      List all accounts
+// @Description  Returns all bank accounts. Requires employee authentication.
+// @Tags         accounts
+// @Produce      json
+// @Success      200  {array}   map[string]interface{}
+// @Failure      401  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /api/accounts [get]
+func GetAllAccounts(accountClient pb.AccountServiceClient) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+		defer cancel()
+
+		resp, err := accountClient.GetAllAccounts(ctx, &pb.GetAllAccountsRequest{})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		result := make([]gin.H, 0, len(resp.Accounts))
+		for _, a := range resp.Accounts {
+			result = append(result, gin.H{
+				"id":               a.Id,
+				"accountNumber":    a.AccountNumber,
+				"accountName":      a.AccountName,
+				"ownerId":          a.OwnerId,
+				"ownerFirstName":   a.OwnerFirstName,
+				"ownerLastName":    a.OwnerLastName,
+				"accountType":      a.AccountType,
+				"currencyCode":     a.CurrencyCode,
+				"availableBalance": a.AvailableBalance,
+			})
+		}
+		c.JSON(http.StatusOK, result)
+	}
+}
+
 func parseID(c *gin.Context, param string) (int64, error) {
 	var id int64
 	_, err := fmt.Sscanf(c.Param(param), "%d", &id)
