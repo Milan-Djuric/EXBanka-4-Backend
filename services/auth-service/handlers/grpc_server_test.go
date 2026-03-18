@@ -451,7 +451,7 @@ func TestActivateAccount_HappyPath(t *testing.T) {
 
 	emailClient := &mockEmailClient{}
 	emailClient.On("SendPasswordConfirmationEmail", mock.Anything, mock.Anything).
-		Maybe().Return(&pb_email.SendActivationEmailResponse{}, nil)
+		Return(&pb_email.SendActivationEmailResponse{}, nil)
 
 	s := newAuthServer(db, empClient, emailClient)
 	resp, err := s.ActivateAccount(context.Background(), &pb_auth.ActivateAccountRequest{
@@ -459,7 +459,9 @@ func TestActivateAccount_HappyPath(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
+	time.Sleep(50 * time.Millisecond) // wait for email goroutine
 	empClient.AssertExpectations(t)
+	emailClient.AssertExpectations(t)
 }
 
 // ---- ResetPassword tests ----

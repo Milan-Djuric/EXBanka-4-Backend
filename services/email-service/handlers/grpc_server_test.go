@@ -159,3 +159,48 @@ func TestSendPasswordConfirmationEmail_HappyPath(t *testing.T) {
 	assert.NotNil(t, resp)
 	pub.AssertExpectations(t)
 }
+
+// ---- SendAccountCreatedEmail tests ----
+
+func TestSendAccountCreatedEmail_InvalidEmail(t *testing.T) {
+	s := &EmailServer{Producer: &mockPublisher{}}
+	_, err := s.SendAccountCreatedEmail(context.Background(), &pb.SendAccountCreatedEmailRequest{
+		Email: "not-an-email",
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, status.Code(err))
+}
+
+func TestSendAccountCreatedEmail_PublisherFails(t *testing.T) {
+	pub := &mockPublisher{}
+	pub.On("PublishAccountCreated", mock.Anything).Return(errors.New("queue down"))
+
+	s := &EmailServer{Producer: pub}
+	_, err := s.SendAccountCreatedEmail(context.Background(), &pb.SendAccountCreatedEmailRequest{
+		Email: "client@example.com", FirstName: "Ana",
+		AccountName: "Tekuci", AccountNumber: "265000100000000101", CurrencyCode: "RSD",
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+	pub.AssertExpectations(t)
+}
+
+func TestSendAccountCreatedEmail_HappyPath(t *testing.T) {
+	pub := &mockPublisher{}
+	pub.On("PublishAccountCreated", queue.AccountCreatedMessage{
+		Email:         "client@example.com",
+		FirstName:     "Ana",
+		AccountName:   "Tekuci",
+		AccountNumber: "265000100000000101",
+		CurrencyCode:  "RSD",
+	}).Return(nil)
+
+	s := &EmailServer{Producer: pub}
+	resp, err := s.SendAccountCreatedEmail(context.Background(), &pb.SendAccountCreatedEmailRequest{
+		Email: "client@example.com", FirstName: "Ana",
+		AccountName: "Tekuci", AccountNumber: "265000100000000101", CurrencyCode: "RSD",
+	})
+	require.NoError(t, err)
+	assert.NotNil(t, resp)
+	pub.AssertExpectations(t)
+}

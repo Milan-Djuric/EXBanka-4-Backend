@@ -95,3 +95,44 @@ func TestRequireRole_RoleCheckIsCaseInsensitive(t *testing.T) {
 	tokenStr, _ := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(jwtSecret))
 	assert.Equal(t, http.StatusOK, runMiddleware("Bearer "+tokenStr, "OPERATOR"))
 }
+
+// ---- GetUserIDFromToken tests ----
+
+func runGetUserID(authHeader string) (int64, error) {
+	gin.SetMode(gin.TestMode)
+	var (
+		id  int64
+		err error
+	)
+	router := gin.New()
+	router.GET("/test", func(c *gin.Context) {
+		id, err = GetUserIDFromToken(c)
+		c.Status(http.StatusOK)
+	})
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/test", nil)
+	if authHeader != "" {
+		req.Header.Set("Authorization", authHeader)
+	}
+	router.ServeHTTP(w, req)
+	return id, err
+}
+
+func TestGetUserIDFromToken_MissingHeader(t *testing.T) {
+	id, err := runGetUserID("")
+	assert.Error(t, err)
+	assert.Equal(t, int64(0), id)
+}
+
+func TestGetUserIDFromToken_InvalidToken(t *testing.T) {
+	id, err := runGetUserID("Bearer not.a.token")
+	assert.Error(t, err)
+	assert.Equal(t, int64(0), id)
+}
+
+func TestGetUserIDFromToken_HappyPath(t *testing.T) {
+	token := makeToken("access", []string{"ADMIN"}, time.Hour)
+	id, err := runGetUserID("Bearer " + token)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(1), id)
+}
