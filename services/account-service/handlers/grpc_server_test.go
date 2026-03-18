@@ -329,3 +329,148 @@ func TestCreateAccount_HappyPath_Business_ExistingCompany(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "BUSINESS", resp.Account.AccountType)
 }
+
+// ---- Additional DB error coverage ----
+
+func TestGetMyAccounts_ScanError(t *testing.T) {
+	s, dbMock, _, _ := newServer(t)
+	dbMock.ExpectQuery("SELECT").WillReturnRows(
+		sqlmock.NewRows([]string{"id", "account_name", "account_number", "available_balance", "currency_id"}).
+			AddRow("not-an-int", "name", "number", 100.0, 1),
+	)
+	_, err := s.GetMyAccounts(context.Background(), &pb.GetMyAccountsRequest{OwnerId: 1})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestGetAccount_InternalError(t *testing.T) {
+	s, dbMock, _, _ := newServer(t)
+	dbMock.ExpectQuery("SELECT").WillReturnError(sql.ErrConnDone)
+	_, err := s.GetAccount(context.Background(), &pb.GetAccountRequest{AccountId: 1, OwnerId: 1})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestRenameAccount_QueryInternalError(t *testing.T) {
+	s, dbMock, _, _ := newServer(t)
+	dbMock.ExpectQuery("SELECT account_name").WillReturnError(sql.ErrConnDone)
+	_, err := s.RenameAccount(context.Background(), &pb.RenameAccountRequest{AccountId: 1, OwnerId: 1, NewName: "X"})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestRenameAccount_ExecError(t *testing.T) {
+	s, dbMock, _, _ := newServer(t)
+	dbMock.ExpectQuery("SELECT account_name").WillReturnRows(
+		sqlmock.NewRows([]string{"account_name", "owner_id"}).AddRow("Stari", int64(1)),
+	)
+	dbMock.ExpectQuery("SELECT COUNT").WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+	dbMock.ExpectExec("UPDATE accounts").WillReturnError(sql.ErrConnDone)
+	_, err := s.RenameAccount(context.Background(), &pb.RenameAccountRequest{AccountId: 1, OwnerId: 1, NewName: "Novi"})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestGetAllAccounts_ScanError(t *testing.T) {
+	s, dbMock, _, _ := newServer(t)
+	dbMock.ExpectQuery("SELECT").WillReturnRows(
+		sqlmock.NewRows([]string{"id", "account_number", "account_name", "owner_id", "account_type", "currency_id", "available_balance"}).
+			AddRow("not-an-int", "ACC1", "Racun", 1, "CURRENT", 1, 1000.0),
+	)
+	_, err := s.GetAllAccounts(context.Background(), &pb.GetAllAccountsRequest{})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestCreateAccount_ClientInternalError(t *testing.T) {
+	s, _, clientMock, _ := newServer(t)
+	clientMock.ExpectQuery("SELECT id, email, first_name").WillReturnError(sql.ErrConnDone)
+	_, err := s.CreateAccount(context.Background(), &pb.CreateAccountRequest{
+		ClientId: 1, CurrencyCode: "RSD", AccountType: "CURRENT", AccountName: "Test",
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestCreateAccount_CurrencyInternalError(t *testing.T) {
+	s, _, clientMock, exchangeMock := newServer(t)
+	clientMock.ExpectQuery("SELECT id, email, first_name").WillReturnRows(
+		sqlmock.NewRows([]string{"id", "email", "first_name"}).AddRow(int64(1), "a@b.com", "Ana"),
+	)
+	exchangeMock.ExpectQuery("SELECT id, code").WillReturnError(sql.ErrConnDone)
+	_, err := s.CreateAccount(context.Background(), &pb.CreateAccountRequest{
+		ClientId: 1, CurrencyCode: "RSD", AccountType: "CURRENT", AccountName: "Test",
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestCreateAccount_CompanyInsertError(t *testing.T) {
+	s, dbMock, clientMock, exchangeMock := newServer(t)
+	clientMock.ExpectQuery("SELECT id, email, first_name").WillReturnRows(
+		sqlmock.NewRows([]string{"id", "email", "first_name"}).AddRow(int64(1), "a@b.com", "Ana"),
+	)
+	exchangeMock.ExpectQuery("SELECT id, code").WillReturnRows(
+		sqlmock.NewRows([]string{"id", "code"}).AddRow(int64(1), "RSD"),
+	)
+	dbMock.ExpectQuery("SELECT id FROM companies").WillReturnError(sql.ErrNoRows)
+	dbMock.ExpectQuery("INSERT INTO companies").WillReturnError(sql.ErrConnDone)
+	_, err := s.CreateAccount(context.Background(), &pb.CreateAccountRequest{
+		ClientId: 1, CurrencyCode: "RSD", AccountType: "BUSINESS", AccountName: "Test",
+		CompanyData: &pb.CompanyData{Name: "Firma", RegistrationNumber: "123"},
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestCreateAccount_CompanyLookupError(t *testing.T) {
+	s, dbMock, clientMock, exchangeMock := newServer(t)
+	clientMock.ExpectQuery("SELECT id, email, first_name").WillReturnRows(
+		sqlmock.NewRows([]string{"id", "email", "first_name"}).AddRow(int64(1), "a@b.com", "Ana"),
+	)
+	exchangeMock.ExpectQuery("SELECT id, code").WillReturnRows(
+		sqlmock.NewRows([]string{"id", "code"}).AddRow(int64(1), "RSD"),
+	)
+	dbMock.ExpectQuery("SELECT id FROM companies").WillReturnError(sql.ErrConnDone)
+	_, err := s.CreateAccount(context.Background(), &pb.CreateAccountRequest{
+		ClientId: 1, CurrencyCode: "RSD", AccountType: "BUSINESS", AccountName: "Test",
+		CompanyData: &pb.CompanyData{Name: "Firma", RegistrationNumber: "123"},
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestCreateAccount_InsertError(t *testing.T) {
+	s, dbMock, clientMock, exchangeMock := newServer(t)
+	clientMock.ExpectQuery("SELECT id, email, first_name").WillReturnRows(
+		sqlmock.NewRows([]string{"id", "email", "first_name"}).AddRow(int64(1), "a@b.com", "Ana"),
+	)
+	exchangeMock.ExpectQuery("SELECT id, code").WillReturnRows(
+		sqlmock.NewRows([]string{"id", "code"}).AddRow(int64(1), "RSD"),
+	)
+	dbMock.ExpectQuery("INSERT INTO accounts").WillReturnError(sql.ErrConnDone)
+	_, err := s.CreateAccount(context.Background(), &pb.CreateAccountRequest{
+		ClientId: 1, CurrencyCode: "RSD", AccountType: "CURRENT", AccountName: "Test",
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestCreateAccount_EmailError_DoesNotFail(t *testing.T) {
+	s, dbMock, clientMock, exchangeMock := newServer(t)
+	s.EmailClient = &mockEmailClient{err: sql.ErrConnDone}
+	clientMock.ExpectQuery("SELECT id, email, first_name").WillReturnRows(
+		sqlmock.NewRows([]string{"id", "email", "first_name"}).AddRow(int64(1), "a@b.com", "Ana"),
+	)
+	exchangeMock.ExpectQuery("SELECT id, code").WillReturnRows(
+		sqlmock.NewRows([]string{"id", "code"}).AddRow(int64(1), "RSD"),
+	)
+	dbMock.ExpectQuery("INSERT INTO accounts").WillReturnRows(
+		sqlmock.NewRows([]string{"id", "created_date"}).AddRow(int64(1), "2026-03-18"),
+	)
+	resp, err := s.CreateAccount(context.Background(), &pb.CreateAccountRequest{
+		ClientId: 1, CurrencyCode: "RSD", AccountType: "CURRENT", AccountName: "Test",
+	})
+	require.NoError(t, err, "email error must not fail the request")
+	assert.NotNil(t, resp)
+}

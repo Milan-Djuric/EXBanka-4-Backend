@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
@@ -348,4 +349,85 @@ func TestActivateClient_HappyPath(t *testing.T) {
 		ClientId: 1, PasswordHash: "$2a$10$somehash",
 	})
 	require.NoError(t, err)
+}
+
+// ---- Additional DB error / scan error tests ----
+
+func TestGetAllClients_QueryFails(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	dbMock.ExpectQuery("SELECT COUNT").
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(1)))
+	dbMock.ExpectQuery("LIMIT").WillReturnError(sql.ErrConnDone)
+
+	s := &ClientServer{DB: db}
+	_, err = s.GetAllClients(context.Background(), &pb.GetAllClientsRequest{Page: 1, PageSize: 10})
+	require.Error(t, err)
+}
+
+func TestGetAllClients_ScanFails(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	dbMock.ExpectQuery("SELECT COUNT").
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int32(1)))
+	dbMock.ExpectQuery("LIMIT").
+		WillReturnRows(sqlmock.NewRows(clientColumns()).
+			AddRow("not-an-int", "Ana", "Anić", "0101990710001", "1990-01-01",
+				"F", "ana@example.com", "0601234567", "Main St 1", "anaanic", true))
+
+	s := &ClientServer{DB: db}
+	_, err = s.GetAllClients(context.Background(), &pb.GetAllClientsRequest{Page: 1, PageSize: 10})
+	require.Error(t, err)
+}
+
+func TestGetClientById_DBError(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	dbMock.ExpectQuery("SELECT id, first_name").WillReturnError(sql.ErrConnDone)
+
+	s := &ClientServer{DB: db}
+	_, err = s.GetClientById(context.Background(), &pb.GetClientByIdRequest{Id: 1})
+	require.Error(t, err)
+}
+
+func TestCreateClient_GenericError(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	dbMock.ExpectQuery("INSERT INTO clients").WillReturnError(sql.ErrConnDone)
+
+	s := &ClientServer{DB: db}
+	_, err = s.CreateClient(context.Background(), &pb.CreateClientRequest{FirstName: "X"})
+	require.Error(t, err)
+}
+
+func TestUpdateClient_GenericError(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	dbMock.ExpectQuery("UPDATE clients").WillReturnError(sql.ErrConnDone)
+
+	s := &ClientServer{DB: db}
+	_, err = s.UpdateClient(context.Background(), &pb.UpdateClientRequest{Id: 1})
+	require.Error(t, err)
+}
+
+func TestGetClientCredentials_DBError(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	dbMock.ExpectQuery("SELECT id, password").WillReturnError(sql.ErrConnDone)
+
+	s := &ClientServer{DB: db}
+	_, err = s.GetClientCredentials(context.Background(), &pb.GetClientCredentialsRequest{Email: "user@example.com"})
+	require.Error(t, err)
 }

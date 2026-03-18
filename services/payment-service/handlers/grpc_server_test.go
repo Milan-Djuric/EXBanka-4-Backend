@@ -257,3 +257,139 @@ func TestDeletePaymentRecipient_HappyPath(t *testing.T) {
 	_, err := s.DeletePaymentRecipient(context.Background(), &pb.DeletePaymentRecipientRequest{Id: 1, ClientId: 1})
 	require.NoError(t, err)
 }
+
+// ---- Additional coverage ----
+
+func TestCreatePayment_SourceInternalError(t *testing.T) {
+	s, _, accountMock := newPaymentServer(t)
+	accountMock.ExpectQuery("SELECT id, owner_id").WillReturnError(sql.ErrConnDone)
+	_, err := s.CreatePayment(context.Background(), &pb.CreatePaymentRequest{
+		FromAccount: "ACC1", ClientId: 1, Amount: 100,
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestCreatePayment_HappyPath_DifferentCurrency(t *testing.T) {
+	s, dbMock, accountMock := newPaymentServer(t)
+	accountMock.ExpectQuery("SELECT id, owner_id").WillReturnRows(
+		sqlmock.NewRows([]string{"id", "owner_id", "available_balance", "daily_limit", "monthly_limit", "daily_spent", "monthly_spent", "currency_id"}).
+			AddRow(int64(1), int64(1), float64(1000), nil, nil, float64(0), float64(0), int64(1)),
+	)
+	// Destination account with different currency
+	accountMock.ExpectQuery("SELECT id, currency_id").WillReturnRows(
+		sqlmock.NewRows([]string{"id", "currency_id"}).AddRow(int64(2), int64(2)),
+	)
+	accountMock.ExpectBegin()
+	accountMock.ExpectExec("UPDATE accounts SET").WillReturnResult(sqlmock.NewResult(1, 1))
+	accountMock.ExpectExec("UPDATE accounts SET").WillReturnResult(sqlmock.NewResult(1, 1))
+	accountMock.ExpectCommit()
+	dbMock.ExpectQuery("INSERT INTO payments").WillReturnRows(
+		sqlmock.NewRows([]string{"id"}).AddRow(int64(1)),
+	)
+	resp, err := s.CreatePayment(context.Background(), &pb.CreatePaymentRequest{
+		FromAccount: "ACC1", RecipientAccount: "ACC2", ClientId: 1, Amount: 200,
+	})
+	require.NoError(t, err)
+	assert.GreaterOrEqual(t, resp.Fee, float64(0))
+	assert.Less(t, resp.FinalAmount, float64(200)+0.001, "finalAmount <= amount for different currency")
+}
+
+func TestCreatePayment_BeginTxError(t *testing.T) {
+	s, _, accountMock := newPaymentServer(t)
+	accountMock.ExpectQuery("SELECT id, owner_id").WillReturnRows(
+		sqlmock.NewRows([]string{"id", "owner_id", "available_balance", "daily_limit", "monthly_limit", "daily_spent", "monthly_spent", "currency_id"}).
+			AddRow(int64(1), int64(1), float64(1000), nil, nil, float64(0), float64(0), int64(1)),
+	)
+	accountMock.ExpectQuery("SELECT id, currency_id").WillReturnError(sql.ErrNoRows)
+	accountMock.ExpectBegin().WillReturnError(sql.ErrConnDone)
+	_, err := s.CreatePayment(context.Background(), &pb.CreatePaymentRequest{
+		FromAccount: "ACC1", ClientId: 1, Amount: 100,
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestCreatePayment_DebitError(t *testing.T) {
+	s, _, accountMock := newPaymentServer(t)
+	accountMock.ExpectQuery("SELECT id, owner_id").WillReturnRows(
+		sqlmock.NewRows([]string{"id", "owner_id", "available_balance", "daily_limit", "monthly_limit", "daily_spent", "monthly_spent", "currency_id"}).
+			AddRow(int64(1), int64(1), float64(1000), nil, nil, float64(0), float64(0), int64(1)),
+	)
+	accountMock.ExpectQuery("SELECT id, currency_id").WillReturnError(sql.ErrNoRows)
+	accountMock.ExpectBegin()
+	accountMock.ExpectExec("UPDATE accounts SET").WillReturnError(sql.ErrConnDone)
+	accountMock.ExpectRollback()
+	_, err := s.CreatePayment(context.Background(), &pb.CreatePaymentRequest{
+		FromAccount: "ACC1", ClientId: 1, Amount: 100,
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestCreatePayment_CreditError(t *testing.T) {
+	s, _, accountMock := newPaymentServer(t)
+	accountMock.ExpectQuery("SELECT id, owner_id").WillReturnRows(
+		sqlmock.NewRows([]string{"id", "owner_id", "available_balance", "daily_limit", "monthly_limit", "daily_spent", "monthly_spent", "currency_id"}).
+			AddRow(int64(1), int64(1), float64(1000), nil, nil, float64(0), float64(0), int64(1)),
+	)
+	accountMock.ExpectQuery("SELECT id, currency_id").WillReturnRows(
+		sqlmock.NewRows([]string{"id", "currency_id"}).AddRow(int64(2), int64(1)),
+	)
+	accountMock.ExpectBegin()
+	accountMock.ExpectExec("UPDATE accounts SET").WillReturnResult(sqlmock.NewResult(1, 1))
+	accountMock.ExpectExec("UPDATE accounts SET").WillReturnError(sql.ErrConnDone)
+	accountMock.ExpectRollback()
+	_, err := s.CreatePayment(context.Background(), &pb.CreatePaymentRequest{
+		FromAccount: "ACC1", RecipientAccount: "ACC2", ClientId: 1, Amount: 100,
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestCreatePayment_PersistError(t *testing.T) {
+	s, dbMock, accountMock := newPaymentServer(t)
+	accountMock.ExpectQuery("SELECT id, owner_id").WillReturnRows(
+		sqlmock.NewRows([]string{"id", "owner_id", "available_balance", "daily_limit", "monthly_limit", "daily_spent", "monthly_spent", "currency_id"}).
+			AddRow(int64(1), int64(1), float64(1000), nil, nil, float64(0), float64(0), int64(1)),
+	)
+	accountMock.ExpectQuery("SELECT id, currency_id").WillReturnError(sql.ErrNoRows)
+	accountMock.ExpectBegin()
+	accountMock.ExpectExec("UPDATE accounts SET").WillReturnResult(sqlmock.NewResult(1, 1))
+	accountMock.ExpectCommit()
+	dbMock.ExpectQuery("INSERT INTO payments").WillReturnError(sql.ErrConnDone)
+	_, err := s.CreatePayment(context.Background(), &pb.CreatePaymentRequest{
+		FromAccount: "ACC1", ClientId: 1, Amount: 100,
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestGetPaymentRecipients_ScanError(t *testing.T) {
+	s, dbMock, _ := newPaymentServer(t)
+	dbMock.ExpectQuery("SELECT id, client_id, name, account_number").WillReturnRows(
+		sqlmock.NewRows([]string{"id", "client_id", "name", "account_number"}).
+			AddRow("not-an-int", 1, "Ana", "ACC1"),
+	)
+	_, err := s.GetPaymentRecipients(context.Background(), &pb.GetPaymentRecipientsRequest{ClientId: 1})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestUpdatePaymentRecipient_InternalError(t *testing.T) {
+	s, dbMock, _ := newPaymentServer(t)
+	dbMock.ExpectQuery("UPDATE payment_recipients").WillReturnError(sql.ErrConnDone)
+	_, err := s.UpdatePaymentRecipient(context.Background(), &pb.UpdatePaymentRecipientRequest{
+		Id: 1, ClientId: 1, Name: "X", AccountNumber: "ACC1",
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestDeletePaymentRecipient_ExecError(t *testing.T) {
+	s, dbMock, _ := newPaymentServer(t)
+	dbMock.ExpectExec("DELETE FROM payment_recipients").WillReturnError(sql.ErrConnDone)
+	_, err := s.DeletePaymentRecipient(context.Background(), &pb.DeletePaymentRecipientRequest{Id: 1, ClientId: 1})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
