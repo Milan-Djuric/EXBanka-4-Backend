@@ -595,6 +595,53 @@ paths:
       summary: List client payments
       tags:
       - payments
+  /api/payments/{paymentId}:
+    get:
+      description: Returns details of a single payment owned by the authenticated
+        client.
+      parameters:
+      - description: Payment ID
+        in: path
+        name: paymentId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get payment details
+      tags:
+      - payments
   /api/payments/create:
     post:
       consumes:

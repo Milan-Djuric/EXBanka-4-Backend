@@ -262,6 +262,69 @@ func UpdatePaymentRecipient(paymentClient pb.PaymentServiceClient) gin.HandlerFu
 	}
 }
 
+// GetPaymentById godoc
+// @Summary      Get payment details
+// @Description  Returns details of a single payment owned by the authenticated client.
+// @Tags         payments
+// @Produce      json
+// @Param        paymentId  path  int  true  "Payment ID"
+// @Success      200  {object}  map[string]interface{}
+// @Failure      400  {object}  map[string]string
+// @Failure      401  {object}  map[string]string
+// @Failure      403  {object}  map[string]string
+// @Failure      404  {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /api/payments/{paymentId} [get]
+func GetPaymentById(paymentClient pb.PaymentServiceClient) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		paymentID, err := strconv.ParseInt(c.Param("paymentId"), 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payment id"})
+			return
+		}
+		clientID, err := middleware.GetUserIDFromToken(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "could not extract identity from token"})
+			return
+		}
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+		defer cancel()
+
+		resp, err := paymentClient.GetPaymentById(ctx, &pb.GetPaymentByIdRequest{
+			PaymentId: paymentID,
+			ClientId:  clientID,
+		})
+		if err != nil {
+			switch status.Code(err) {
+			case codes.NotFound:
+				c.JSON(http.StatusNotFound, gin.H{"error": status.Convert(err).Message()})
+			case codes.PermissionDenied:
+				c.JSON(http.StatusForbidden, gin.H{"error": status.Convert(err).Message()})
+			default:
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			}
+			return
+		}
+
+		p := resp.Payment
+		c.JSON(http.StatusOK, gin.H{
+			"id":              p.Id,
+			"orderNumber":     p.OrderNumber,
+			"fromAccount":     p.FromAccount,
+			"toAccount":       p.ToAccount,
+			"recipient":       p.RecipientName,
+			"initialAmount":   p.InitialAmount,
+			"finalAmount":     p.FinalAmount,
+			"fee":             p.Fee,
+			"paymentCode":     p.PaymentCode,
+			"referenceNumber": p.ReferenceNumber,
+			"purpose":         p.Purpose,
+			"timestamp":       p.Timestamp,
+			"status":          p.Status,
+		})
+	}
+}
+
 // GetPayments godoc
 // @Summary      List client payments
 // @Description  Returns all payments made from the authenticated client's accounts, with optional filters.

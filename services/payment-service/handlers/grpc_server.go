@@ -222,6 +222,48 @@ func (s *PaymentServer) DeletePaymentRecipient(ctx context.Context, req *pb.Dele
 	return &pb.DeletePaymentRecipientResponse{}, nil
 }
 
+func (s *PaymentServer) GetPaymentById(ctx context.Context, req *pb.GetPaymentByIdRequest) (*pb.GetPaymentByIdResponse, error) {
+	var p pb.Payment
+	var ts time.Time
+	var recipientName sql.NullString
+
+	err := s.DB.QueryRowContext(ctx, `
+		SELECT p.id, p.order_number, p.from_account, p.to_account,
+		       p.initial_amount, p.final_amount, p.fee,
+		       p.payment_code, p.reference_number, p.purpose,
+		       p.timestamp, p.status, r.name
+		FROM payments p
+		LEFT JOIN payment_recipients r ON p.recipient_id = r.id
+		WHERE p.id = $1`,
+		req.PaymentId,
+	).Scan(&p.Id, &p.OrderNumber, &p.FromAccount, &p.ToAccount,
+		&p.InitialAmount, &p.FinalAmount, &p.Fee,
+		&p.PaymentCode, &p.ReferenceNumber, &p.Purpose,
+		&ts, &p.Status, &recipientName,
+	)
+	if err == sql.ErrNoRows {
+		return nil, status.Error(codes.NotFound, "payment not found")
+	}
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to query payment: %v", err)
+	}
+
+	// Verify ownership: from_account must belong to this client
+	var ownerID int64
+	err = s.AccountDB.QueryRowContext(ctx,
+		`SELECT owner_id FROM accounts WHERE account_number = $1`, p.FromAccount,
+	).Scan(&ownerID)
+	if err != nil || ownerID != req.ClientId {
+		return nil, status.Error(codes.PermissionDenied, "payment does not belong to this client")
+	}
+
+	p.Timestamp = ts.Format(time.RFC3339)
+	if recipientName.Valid {
+		p.RecipientName = recipientName.String
+	}
+	return &pb.GetPaymentByIdResponse{Payment: &p}, nil
+}
+
 func (s *PaymentServer) GetPayments(ctx context.Context, req *pb.GetPaymentsRequest) (*pb.GetPaymentsResponse, error) {
 	// 1. Get all account numbers owned by this client
 	accRows, err := s.AccountDB.QueryContext(ctx,

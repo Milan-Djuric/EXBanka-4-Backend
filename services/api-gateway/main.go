@@ -77,6 +77,7 @@ func main() {
 	r.POST("/employees", middleware.RequireRole("ADMIN"), handlers.CreateEmployee(employeeClient, authClient, emailClient))
 	r.POST("/api/payments/create", handlers.CreatePayment(paymentClient))
 	r.GET("/api/payments", handlers.GetPayments(paymentClient))
+	r.GET("/api/payments/:paymentId", handlers.GetPaymentById(paymentClient))
 	r.POST("/api/recipients", handlers.CreatePaymentRecipient(paymentClient))
 	r.GET("/api/recipients", handlers.GetPaymentRecipients(paymentClient))
 	r.PUT("/api/recipients/:id", handlers.UpdatePaymentRecipient(paymentClient))

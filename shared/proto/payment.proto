@@ -68,7 +68,15 @@ message Payment {
   string purpose          = 10;
   string timestamp        = 11;
   string status           = 12;
+  string recipient_name   = 13;
 }
+
+message GetPaymentByIdRequest {
+  int64 payment_id = 1;
+  int64 client_id  = 2;
+}
+
+message GetPaymentByIdResponse { Payment payment = 1; }
 
 message GetPaymentsRequest {
   int64  client_id  = 1;
@@ -86,6 +94,7 @@ message GetPaymentsResponse {
 service PaymentService {
   rpc CreatePayment(CreatePaymentRequest)                     returns (CreatePaymentResponse);
   rpc GetPayments(GetPaymentsRequest)                         returns (GetPaymentsResponse);
+  rpc GetPaymentById(GetPaymentByIdRequest)                   returns (GetPaymentByIdResponse);
   rpc CreatePaymentRecipient(CreatePaymentRecipientRequest)   returns (CreatePaymentRecipientResponse);
   rpc GetPaymentRecipients(GetPaymentRecipientsRequest)       returns (GetPaymentRecipientsResponse);
   rpc UpdatePaymentRecipient(UpdatePaymentRecipientRequest)   returns (UpdatePaymentRecipientResponse);

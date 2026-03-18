@@ -29,6 +29,103 @@ func newMockServer(t *testing.T) (*PaymentServer, sqlmock.Sqlmock, sqlmock.Sqlmo
 	return &PaymentServer{DB: paymentDB, AccountDB: accountDB}, paymentMock, accountMock
 }
 
+// ---- GetPaymentById tests ----
+
+func TestGetPaymentById_HappyPathWithRecipient(t *testing.T) {
+	s, paymentMock, accountMock := newMockServer(t)
+
+	ts := time.Date(2025, 6, 1, 10, 0, 0, 0, time.UTC)
+	paymentMock.ExpectQuery("SELECT p.id, p.order_number").
+		WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "order_number", "from_account", "to_account",
+			"initial_amount", "final_amount", "fee",
+			"payment_code", "reference_number", "purpose",
+			"timestamp", "status", "name",
+		}).AddRow(1, "ORD-001", "ACC-100", "ACC-200", 300.0, 300.0, 0.0, "289", "RF01", "rent", ts, "COMPLETED", "Ana Petrović"))
+
+	accountMock.ExpectQuery("SELECT owner_id FROM accounts").
+		WithArgs("ACC-100").
+		WillReturnRows(sqlmock.NewRows([]string{"owner_id"}).AddRow(int64(42)))
+
+	resp, err := s.GetPaymentById(context.Background(), &pb.GetPaymentByIdRequest{PaymentId: 1, ClientId: 42})
+	require.NoError(t, err)
+	p := resp.Payment
+	assert.Equal(t, int64(1), p.Id)
+	assert.Equal(t, "Ana Petrović", p.RecipientName)
+	assert.Equal(t, 300.0, p.InitialAmount)
+	assert.Equal(t, ts.Format(time.RFC3339), p.Timestamp)
+}
+
+func TestGetPaymentById_HappyPathNoRecipient(t *testing.T) {
+	s, paymentMock, accountMock := newMockServer(t)
+
+	ts := time.Now()
+	paymentMock.ExpectQuery("SELECT p.id, p.order_number").
+		WithArgs(int64(2)).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "order_number", "from_account", "to_account",
+			"initial_amount", "final_amount", "fee",
+			"payment_code", "reference_number", "purpose",
+			"timestamp", "status", "name",
+		}).AddRow(2, "ORD-002", "ACC-100", "EXT-999", 150.0, 150.0, 0.0, "", "", "phone", ts, "COMPLETED", nil))
+
+	accountMock.ExpectQuery("SELECT owner_id FROM accounts").
+		WithArgs("ACC-100").
+		WillReturnRows(sqlmock.NewRows([]string{"owner_id"}).AddRow(int64(42)))
+
+	resp, err := s.GetPaymentById(context.Background(), &pb.GetPaymentByIdRequest{PaymentId: 2, ClientId: 42})
+	require.NoError(t, err)
+	assert.Equal(t, "", resp.Payment.RecipientName)
+}
+
+func TestGetPaymentById_NotFound(t *testing.T) {
+	s, paymentMock, _ := newMockServer(t)
+
+	paymentMock.ExpectQuery("SELECT p.id, p.order_number").
+		WithArgs(int64(999)).
+		WillReturnRows(sqlmock.NewRows([]string{}))
+
+	_, err := s.GetPaymentById(context.Background(), &pb.GetPaymentByIdRequest{PaymentId: 999, ClientId: 1})
+	require.Error(t, err)
+	assert.Equal(t, codes.NotFound, status.Code(err))
+}
+
+func TestGetPaymentById_PermissionDenied(t *testing.T) {
+	s, paymentMock, accountMock := newMockServer(t)
+
+	ts := time.Now()
+	paymentMock.ExpectQuery("SELECT p.id, p.order_number").
+		WithArgs(int64(3)).
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "order_number", "from_account", "to_account",
+			"initial_amount", "final_amount", "fee",
+			"payment_code", "reference_number", "purpose",
+			"timestamp", "status", "name",
+		}).AddRow(3, "ORD-003", "ACC-500", "ACC-600", 100.0, 100.0, 0.0, "", "", "", ts, "COMPLETED", nil))
+
+	// account belongs to client 99, not 42
+	accountMock.ExpectQuery("SELECT owner_id FROM accounts").
+		WithArgs("ACC-500").
+		WillReturnRows(sqlmock.NewRows([]string{"owner_id"}).AddRow(int64(99)))
+
+	_, err := s.GetPaymentById(context.Background(), &pb.GetPaymentByIdRequest{PaymentId: 3, ClientId: 42})
+	require.Error(t, err)
+	assert.Equal(t, codes.PermissionDenied, status.Code(err))
+}
+
+func TestGetPaymentById_PaymentDBError(t *testing.T) {
+	s, paymentMock, _ := newMockServer(t)
+
+	paymentMock.ExpectQuery("SELECT p.id, p.order_number").
+		WithArgs(int64(4)).
+		WillReturnError(fmt.Errorf("db unavailable"))
+
+	_, err := s.GetPaymentById(context.Background(), &pb.GetPaymentByIdRequest{PaymentId: 4, ClientId: 1})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
 // ---- GetPayments tests ----
 
 func TestGetPayments_NoAccounts(t *testing.T) {
