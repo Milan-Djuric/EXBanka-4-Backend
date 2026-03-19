@@ -293,7 +293,7 @@ func (s *PaymentServer) GetPayments(ctx context.Context, req *pb.GetPaymentsRequ
 		       payment_code, reference_number, purpose,
 		       timestamp, status
 		FROM payments
-		WHERE from_account = ANY($1)
+		WHERE (from_account = ANY($1) OR to_account = ANY($1))
 		  AND ($2 = '' OR timestamp >= $2::timestamptz)
 		  AND ($3 = '' OR timestamp <= $3::timestamptz)
 		  AND ($4 = 0 OR initial_amount >= $4)
