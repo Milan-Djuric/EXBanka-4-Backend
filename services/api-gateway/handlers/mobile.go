@@ -36,6 +36,37 @@ func toApprovalResp(a *pb.Approval) approvalResp {
 	}
 }
 
+// CreateApproval creates a new two-factor approval request for the authenticated client.
+func CreateApproval(authClient pb.AuthServiceClient) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID, err := middleware.GetUserIDFromToken(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		}
+		var body struct {
+			ActionType string `json:"actionType" binding:"required"`
+			Payload    string `json:"payload"`
+		}
+		if err := c.ShouldBindJSON(&body); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+		defer cancel()
+		resp, err := authClient.CreateApproval(ctx, &pb.CreateApprovalRequest{
+			ClientId:   userID,
+			ActionType: body.ActionType,
+			Payload:    body.Payload,
+		})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusCreated, toApprovalResp(resp.Approval))
+	}
+}
+
 // PollLoginApproval is a public endpoint for polling a LOGIN approval status.
 // No authentication required — used by the web frontend while waiting for mobile approval.
 func PollLoginApproval(authClient pb.AuthServiceClient) gin.HandlerFunc {
