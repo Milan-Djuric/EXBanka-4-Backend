@@ -51,3 +51,19 @@ CREATE TABLE accounts (
     maintenance_fee     NUMERIC(20, 2) NOT NULL DEFAULT 0,
     company_id          BIGINT REFERENCES companies(id)
 );
+
+-- Bank internal accounts (issue #78) — one per supported currency, used as intermediaries
+-- in exchange transactions. owner_id = 0 identifies these as bank-owned; they are never
+-- returned to regular clients. currency_id values match the insertion order in
+-- exchange-service/db/schema.sql: 1=RSD, 2=EUR, 3=CHF, 4=USD, 5=GBP, 6=JPY, 7=CAD, 8=AUD.
+INSERT INTO accounts (account_number, account_name, owner_id, employee_id, currency_id, account_type, balance, available_balance)
+VALUES
+  ('BANK-RSD-001', 'Bank Internal RSD Account', 0, 0, 1, 'BANK', 1000000000, 1000000000),
+  ('BANK-EUR-001', 'Bank Internal EUR Account', 0, 0, 2, 'BANK', 10000000,   10000000),
+  ('BANK-CHF-001', 'Bank Internal CHF Account', 0, 0, 3, 'BANK', 10000000,   10000000),
+  ('BANK-USD-001', 'Bank Internal USD Account', 0, 0, 4, 'BANK', 10000000,   10000000),
+  ('BANK-GBP-001', 'Bank Internal GBP Account', 0, 0, 5, 'BANK', 10000000,   10000000),
+  ('BANK-JPY-001', 'Bank Internal JPY Account', 0, 0, 6, 'BANK', 1000000000, 1000000000),
+  ('BANK-CAD-001', 'Bank Internal CAD Account', 0, 0, 7, 'BANK', 10000000,   10000000),
+  ('BANK-AUD-001', 'Bank Internal AUD Account', 0, 0, 8, 'BANK', 10000000,   10000000)
+ON CONFLICT (account_number) DO NOTHING;

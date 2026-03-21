@@ -257,7 +257,24 @@ func (s *ExchangeServer) ConvertAmount(ctx context.Context, req *pb.ConvertAmoun
 
 	commissionAmount := math.Round((req.Amount*commission)*100) / 100
 
-	// 7. Update account balances in account_db transaction
+	// 6b. Look up bank intermediary accounts (issue #78)
+	var bankFromAcct, bankToAcct string
+	if err := s.AccountDB.QueryRowContext(ctx,
+		`SELECT account_number FROM accounts WHERE owner_id = 0 AND account_type = 'BANK' AND currency_id = $1`,
+		fromCurrencyID,
+	).Scan(&bankFromAcct); err != nil {
+		return nil, status.Errorf(codes.Internal, "bank intermediary account not found for source currency: %v", err)
+	}
+	if err := s.AccountDB.QueryRowContext(ctx,
+		`SELECT account_number FROM accounts WHERE owner_id = 0 AND account_type = 'BANK' AND currency_id = $1`,
+		toCurrencyID,
+	).Scan(&bankToAcct); err != nil {
+		return nil, status.Errorf(codes.Internal, "bank intermediary account not found for destination currency: %v", err)
+	}
+
+	// 7. Update account balances via bank intermediary (issue #78)
+	// Step 1: user fromAccount → bank fromCurrency account
+	// Step 2: bank toCurrency account → user toAccount
 	tx, err := s.AccountDB.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to begin transaction: %v", err)
@@ -268,6 +285,16 @@ func (s *ExchangeServer) ConvertAmount(ctx context.Context, req *pb.ConvertAmoun
 		UPDATE accounts SET balance = balance - $1, available_balance = available_balance - $1
 		WHERE account_number = $2`, req.Amount, req.FromAccount); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to debit source account: %v", err)
+	}
+	if _, err = tx.ExecContext(ctx, `
+		UPDATE accounts SET balance = balance + $1, available_balance = available_balance + $1
+		WHERE account_number = $2`, req.Amount, bankFromAcct); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to credit bank source account: %v", err)
+	}
+	if _, err = tx.ExecContext(ctx, `
+		UPDATE accounts SET balance = balance - $1, available_balance = available_balance - $1
+		WHERE account_number = $2`, toAmount, bankToAcct); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to debit bank destination account: %v", err)
 	}
 	if _, err = tx.ExecContext(ctx, `
 		UPDATE accounts SET balance = balance + $1, available_balance = available_balance + $1
