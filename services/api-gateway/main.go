@@ -139,6 +139,10 @@ func main() {
 	r.GET("/loans/:id", handlers.GetLoanDetails(loanClient))
 	r.GET("/loans/:id/installments", handlers.GetLoanInstallments(loanClient))
 	r.POST("/loans/apply", handlers.ApplyForLoan(loanClient))
+	r.GET("/admin/loans/applications", middleware.RequireRole("ADMIN"), handlers.GetAllLoanApplications(loanClient))
+	r.PUT("/admin/loans/:id/approve", middleware.RequireRole("ADMIN"), handlers.ApproveLoan(loanClient))
+	r.PUT("/admin/loans/:id/reject", middleware.RequireRole("ADMIN"), handlers.RejectLoan(loanClient))
+	r.GET("/admin/loans", middleware.RequireRole("ADMIN"), handlers.GetAllLoans(loanClient))
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	r.Run(":8083")
 }

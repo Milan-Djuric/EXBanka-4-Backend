@@ -238,3 +238,151 @@ func ApplyForLoan(client pb.LoanServiceClient) gin.HandlerFunc {
 		})
 	}
 }
+
+// GetAllLoanApplications godoc
+// @Summary      Get all pending loan applications (employee)
+// @Tags         loans
+// @Produce      json
+// @Param        loanType      query  string  false  "Filter by loan type"
+// @Param        accountNumber query  string  false  "Filter by account number"
+// @Success      200  {array}  map[string]interface{}
+// @Router       /admin/loans/applications [get]
+func GetAllLoanApplications(client pb.LoanServiceClient) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+		defer cancel()
+
+		resp, err := client.GetAllLoanApplications(ctx, &pb.GetAllLoanApplicationsRequest{
+			LoanType:      c.Query("loanType"),
+			AccountNumber: c.Query("accountNumber"),
+		})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch loan applications"})
+			return
+		}
+
+		c.JSON(http.StatusOK, loanDetailsToJSON(resp.Applications))
+	}
+}
+
+// ApproveLoan godoc
+// @Summary      Approve a pending loan application (employee)
+// @Tags         loans
+// @Produce      json
+// @Param        id  path  int  true  "Loan ID"
+// @Success      200  {object}  map[string]interface{}
+// @Router       /admin/loans/{id}/approve [put]
+func ApproveLoan(client pb.LoanServiceClient) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		employeeID, err := middleware.GetUserIDFromToken(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "could not extract identity from token"})
+			return
+		}
+		loanID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid loan id"})
+			return
+		}
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+		defer cancel()
+
+		_, err = client.ApproveLoan(ctx, &pb.ApproveLoanRequest{LoanId: loanID, EmployeeId: employeeID})
+		if err != nil {
+			switch status.Code(err) {
+			case codes.NotFound:
+				c.JSON(http.StatusNotFound, gin.H{"error": status.Convert(err).Message()})
+			case codes.InvalidArgument:
+				c.JSON(http.StatusBadRequest, gin.H{"error": status.Convert(err).Message()})
+			default:
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to approve loan"})
+			}
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "loan approved"})
+	}
+}
+
+// RejectLoan godoc
+// @Summary      Reject a pending loan application (employee)
+// @Tags         loans
+// @Produce      json
+// @Param        id  path  int  true  "Loan ID"
+// @Success      200  {object}  map[string]interface{}
+// @Router       /admin/loans/{id}/reject [put]
+func RejectLoan(client pb.LoanServiceClient) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		employeeID, err := middleware.GetUserIDFromToken(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "could not extract identity from token"})
+			return
+		}
+		loanID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid loan id"})
+			return
+		}
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+		defer cancel()
+
+		_, err = client.RejectLoan(ctx, &pb.RejectLoanRequest{LoanId: loanID, EmployeeId: employeeID})
+		if err != nil {
+			switch status.Code(err) {
+			case codes.NotFound:
+				c.JSON(http.StatusNotFound, gin.H{"error": status.Convert(err).Message()})
+			case codes.InvalidArgument:
+				c.JSON(http.StatusBadRequest, gin.H{"error": status.Convert(err).Message()})
+			default:
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to reject loan"})
+			}
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "loan rejected"})
+	}
+}
+
+// GetAllLoans godoc
+// @Summary      Get all loans (employee)
+// @Tags         loans
+// @Produce      json
+// @Param        loanType      query  string  false  "Filter by loan type"
+// @Param        accountNumber query  string  false  "Filter by account number"
+// @Param        status        query  string  false  "Filter by status"
+// @Success      200  {array}  map[string]interface{}
+// @Router       /admin/loans [get]
+func GetAllLoans(client pb.LoanServiceClient) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+		defer cancel()
+
+		resp, err := client.GetAllLoans(ctx, &pb.GetAllLoansRequest{
+			LoanType:      c.Query("loanType"),
+			AccountNumber: c.Query("accountNumber"),
+			Status:        c.Query("status"),
+		})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch loans"})
+			return
+		}
+
+		c.JSON(http.StatusOK, loanDetailsToJSON(resp.Loans))
+	}
+}
+
+// loanDetailsToJSON converts a slice of LoanDetail proto messages to a JSON-serialisable slice.
+func loanDetailsToJSON(loans []*pb.LoanDetail) []map[string]interface{} {
+	result := make([]map[string]interface{}, 0, len(loans))
+	for _, l := range loans {
+		result = append(result, map[string]interface{}{
+			"id": l.Id, "loanNumber": l.LoanNumber, "accountNumber": l.AccountNumber,
+			"loanType": l.LoanType, "interestRateType": l.InterestRateType,
+			"amount": l.Amount, "currency": l.Currency, "repaymentPeriod": l.RepaymentPeriod,
+			"nominalRate": l.NominalRate, "effectiveRate": l.EffectiveRate,
+			"agreedDate": l.AgreedDate, "maturityDate": l.MaturityDate,
+			"nextInstallmentAmount": l.NextInstallmentAmount,
+			"nextInstallmentDate": l.NextInstallmentDate,
+			"remainingDebt": l.RemainingDebt, "status": l.Status,
+		})
+	}
+	return result
+}
