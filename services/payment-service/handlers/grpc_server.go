@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"math"
 	"math/rand"
 	"time"
 
@@ -57,7 +58,7 @@ func (s *PaymentServer) CreatePayment(ctx context.Context, req *pb.CreatePayment
 		return nil, status.Errorf(codes.FailedPrecondition, "monthly limit exceeded")
 	}
 
-	// 3. Determine fee (issue #37): same currency → fee=0, different → 0–1%
+	// 3. Determine fee (issue #37): same currency → fee=0, different → 0.5%
 	var toCurrencyID int64
 	var toAccountID int64
 	toExists := false
@@ -71,9 +72,7 @@ func (s *PaymentServer) CreatePayment(ctx context.Context, req *pb.CreatePayment
 	fee := 0.0
 	finalAmount := req.Amount
 	if toExists && toCurrencyID != fromCurrencyID {
-		// Different currencies: random fee 0–1%
-		feeRate := rand.Float64() * 0.01
-		fee = req.Amount * feeRate
+		fee = math.Round(req.Amount*0.005*100) / 100
 		finalAmount = req.Amount - fee
 	}
 
@@ -451,13 +450,16 @@ func (s *PaymentServer) CreateTransfer(ctx context.Context, req *pb.CreateTransf
 		return nil, status.Error(codes.FailedPrecondition, "insufficient funds")
 	}
 
-	// 4. Determine exchange rate and final amount
+	// 4. Determine exchange rate, final amount, and fee
+	const transferCommission = 0.005 // 0.5% per conversion step, same as exchange-service
 	exchangeRate := 1.0
 	finalAmount := req.Amount
+	fee := 0.0
+	sameCurrency := fromCurrencyID == toCurrencyID
 
-	if fromCurrencyID != toCurrencyID {
-		// Resolve currency codes
-		var fromCode, toCode string
+	var fromCode, toCode string
+
+	if !sameCurrency {
 		if err := s.ExchangeDB.QueryRowContext(ctx,
 			`SELECT code FROM currencies WHERE id = $1`, fromCurrencyID,
 		).Scan(&fromCode); err != nil {
@@ -469,41 +471,114 @@ func (s *PaymentServer) CreateTransfer(ctx context.Context, req *pb.CreateTransf
 			return nil, status.Errorf(codes.Internal, "failed to resolve destination currency: %v", err)
 		}
 
-		if err := s.ExchangeDB.QueryRowContext(ctx,
-			`SELECT rate FROM exchange_rates WHERE from_currency = $1 AND to_currency = $2`,
-			fromCode, toCode,
-		).Scan(&exchangeRate); err == sql.ErrNoRows {
-			return nil, status.Errorf(codes.NotFound, "no exchange rate for %s → %s", fromCode, toCode)
-		} else if err != nil {
-			return nil, status.Errorf(codes.Internal, "failed to fetch exchange rate: %v", err)
+		// getSelling returns today's selling rate for a currency vs RSD.
+		// Falls back to the static exchange_rates table if daily rates are not yet populated.
+		today := time.Now().Format("2006-01-02")
+		getSelling := func(code string) (float64, error) {
+			if code == "RSD" {
+				return 1.0, nil
+			}
+			var r float64
+			e := s.ExchangeDB.QueryRowContext(ctx,
+				`SELECT selling_rate FROM daily_exchange_rates WHERE currency_code = $1 AND date = $2`,
+				code, today,
+			).Scan(&r)
+			if e == sql.ErrNoRows {
+				e = s.ExchangeDB.QueryRowContext(ctx,
+					`SELECT rate FROM exchange_rates WHERE from_currency = $1 AND to_currency = 'RSD'`,
+					code,
+				).Scan(&r)
+			}
+			return r, e
 		}
 
-		finalAmount = req.Amount * exchangeRate
+		fromSelling, ferr := getSelling(fromCode)
+		if ferr != nil {
+			return nil, status.Errorf(codes.Internal, "failed to get selling rate for %s: %v", fromCode, ferr)
+		}
+		toSelling, terr := getSelling(toCode)
+		if terr != nil {
+			return nil, status.Errorf(codes.Internal, "failed to get selling rate for %s: %v", toCode, terr)
+		}
+
+		// Same conversion formula as exchange-service (issue #75 rules)
+		switch {
+		case fromCode == "RSD":
+			finalAmount = (req.Amount / toSelling) * (1 - transferCommission)
+			exchangeRate = toSelling
+		case toCode == "RSD":
+			finalAmount = req.Amount * fromSelling * (1 - transferCommission)
+			exchangeRate = fromSelling
+		default:
+			rsdAmount := req.Amount * fromSelling * (1 - transferCommission)
+			finalAmount = (rsdAmount / toSelling) * (1 - transferCommission)
+			exchangeRate = fromSelling / toSelling
+		}
+		finalAmount = math.Round(finalAmount*100) / 100
+		fee = math.Round(req.Amount*transferCommission*100) / 100
 	}
 
-	// 5. Execute balance update in account_db transaction
+	// 5a. For cross-currency: resolve bank intermediary accounts
+	var bankFromAcct, bankToAcct string
+	if !sameCurrency {
+		if err := s.AccountDB.QueryRowContext(ctx,
+			`SELECT account_number FROM accounts WHERE owner_id = 0 AND account_type = 'BANK' AND currency_id = $1`,
+			fromCurrencyID,
+		).Scan(&bankFromAcct); err != nil {
+			return nil, status.Errorf(codes.Internal, "bank intermediary account not found for source currency: %v", err)
+		}
+		if err := s.AccountDB.QueryRowContext(ctx,
+			`SELECT account_number FROM accounts WHERE owner_id = 0 AND account_type = 'BANK' AND currency_id = $1`,
+			toCurrencyID,
+		).Scan(&bankToAcct); err != nil {
+			return nil, status.Errorf(codes.Internal, "bank intermediary account not found for destination currency: %v", err)
+		}
+	}
+
+	// 5b. Execute balance updates in account_db transaction
 	tx, err := s.AccountDB.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to begin transaction: %v", err)
 	}
 	defer tx.Rollback()
 
-	_, err = tx.ExecContext(ctx, `
-		UPDATE accounts SET
-			balance           = balance - $1,
-			available_balance = available_balance - $1
-		WHERE id = $2`, req.Amount, fromID)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to debit source account: %v", err)
-	}
-
-	_, err = tx.ExecContext(ctx, `
-		UPDATE accounts SET
-			balance           = balance + $1,
-			available_balance = available_balance + $1
-		WHERE id = $2`, finalAmount, toID)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to credit destination account: %v", err)
+	if sameCurrency {
+		if _, err = tx.ExecContext(ctx, `
+			UPDATE accounts SET
+				balance           = balance - $1,
+				available_balance = available_balance - $1
+			WHERE id = $2`, req.Amount, fromID); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to debit source account: %v", err)
+		}
+		if _, err = tx.ExecContext(ctx, `
+			UPDATE accounts SET
+				balance           = balance + $1,
+				available_balance = available_balance + $1
+			WHERE id = $2`, finalAmount, toID); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to credit destination account: %v", err)
+		}
+	} else {
+		// Route through bank intermediary accounts so commission stays in the bank
+		if _, err = tx.ExecContext(ctx, `
+			UPDATE accounts SET balance = balance - $1, available_balance = available_balance - $1
+			WHERE account_number = $2`, req.Amount, req.FromAccount); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to debit source account: %v", err)
+		}
+		if _, err = tx.ExecContext(ctx, `
+			UPDATE accounts SET balance = balance + $1, available_balance = available_balance + $1
+			WHERE account_number = $2`, req.Amount, bankFromAcct); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to credit bank source account: %v", err)
+		}
+		if _, err = tx.ExecContext(ctx, `
+			UPDATE accounts SET balance = balance - $1, available_balance = available_balance - $1
+			WHERE account_number = $2`, finalAmount, bankToAcct); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to debit bank destination account: %v", err)
+		}
+		if _, err = tx.ExecContext(ctx, `
+			UPDATE accounts SET balance = balance + $1, available_balance = available_balance + $1
+			WHERE account_number = $2`, finalAmount, req.ToAccount); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to credit destination account: %v", err)
+		}
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -518,10 +593,10 @@ func (s *PaymentServer) CreateTransfer(ctx context.Context, req *pb.CreateTransf
 	err = s.DB.QueryRowContext(ctx, `
 		INSERT INTO transfers
 			(order_number, from_account, to_account, initial_amount, final_amount, exchange_rate, fee, timestamp)
-		VALUES ($1, $2, $3, $4, $5, $6, 0, $7)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING id`,
 		orderNumber, req.FromAccount, req.ToAccount,
-		req.Amount, finalAmount, exchangeRate, now,
+		req.Amount, finalAmount, exchangeRate, fee, now,
 	).Scan(&transferID)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to persist transfer: %v", err)
@@ -535,7 +610,7 @@ func (s *PaymentServer) CreateTransfer(ctx context.Context, req *pb.CreateTransf
 		InitialAmount: req.Amount,
 		FinalAmount:   finalAmount,
 		ExchangeRate:  exchangeRate,
-		Fee:           0,
+		Fee:           fee,
 		Timestamp:     now.Format(time.RFC3339),
 	}, nil
 }
