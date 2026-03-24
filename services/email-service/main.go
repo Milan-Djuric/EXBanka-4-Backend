@@ -115,11 +115,16 @@ func main() {
 		log.Fatalf("failed to parse account created email template: %v", err)
 	}
 
+	cardConfirmTmpl, err := template.ParseFiles("templates/card_confirmation.html")
+	if err != nil {
+		log.Fatalf("failed to parse card confirmation email template: %v", err)
+	}
+
 	go queue.Consume(consumeCh, smtpCfg, tmpl)
 	go queue.ConsumePasswordReset(resetConsumeCh, smtpCfg, resetTmpl)
 	go queue.ConsumePasswordConfirmation(confirmConsumeCh, smtpCfg, confirmTmpl)
 	go queue.ConsumeAccountCreated(accountCreatedConsumeCh, smtpCfg, accountCreatedTmpl)
-	go queue.ConsumeCardConfirmation(cardConfirmConsumeCh, smtpCfg, nil)
+	go queue.ConsumeCardConfirmation(cardConfirmConsumeCh, smtpCfg, cardConfirmTmpl)
 
 	lis, err := net.Listen("tcp", ":50053")
 	if err != nil {

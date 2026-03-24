@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Card Request Confirmation</title>
+</head>
+<body style="font-family: sans-serif; background: #f8f9fa; padding: 40px;">
+  <div style="max-width: 520px; margin: 0 auto; background: #fff; border-radius: 8px; padding: 40px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+    <h2 style="color: #4f46e5; margin-bottom: 8px;">AnkaBanka</h2>
+    <p>Dear {{.FirstName}},</p>
+    <p>Your confirmation code for the card request is:</p>
+    <div style="text-align: center; margin: 32px 0;">
+      <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #4f46e5; font-family: monospace;">{{.ConfirmationCode}}</span>
+    </div>
+    <p style="color: #6b7280; font-size: 14px;">The code is valid for <strong>15 minutes</strong>. If you did not submit this request, please ignore this message.</p>
+    <p style="color: #6b7280; font-size: 14px;">Best regards,<br><strong>AnkaBanka Team</strong></p>
+  </div>
+</body>
+</html>

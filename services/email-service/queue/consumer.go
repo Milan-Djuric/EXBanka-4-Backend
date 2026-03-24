@@ -183,7 +183,7 @@ func ConsumeCardConfirmation(ch *amqp.Channel, cfg SMTPConfig, tmpl *template.Te
 			continue
 		}
 
-		if err := sendCardConfirmationEmail(cfg, msg); err != nil {
+		if err := sendCardConfirmationEmail(cfg, tmpl, msg); err != nil {
 			log.Printf("failed to send card confirmation email to %s: %v", msg.Email, err)
 		} else {
 			log.Printf("card confirmation email sent to %s", msg.Email)
@@ -193,16 +193,20 @@ func ConsumeCardConfirmation(ch *amqp.Channel, cfg SMTPConfig, tmpl *template.Te
 	}
 }
 
-func sendCardConfirmationEmail(cfg SMTPConfig, msg CardConfirmationMessage) error {
-	body := "<p>Poštovani " + msg.FirstName + ",</p>" +
-		"<p>Vaš kod za potvrdu zahteva za karticu je: <strong>" + msg.ConfirmationCode + "</strong></p>" +
-		"<p>Kod važi 15 minuta. Ako niste podneli ovaj zahtev, ignorišite ovu poruku.</p>"
+func sendCardConfirmationEmail(cfg SMTPConfig, tmpl *template.Template, msg CardConfirmationMessage) error {
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, map[string]string{
+		"FirstName":        msg.FirstName,
+		"ConfirmationCode": msg.ConfirmationCode,
+	}); err != nil {
+		return err
+	}
 
 	m := gomail.NewMessage()
 	m.SetHeader("From", cfg.From)
 	m.SetHeader("To", msg.Email)
-	m.SetHeader("Subject", "Potvrda zahteva za karticu — AnkaBanka")
-	m.SetBody("text/html", body)
+	m.SetHeader("Subject", "Card Request Confirmation — AnkaBanka")
+	m.SetBody("text/html", buf.String())
 
 	d := gomail.NewDialer(cfg.Host, cfg.Port, cfg.User, cfg.Password)
 	return d.DialAndSend(m)
