@@ -24,18 +24,18 @@ const (
 type Employee struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	Ime           string                 `protobuf:"bytes,2,opt,name=ime,proto3" json:"ime,omitempty"`
-	Prezime       string                 `protobuf:"bytes,3,opt,name=prezime,proto3" json:"prezime,omitempty"`
-	DatumRodjenja string                 `protobuf:"bytes,4,opt,name=datum_rodjenja,json=datumRodjenja,proto3" json:"datum_rodjenja,omitempty"`
-	Pol           string                 `protobuf:"bytes,5,opt,name=pol,proto3" json:"pol,omitempty"`
+	FirstName     string                 `protobuf:"bytes,2,opt,name=first_name,json=firstName,proto3" json:"first_name,omitempty"`
+	LastName      string                 `protobuf:"bytes,3,opt,name=last_name,json=lastName,proto3" json:"last_name,omitempty"`
+	DateOfBirth   string                 `protobuf:"bytes,4,opt,name=date_of_birth,json=dateOfBirth,proto3" json:"date_of_birth,omitempty"`
+	Gender        string                 `protobuf:"bytes,5,opt,name=gender,proto3" json:"gender,omitempty"`
 	Email         string                 `protobuf:"bytes,6,opt,name=email,proto3" json:"email,omitempty"`
-	BrojTelefona  string                 `protobuf:"bytes,7,opt,name=broj_telefona,json=brojTelefona,proto3" json:"broj_telefona,omitempty"`
-	Adresa        string                 `protobuf:"bytes,8,opt,name=adresa,proto3" json:"adresa,omitempty"`
+	PhoneNumber   string                 `protobuf:"bytes,7,opt,name=phone_number,json=phoneNumber,proto3" json:"phone_number,omitempty"`
+	Address       string                 `protobuf:"bytes,8,opt,name=address,proto3" json:"address,omitempty"`
 	Username      string                 `protobuf:"bytes,9,opt,name=username,proto3" json:"username,omitempty"`
-	Pozicija      string                 `protobuf:"bytes,10,opt,name=pozicija,proto3" json:"pozicija,omitempty"`
-	Departman     string                 `protobuf:"bytes,11,opt,name=departman,proto3" json:"departman,omitempty"`
-	Aktivan       bool                   `protobuf:"varint,12,opt,name=aktivan,proto3" json:"aktivan,omitempty"`
-	Dozvole       []string               `protobuf:"bytes,13,rep,name=dozvole,proto3" json:"dozvole,omitempty"`
+	Position      string                 `protobuf:"bytes,10,opt,name=position,proto3" json:"position,omitempty"`
+	Department    string                 `protobuf:"bytes,11,opt,name=department,proto3" json:"department,omitempty"`
+	Active        bool                   `protobuf:"varint,12,opt,name=active,proto3" json:"active,omitempty"`
+	Permissions   []string               `protobuf:"bytes,13,rep,name=permissions,proto3" json:"permissions,omitempty"`
 	Jmbg          string                 `protobuf:"bytes,14,opt,name=jmbg,proto3" json:"jmbg,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -78,30 +78,30 @@ func (x *Employee) GetId() int64 {
 	return 0
 }
 
-func (x *Employee) GetIme() string {
+func (x *Employee) GetFirstName() string {
 	if x != nil {
-		return x.Ime
+		return x.FirstName
 	}
 	return ""
 }
 
-func (x *Employee) GetPrezime() string {
+func (x *Employee) GetLastName() string {
 	if x != nil {
-		return x.Prezime
+		return x.LastName
 	}
 	return ""
 }
 
-func (x *Employee) GetDatumRodjenja() string {
+func (x *Employee) GetDateOfBirth() string {
 	if x != nil {
-		return x.DatumRodjenja
+		return x.DateOfBirth
 	}
 	return ""
 }
 
-func (x *Employee) GetPol() string {
+func (x *Employee) GetGender() string {
 	if x != nil {
-		return x.Pol
+		return x.Gender
 	}
 	return ""
 }
@@ -113,16 +113,16 @@ func (x *Employee) GetEmail() string {
 	return ""
 }
 
-func (x *Employee) GetBrojTelefona() string {
+func (x *Employee) GetPhoneNumber() string {
 	if x != nil {
-		return x.BrojTelefona
+		return x.PhoneNumber
 	}
 	return ""
 }
 
-func (x *Employee) GetAdresa() string {
+func (x *Employee) GetAddress() string {
 	if x != nil {
-		return x.Adresa
+		return x.Address
 	}
 	return ""
 }
@@ -134,30 +134,30 @@ func (x *Employee) GetUsername() string {
 	return ""
 }
 
-func (x *Employee) GetPozicija() string {
+func (x *Employee) GetPosition() string {
 	if x != nil {
-		return x.Pozicija
+		return x.Position
 	}
 	return ""
 }
 
-func (x *Employee) GetDepartman() string {
+func (x *Employee) GetDepartment() string {
 	if x != nil {
-		return x.Departman
+		return x.Department
 	}
 	return ""
 }
 
-func (x *Employee) GetAktivan() bool {
+func (x *Employee) GetActive() bool {
 	if x != nil {
-		return x.Aktivan
+		return x.Active
 	}
 	return false
 }
 
-func (x *Employee) GetDozvole() []string {
+func (x *Employee) GetPermissions() []string {
 	if x != nil {
-		return x.Dozvole
+		return x.Permissions
 	}
 	return nil
 }
@@ -276,9 +276,9 @@ func (x *GetAllEmployeesResponse) GetTotalCount() int32 {
 type SearchEmployeesRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Email         string                 `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
-	Ime           string                 `protobuf:"bytes,2,opt,name=ime,proto3" json:"ime,omitempty"`
-	Prezime       string                 `protobuf:"bytes,3,opt,name=prezime,proto3" json:"prezime,omitempty"`
-	Pozicija      string                 `protobuf:"bytes,4,opt,name=pozicija,proto3" json:"pozicija,omitempty"`
+	FirstName     string                 `protobuf:"bytes,2,opt,name=first_name,json=firstName,proto3" json:"first_name,omitempty"`
+	LastName      string                 `protobuf:"bytes,3,opt,name=last_name,json=lastName,proto3" json:"last_name,omitempty"`
+	Position      string                 `protobuf:"bytes,4,opt,name=position,proto3" json:"position,omitempty"`
 	Page          int32                  `protobuf:"varint,5,opt,name=page,proto3" json:"page,omitempty"`
 	PageSize      int32                  `protobuf:"varint,6,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -322,23 +322,23 @@ func (x *SearchEmployeesRequest) GetEmail() string {
 	return ""
 }
 
-func (x *SearchEmployeesRequest) GetIme() string {
+func (x *SearchEmployeesRequest) GetFirstName() string {
 	if x != nil {
-		return x.Ime
+		return x.FirstName
 	}
 	return ""
 }
 
-func (x *SearchEmployeesRequest) GetPrezime() string {
+func (x *SearchEmployeesRequest) GetLastName() string {
 	if x != nil {
-		return x.Prezime
+		return x.LastName
 	}
 	return ""
 }
 
-func (x *SearchEmployeesRequest) GetPozicija() string {
+func (x *SearchEmployeesRequest) GetPosition() string {
 	if x != nil {
-		return x.Pozicija
+		return x.Position
 	}
 	return ""
 }
@@ -457,8 +457,8 @@ type GetEmployeeCredentialsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	PasswordHash  string                 `protobuf:"bytes,2,opt,name=password_hash,json=passwordHash,proto3" json:"password_hash,omitempty"`
-	Dozvole       []string               `protobuf:"bytes,3,rep,name=dozvole,proto3" json:"dozvole,omitempty"`
-	Aktivan       bool                   `protobuf:"varint,4,opt,name=aktivan,proto3" json:"aktivan,omitempty"`
+	Permissions   []string               `protobuf:"bytes,3,rep,name=permissions,proto3" json:"permissions,omitempty"`
+	Active        bool                   `protobuf:"varint,4,opt,name=active,proto3" json:"active,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -507,32 +507,32 @@ func (x *GetEmployeeCredentialsResponse) GetPasswordHash() string {
 	return ""
 }
 
-func (x *GetEmployeeCredentialsResponse) GetDozvole() []string {
+func (x *GetEmployeeCredentialsResponse) GetPermissions() []string {
 	if x != nil {
-		return x.Dozvole
+		return x.Permissions
 	}
 	return nil
 }
 
-func (x *GetEmployeeCredentialsResponse) GetAktivan() bool {
+func (x *GetEmployeeCredentialsResponse) GetActive() bool {
 	if x != nil {
-		return x.Aktivan
+		return x.Active
 	}
 	return false
 }
 
 type CreateEmployeeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Ime           string                 `protobuf:"bytes,1,opt,name=ime,proto3" json:"ime,omitempty"`
-	Prezime       string                 `protobuf:"bytes,2,opt,name=prezime,proto3" json:"prezime,omitempty"`
-	DatumRodjenja string                 `protobuf:"bytes,3,opt,name=datum_rodjenja,json=datumRodjenja,proto3" json:"datum_rodjenja,omitempty"`
-	Pol           string                 `protobuf:"bytes,4,opt,name=pol,proto3" json:"pol,omitempty"`
+	FirstName     string                 `protobuf:"bytes,1,opt,name=first_name,json=firstName,proto3" json:"first_name,omitempty"`
+	LastName      string                 `protobuf:"bytes,2,opt,name=last_name,json=lastName,proto3" json:"last_name,omitempty"`
+	DateOfBirth   string                 `protobuf:"bytes,3,opt,name=date_of_birth,json=dateOfBirth,proto3" json:"date_of_birth,omitempty"`
+	Gender        string                 `protobuf:"bytes,4,opt,name=gender,proto3" json:"gender,omitempty"`
 	Email         string                 `protobuf:"bytes,5,opt,name=email,proto3" json:"email,omitempty"`
-	BrojTelefona  string                 `protobuf:"bytes,6,opt,name=broj_telefona,json=brojTelefona,proto3" json:"broj_telefona,omitempty"`
-	Adresa        string                 `protobuf:"bytes,7,opt,name=adresa,proto3" json:"adresa,omitempty"`
+	PhoneNumber   string                 `protobuf:"bytes,6,opt,name=phone_number,json=phoneNumber,proto3" json:"phone_number,omitempty"`
+	Address       string                 `protobuf:"bytes,7,opt,name=address,proto3" json:"address,omitempty"`
 	Username      string                 `protobuf:"bytes,8,opt,name=username,proto3" json:"username,omitempty"`
-	Pozicija      string                 `protobuf:"bytes,9,opt,name=pozicija,proto3" json:"pozicija,omitempty"`
-	Departman     string                 `protobuf:"bytes,10,opt,name=departman,proto3" json:"departman,omitempty"`
+	Position      string                 `protobuf:"bytes,9,opt,name=position,proto3" json:"position,omitempty"`
+	Department    string                 `protobuf:"bytes,10,opt,name=department,proto3" json:"department,omitempty"`
 	Jmbg          string                 `protobuf:"bytes,11,opt,name=jmbg,proto3" json:"jmbg,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -568,30 +568,30 @@ func (*CreateEmployeeRequest) Descriptor() ([]byte, []int) {
 	return file_employee_proto_rawDescGZIP(), []int{7}
 }
 
-func (x *CreateEmployeeRequest) GetIme() string {
+func (x *CreateEmployeeRequest) GetFirstName() string {
 	if x != nil {
-		return x.Ime
+		return x.FirstName
 	}
 	return ""
 }
 
-func (x *CreateEmployeeRequest) GetPrezime() string {
+func (x *CreateEmployeeRequest) GetLastName() string {
 	if x != nil {
-		return x.Prezime
+		return x.LastName
 	}
 	return ""
 }
 
-func (x *CreateEmployeeRequest) GetDatumRodjenja() string {
+func (x *CreateEmployeeRequest) GetDateOfBirth() string {
 	if x != nil {
-		return x.DatumRodjenja
+		return x.DateOfBirth
 	}
 	return ""
 }
 
-func (x *CreateEmployeeRequest) GetPol() string {
+func (x *CreateEmployeeRequest) GetGender() string {
 	if x != nil {
-		return x.Pol
+		return x.Gender
 	}
 	return ""
 }
@@ -603,16 +603,16 @@ func (x *CreateEmployeeRequest) GetEmail() string {
 	return ""
 }
 
-func (x *CreateEmployeeRequest) GetBrojTelefona() string {
+func (x *CreateEmployeeRequest) GetPhoneNumber() string {
 	if x != nil {
-		return x.BrojTelefona
+		return x.PhoneNumber
 	}
 	return ""
 }
 
-func (x *CreateEmployeeRequest) GetAdresa() string {
+func (x *CreateEmployeeRequest) GetAddress() string {
 	if x != nil {
-		return x.Adresa
+		return x.Address
 	}
 	return ""
 }
@@ -624,16 +624,16 @@ func (x *CreateEmployeeRequest) GetUsername() string {
 	return ""
 }
 
-func (x *CreateEmployeeRequest) GetPozicija() string {
+func (x *CreateEmployeeRequest) GetPosition() string {
 	if x != nil {
-		return x.Pozicija
+		return x.Position
 	}
 	return ""
 }
 
-func (x *CreateEmployeeRequest) GetDepartman() string {
+func (x *CreateEmployeeRequest) GetDepartment() string {
 	if x != nil {
-		return x.Departman
+		return x.Department
 	}
 	return ""
 }
@@ -780,18 +780,18 @@ func (x *GetEmployeeByIdResponse) GetEmployee() *Employee {
 type UpdateEmployeeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	Ime           string                 `protobuf:"bytes,2,opt,name=ime,proto3" json:"ime,omitempty"`
-	Prezime       string                 `protobuf:"bytes,3,opt,name=prezime,proto3" json:"prezime,omitempty"`
-	DatumRodjenja string                 `protobuf:"bytes,4,opt,name=datum_rodjenja,json=datumRodjenja,proto3" json:"datum_rodjenja,omitempty"`
-	Pol           string                 `protobuf:"bytes,5,opt,name=pol,proto3" json:"pol,omitempty"`
+	FirstName     string                 `protobuf:"bytes,2,opt,name=first_name,json=firstName,proto3" json:"first_name,omitempty"`
+	LastName      string                 `protobuf:"bytes,3,opt,name=last_name,json=lastName,proto3" json:"last_name,omitempty"`
+	DateOfBirth   string                 `protobuf:"bytes,4,opt,name=date_of_birth,json=dateOfBirth,proto3" json:"date_of_birth,omitempty"`
+	Gender        string                 `protobuf:"bytes,5,opt,name=gender,proto3" json:"gender,omitempty"`
 	Email         string                 `protobuf:"bytes,6,opt,name=email,proto3" json:"email,omitempty"`
-	BrojTelefona  string                 `protobuf:"bytes,7,opt,name=broj_telefona,json=brojTelefona,proto3" json:"broj_telefona,omitempty"`
-	Adresa        string                 `protobuf:"bytes,8,opt,name=adresa,proto3" json:"adresa,omitempty"`
+	PhoneNumber   string                 `protobuf:"bytes,7,opt,name=phone_number,json=phoneNumber,proto3" json:"phone_number,omitempty"`
+	Address       string                 `protobuf:"bytes,8,opt,name=address,proto3" json:"address,omitempty"`
 	Username      string                 `protobuf:"bytes,9,opt,name=username,proto3" json:"username,omitempty"`
-	Pozicija      string                 `protobuf:"bytes,10,opt,name=pozicija,proto3" json:"pozicija,omitempty"`
-	Departman     string                 `protobuf:"bytes,11,opt,name=departman,proto3" json:"departman,omitempty"`
-	Aktivan       bool                   `protobuf:"varint,12,opt,name=aktivan,proto3" json:"aktivan,omitempty"`
-	Dozvole       []string               `protobuf:"bytes,13,rep,name=dozvole,proto3" json:"dozvole,omitempty"`
+	Position      string                 `protobuf:"bytes,10,opt,name=position,proto3" json:"position,omitempty"`
+	Department    string                 `protobuf:"bytes,11,opt,name=department,proto3" json:"department,omitempty"`
+	Active        bool                   `protobuf:"varint,12,opt,name=active,proto3" json:"active,omitempty"`
+	Permissions   []string               `protobuf:"bytes,13,rep,name=permissions,proto3" json:"permissions,omitempty"`
 	Jmbg          string                 `protobuf:"bytes,14,opt,name=jmbg,proto3" json:"jmbg,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -834,30 +834,30 @@ func (x *UpdateEmployeeRequest) GetId() int64 {
 	return 0
 }
 
-func (x *UpdateEmployeeRequest) GetIme() string {
+func (x *UpdateEmployeeRequest) GetFirstName() string {
 	if x != nil {
-		return x.Ime
+		return x.FirstName
 	}
 	return ""
 }
 
-func (x *UpdateEmployeeRequest) GetPrezime() string {
+func (x *UpdateEmployeeRequest) GetLastName() string {
 	if x != nil {
-		return x.Prezime
+		return x.LastName
 	}
 	return ""
 }
 
-func (x *UpdateEmployeeRequest) GetDatumRodjenja() string {
+func (x *UpdateEmployeeRequest) GetDateOfBirth() string {
 	if x != nil {
-		return x.DatumRodjenja
+		return x.DateOfBirth
 	}
 	return ""
 }
 
-func (x *UpdateEmployeeRequest) GetPol() string {
+func (x *UpdateEmployeeRequest) GetGender() string {
 	if x != nil {
-		return x.Pol
+		return x.Gender
 	}
 	return ""
 }
@@ -869,16 +869,16 @@ func (x *UpdateEmployeeRequest) GetEmail() string {
 	return ""
 }
 
-func (x *UpdateEmployeeRequest) GetBrojTelefona() string {
+func (x *UpdateEmployeeRequest) GetPhoneNumber() string {
 	if x != nil {
-		return x.BrojTelefona
+		return x.PhoneNumber
 	}
 	return ""
 }
 
-func (x *UpdateEmployeeRequest) GetAdresa() string {
+func (x *UpdateEmployeeRequest) GetAddress() string {
 	if x != nil {
-		return x.Adresa
+		return x.Address
 	}
 	return ""
 }
@@ -890,30 +890,30 @@ func (x *UpdateEmployeeRequest) GetUsername() string {
 	return ""
 }
 
-func (x *UpdateEmployeeRequest) GetPozicija() string {
+func (x *UpdateEmployeeRequest) GetPosition() string {
 	if x != nil {
-		return x.Pozicija
+		return x.Position
 	}
 	return ""
 }
 
-func (x *UpdateEmployeeRequest) GetDepartman() string {
+func (x *UpdateEmployeeRequest) GetDepartment() string {
 	if x != nil {
-		return x.Departman
+		return x.Department
 	}
 	return ""
 }
 
-func (x *UpdateEmployeeRequest) GetAktivan() bool {
+func (x *UpdateEmployeeRequest) GetActive() bool {
 	if x != nil {
-		return x.Aktivan
+		return x.Active
 	}
 	return false
 }
 
-func (x *UpdateEmployeeRequest) GetDozvole() []string {
+func (x *UpdateEmployeeRequest) GetPermissions() []string {
 	if x != nil {
-		return x.Dozvole
+		return x.Permissions
 	}
 	return nil
 }
@@ -1253,22 +1253,25 @@ var File_employee_proto protoreflect.FileDescriptor
 
 const file_employee_proto_rawDesc = "" +
 	"\n" +
-	"\x0eemployee.proto\x12\bemployee\"\xf0\x02\n" +
+	"\x0eemployee.proto\x12\bemployee\"\x8b\x03\n" +
 	"\bEmployee\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x10\n" +
-	"\x03ime\x18\x02 \x01(\tR\x03ime\x12\x18\n" +
-	"\aprezime\x18\x03 \x01(\tR\aprezime\x12%\n" +
-	"\x0edatum_rodjenja\x18\x04 \x01(\tR\rdatumRodjenja\x12\x10\n" +
-	"\x03pol\x18\x05 \x01(\tR\x03pol\x12\x14\n" +
-	"\x05email\x18\x06 \x01(\tR\x05email\x12#\n" +
-	"\rbroj_telefona\x18\a \x01(\tR\fbrojTelefona\x12\x16\n" +
-	"\x06adresa\x18\b \x01(\tR\x06adresa\x12\x1a\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1d\n" +
+	"\n" +
+	"first_name\x18\x02 \x01(\tR\tfirstName\x12\x1b\n" +
+	"\tlast_name\x18\x03 \x01(\tR\blastName\x12\"\n" +
+	"\rdate_of_birth\x18\x04 \x01(\tR\vdateOfBirth\x12\x16\n" +
+	"\x06gender\x18\x05 \x01(\tR\x06gender\x12\x14\n" +
+	"\x05email\x18\x06 \x01(\tR\x05email\x12!\n" +
+	"\fphone_number\x18\a \x01(\tR\vphoneNumber\x12\x18\n" +
+	"\aaddress\x18\b \x01(\tR\aaddress\x12\x1a\n" +
 	"\busername\x18\t \x01(\tR\busername\x12\x1a\n" +
-	"\bpozicija\x18\n" +
-	" \x01(\tR\bpozicija\x12\x1c\n" +
-	"\tdepartman\x18\v \x01(\tR\tdepartman\x12\x18\n" +
-	"\aaktivan\x18\f \x01(\bR\aaktivan\x12\x18\n" +
-	"\adozvole\x18\r \x03(\tR\adozvole\x12\x12\n" +
+	"\bposition\x18\n" +
+	" \x01(\tR\bposition\x12\x1e\n" +
+	"\n" +
+	"department\x18\v \x01(\tR\n" +
+	"department\x12\x16\n" +
+	"\x06active\x18\f \x01(\bR\x06active\x12 \n" +
+	"\vpermissions\x18\r \x03(\tR\vpermissions\x12\x12\n" +
 	"\x04jmbg\x18\x0e \x01(\tR\x04jmbg\"I\n" +
 	"\x16GetAllEmployeesRequest\x12\x12\n" +
 	"\x04page\x18\x01 \x01(\x05R\x04page\x12\x1b\n" +
@@ -1276,12 +1279,13 @@ const file_employee_proto_rawDesc = "" +
 	"\x17GetAllEmployeesResponse\x120\n" +
 	"\temployees\x18\x01 \x03(\v2\x12.employee.EmployeeR\temployees\x12\x1f\n" +
 	"\vtotal_count\x18\x02 \x01(\x05R\n" +
-	"totalCount\"\xa7\x01\n" +
+	"totalCount\"\xb7\x01\n" +
 	"\x16SearchEmployeesRequest\x12\x14\n" +
-	"\x05email\x18\x01 \x01(\tR\x05email\x12\x10\n" +
-	"\x03ime\x18\x02 \x01(\tR\x03ime\x12\x18\n" +
-	"\aprezime\x18\x03 \x01(\tR\aprezime\x12\x1a\n" +
-	"\bpozicija\x18\x04 \x01(\tR\bpozicija\x12\x12\n" +
+	"\x05email\x18\x01 \x01(\tR\x05email\x12\x1d\n" +
+	"\n" +
+	"first_name\x18\x02 \x01(\tR\tfirstName\x12\x1b\n" +
+	"\tlast_name\x18\x03 \x01(\tR\blastName\x12\x1a\n" +
+	"\bposition\x18\x04 \x01(\tR\bposition\x12\x12\n" +
 	"\x04page\x18\x05 \x01(\x05R\x04page\x12\x1b\n" +
 	"\tpage_size\x18\x06 \x01(\x05R\bpageSize\"l\n" +
 	"\x17SearchEmployeesResponse\x120\n" +
@@ -1289,46 +1293,52 @@ const file_employee_proto_rawDesc = "" +
 	"\vtotal_count\x18\x02 \x01(\x05R\n" +
 	"totalCount\"5\n" +
 	"\x1dGetEmployeeCredentialsRequest\x12\x14\n" +
-	"\x05email\x18\x01 \x01(\tR\x05email\"\x89\x01\n" +
+	"\x05email\x18\x01 \x01(\tR\x05email\"\x8f\x01\n" +
 	"\x1eGetEmployeeCredentialsResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12#\n" +
-	"\rpassword_hash\x18\x02 \x01(\tR\fpasswordHash\x12\x18\n" +
-	"\adozvole\x18\x03 \x03(\tR\adozvole\x12\x18\n" +
-	"\aaktivan\x18\x04 \x01(\bR\aaktivan\"\xb9\x02\n" +
-	"\x15CreateEmployeeRequest\x12\x10\n" +
-	"\x03ime\x18\x01 \x01(\tR\x03ime\x12\x18\n" +
-	"\aprezime\x18\x02 \x01(\tR\aprezime\x12%\n" +
-	"\x0edatum_rodjenja\x18\x03 \x01(\tR\rdatumRodjenja\x12\x10\n" +
-	"\x03pol\x18\x04 \x01(\tR\x03pol\x12\x14\n" +
-	"\x05email\x18\x05 \x01(\tR\x05email\x12#\n" +
-	"\rbroj_telefona\x18\x06 \x01(\tR\fbrojTelefona\x12\x16\n" +
-	"\x06adresa\x18\a \x01(\tR\x06adresa\x12\x1a\n" +
+	"\rpassword_hash\x18\x02 \x01(\tR\fpasswordHash\x12 \n" +
+	"\vpermissions\x18\x03 \x03(\tR\vpermissions\x12\x16\n" +
+	"\x06active\x18\x04 \x01(\bR\x06active\"\xce\x02\n" +
+	"\x15CreateEmployeeRequest\x12\x1d\n" +
+	"\n" +
+	"first_name\x18\x01 \x01(\tR\tfirstName\x12\x1b\n" +
+	"\tlast_name\x18\x02 \x01(\tR\blastName\x12\"\n" +
+	"\rdate_of_birth\x18\x03 \x01(\tR\vdateOfBirth\x12\x16\n" +
+	"\x06gender\x18\x04 \x01(\tR\x06gender\x12\x14\n" +
+	"\x05email\x18\x05 \x01(\tR\x05email\x12!\n" +
+	"\fphone_number\x18\x06 \x01(\tR\vphoneNumber\x12\x18\n" +
+	"\aaddress\x18\a \x01(\tR\aaddress\x12\x1a\n" +
 	"\busername\x18\b \x01(\tR\busername\x12\x1a\n" +
-	"\bpozicija\x18\t \x01(\tR\bpozicija\x12\x1c\n" +
-	"\tdepartman\x18\n" +
-	" \x01(\tR\tdepartman\x12\x12\n" +
+	"\bposition\x18\t \x01(\tR\bposition\x12\x1e\n" +
+	"\n" +
+	"department\x18\n" +
+	" \x01(\tR\n" +
+	"department\x12\x12\n" +
 	"\x04jmbg\x18\v \x01(\tR\x04jmbg\"H\n" +
 	"\x16CreateEmployeeResponse\x12.\n" +
 	"\bemployee\x18\x01 \x01(\v2\x12.employee.EmployeeR\bemployee\"(\n" +
 	"\x16GetEmployeeByIdRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\"I\n" +
 	"\x17GetEmployeeByIdResponse\x12.\n" +
-	"\bemployee\x18\x01 \x01(\v2\x12.employee.EmployeeR\bemployee\"\xfd\x02\n" +
+	"\bemployee\x18\x01 \x01(\v2\x12.employee.EmployeeR\bemployee\"\x98\x03\n" +
 	"\x15UpdateEmployeeRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x10\n" +
-	"\x03ime\x18\x02 \x01(\tR\x03ime\x12\x18\n" +
-	"\aprezime\x18\x03 \x01(\tR\aprezime\x12%\n" +
-	"\x0edatum_rodjenja\x18\x04 \x01(\tR\rdatumRodjenja\x12\x10\n" +
-	"\x03pol\x18\x05 \x01(\tR\x03pol\x12\x14\n" +
-	"\x05email\x18\x06 \x01(\tR\x05email\x12#\n" +
-	"\rbroj_telefona\x18\a \x01(\tR\fbrojTelefona\x12\x16\n" +
-	"\x06adresa\x18\b \x01(\tR\x06adresa\x12\x1a\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1d\n" +
+	"\n" +
+	"first_name\x18\x02 \x01(\tR\tfirstName\x12\x1b\n" +
+	"\tlast_name\x18\x03 \x01(\tR\blastName\x12\"\n" +
+	"\rdate_of_birth\x18\x04 \x01(\tR\vdateOfBirth\x12\x16\n" +
+	"\x06gender\x18\x05 \x01(\tR\x06gender\x12\x14\n" +
+	"\x05email\x18\x06 \x01(\tR\x05email\x12!\n" +
+	"\fphone_number\x18\a \x01(\tR\vphoneNumber\x12\x18\n" +
+	"\aaddress\x18\b \x01(\tR\aaddress\x12\x1a\n" +
 	"\busername\x18\t \x01(\tR\busername\x12\x1a\n" +
-	"\bpozicija\x18\n" +
-	" \x01(\tR\bpozicija\x12\x1c\n" +
-	"\tdepartman\x18\v \x01(\tR\tdepartman\x12\x18\n" +
-	"\aaktivan\x18\f \x01(\bR\aaktivan\x12\x18\n" +
-	"\adozvole\x18\r \x03(\tR\adozvole\x12\x12\n" +
+	"\bposition\x18\n" +
+	" \x01(\tR\bposition\x12\x1e\n" +
+	"\n" +
+	"department\x18\v \x01(\tR\n" +
+	"department\x12\x16\n" +
+	"\x06active\x18\f \x01(\bR\x06active\x12 \n" +
+	"\vpermissions\x18\r \x03(\tR\vpermissions\x12\x12\n" +
 	"\x04jmbg\x18\x0e \x01(\tR\x04jmbg\"H\n" +
 	"\x16UpdateEmployeeResponse\x12.\n" +
 	"\bemployee\x18\x01 \x01(\v2\x12.employee.EmployeeR\bemployee\"_\n" +

@@ -44,7 +44,7 @@ func (s *AuthServer) Login(ctx context.Context, req *pb_auth.LoginRequest) (*pb_
 	if creds.PasswordHash == "" {
 		return nil, status.Error(codes.Unauthenticated, "invalid credentials")
 	}
-	if !creds.Aktivan {
+	if !creds.Active {
 		return nil, status.Error(codes.Unauthenticated, "invalid credentials")
 	}
 
@@ -58,12 +58,12 @@ func (s *AuthServer) Login(ctx context.Context, req *pb_auth.LoginRequest) (*pb_
 	}
 	emp := empResp.Employee
 
-	accessToken, err := generateToken(creds.Id, emp.Email, "access", creds.Dozvole, emp.Ime, emp.Prezime, emp.Email, 15*time.Minute)
+	accessToken, err := generateToken(creds.Id, emp.Email, "access", creds.Permissions, emp.FirstName, emp.LastName, emp.Email, 15*time.Minute)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to generate token")
 	}
 
-	refreshToken, err := generateToken(creds.Id, emp.Email, "refresh", creds.Dozvole, emp.Ime, emp.Prezime, emp.Email, 7*24*time.Hour)
+	refreshToken, err := generateToken(creds.Id, emp.Email, "refresh", creds.Permissions, emp.FirstName, emp.LastName, emp.Email, 7*24*time.Hour)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to generate token")
 	}
@@ -183,7 +183,7 @@ func (s *AuthServer) ActivateAccount(ctx context.Context, req *pb_auth.ActivateA
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to fetch employee: %v", err)
 	}
-	if empResp.Employee.Aktivan {
+	if empResp.Employee.Active {
 		return nil, status.Error(codes.FailedPrecondition, "account already activated")
 	}
 
@@ -215,7 +215,7 @@ func (s *AuthServer) ActivateAccount(ctx context.Context, req *pb_auth.ActivateA
 	go func() {
 		_, err := s.EmailClient.SendPasswordConfirmationEmail(context.Background(), &pb_email.SendActivationEmailRequest{
 			Email:     emp.Email,
-			FirstName: emp.Ime,
+			FirstName: emp.FirstName,
 		})
 		if err != nil {
 			log.Printf("failed to send password confirmation email: %v", err)

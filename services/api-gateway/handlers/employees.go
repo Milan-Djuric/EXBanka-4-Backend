@@ -19,20 +19,20 @@ import (
 
 // employeeResponse is the JSON representation of an employee.
 type employeeResponse struct {
-	Id            int64    `json:"id"`
-	Ime           string   `json:"ime"`
-	Prezime       string   `json:"prezime"`
-	DatumRodjenja string   `json:"datum_rodjenja"`
-	Pol           string   `json:"pol"`
-	Email         string   `json:"email"`
-	BrojTelefona  string   `json:"broj_telefona"`
-	Adresa        string   `json:"adresa"`
-	Username      string   `json:"username"`
-	Pozicija      string   `json:"pozicija"`
-	Departman     string   `json:"departman"`
-	Aktivan       bool     `json:"aktivan"`
-	Dozvole       []string `json:"dozvole"`
-	Jmbg          string   `json:"jmbg"`
+	Id          int64    `json:"id"`
+	FirstName   string   `json:"first_name"`
+	LastName    string   `json:"last_name"`
+	DateOfBirth string   `json:"date_of_birth"`
+	Gender      string   `json:"gender"`
+	Email       string   `json:"email"`
+	PhoneNumber string   `json:"phone_number"`
+	Address     string   `json:"address"`
+	Username    string   `json:"username"`
+	Position    string   `json:"position"`
+	Department  string   `json:"department"`
+	Active      bool     `json:"active"`
+	Permissions []string `json:"permissions"`
+	Jmbg        string   `json:"jmbg"`
 }
 
 // CreateEmployeeRequest is the request body for creating an employee.
@@ -74,25 +74,25 @@ type EmployeeListResponse struct {
 }
 
 func toEmployeeResponse(e *pb.Employee) employeeResponse {
-	dozvole := e.Dozvole
-	if dozvole == nil {
-		dozvole = []string{}
+	permissions := e.Permissions
+	if permissions == nil {
+		permissions = []string{}
 	}
 	return employeeResponse{
-		Id:            e.Id,
-		Ime:           e.Ime,
-		Prezime:       e.Prezime,
-		DatumRodjenja: e.DatumRodjenja,
-		Pol:           e.Pol,
-		Email:         e.Email,
-		BrojTelefona:  e.BrojTelefona,
-		Adresa:        e.Adresa,
-		Username:      e.Username,
-		Pozicija:      e.Pozicija,
-		Departman:     e.Departman,
-		Aktivan:       e.Aktivan,
-		Dozvole:       dozvole,
-		Jmbg:          e.Jmbg,
+		Id:          e.Id,
+		FirstName:   e.FirstName,
+		LastName:    e.LastName,
+		DateOfBirth: e.DateOfBirth,
+		Gender:      e.Gender,
+		Email:       e.Email,
+		PhoneNumber: e.PhoneNumber,
+		Address:     e.Address,
+		Username:    e.Username,
+		Position:    e.Position,
+		Department:  e.Department,
+		Active:      e.Active,
+		Permissions: permissions,
+		Jmbg:        e.Jmbg,
 	}
 }
 
@@ -183,20 +183,20 @@ func UpdateEmployee(client pb.EmployeeServiceClient) gin.HandlerFunc {
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 		defer cancel()
 		resp, err := client.UpdateEmployee(ctx, &pb.UpdateEmployeeRequest{
-			Id:            id,
-			Ime:           req.FirstName,
-			Prezime:       req.LastName,
-			DatumRodjenja: req.DateOfBirth,
-			Pol:           req.Gender,
-			Email:         req.Email,
-			BrojTelefona:  req.PhoneNumber,
-			Adresa:        req.Address,
-			Username:      req.Username,
-			Pozicija:      req.Position,
-			Departman:     req.Department,
-			Aktivan:       req.Active,
-			Dozvole:       req.Permissions,
-			Jmbg:          req.Jmbg,
+			Id:          id,
+			FirstName:   req.FirstName,
+			LastName:    req.LastName,
+			DateOfBirth: req.DateOfBirth,
+			Gender:      req.Gender,
+			Email:       req.Email,
+			PhoneNumber: req.PhoneNumber,
+			Address:     req.Address,
+			Username:    req.Username,
+			Position:    req.Position,
+			Department:  req.Department,
+			Active:      req.Active,
+			Permissions: req.Permissions,
+			Jmbg:        req.Jmbg,
 		})
 		if err != nil {
 			switch status.Code(err) {
@@ -237,12 +237,12 @@ func SearchEmployees(client pb.EmployeeServiceClient) gin.HandlerFunc {
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 		defer cancel()
 		resp, err := client.SearchEmployees(ctx, &pb.SearchEmployeesRequest{
-			Email:    c.Query("email"),
-			Ime:      c.Query("ime"),
-			Prezime:  c.Query("prezime"),
-			Pozicija: c.Query("pozicija"),
-			Page:     int32(page),
-			PageSize: int32(pageSize),
+			Email:     c.Query("email"),
+			FirstName: c.Query("first_name"),
+			LastName:  c.Query("last_name"),
+			Position:  c.Query("position"),
+			Page:      int32(page),
+			PageSize:  int32(pageSize),
 		})
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -329,17 +329,17 @@ func CreateEmployee(empClient pb.EmployeeServiceClient, authClient authpb.AuthSe
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 		defer cancel()
 		resp, err := empClient.CreateEmployee(ctx, &pb.CreateEmployeeRequest{
-			Ime:           req.FirstName,
-			Prezime:       req.LastName,
-			DatumRodjenja: req.DateOfBirth,
-			Pol:           req.Gender,
-			Email:         req.Email,
-			BrojTelefona:  req.PhoneNumber,
-			Adresa:        req.Address,
-			Username:      req.Username,
-			Pozicija:      req.Position,
-			Departman:     req.Department,
-			Jmbg:          req.Jmbg,
+			FirstName:   req.FirstName,
+			LastName:    req.LastName,
+			DateOfBirth: req.DateOfBirth,
+			Gender:      req.Gender,
+			Email:       req.Email,
+			PhoneNumber: req.PhoneNumber,
+			Address:     req.Address,
+			Username:    req.Username,
+			Position:    req.Position,
+			Department:  req.Department,
+			Jmbg:        req.Jmbg,
 		})
 		if err != nil {
 			if status.Code(err) == codes.AlreadyExists {
