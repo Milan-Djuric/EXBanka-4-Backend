@@ -98,6 +98,7 @@ func main() {
 	r.GET("/api/payments/:paymentId", handlers.GetPaymentById(paymentClient))
 	r.POST("/api/transfers", handlers.CreateTransfer(paymentClient))
 	r.GET("/api/transfers", handlers.GetTransfers(paymentClient))
+	r.GET("/api/transfers/my", handlers.GetTransfers(paymentClient))
 	r.POST("/api/recipients", handlers.CreatePaymentRecipient(paymentClient))
 	r.GET("/api/recipients", handlers.GetPaymentRecipients(paymentClient))
 	r.PUT("/api/recipients/:id", handlers.UpdatePaymentRecipient(paymentClient))
