@@ -494,6 +494,29 @@ func CreateAccount(accountClient pb.AccountServiceClient, cardClient pbcard.Card
 	}
 }
 
+func GetBankAccounts(accountClient pb.AccountServiceClient) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+		defer cancel()
+		resp, err := accountClient.GetBankAccounts(ctx, &pb.GetBankAccountsRequest{})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		result := make([]gin.H, len(resp.Accounts))
+		for i, a := range resp.Accounts {
+			result[i] = gin.H{
+				"accountNumber":    a.AccountNumber,
+				"accountName":      a.AccountName,
+				"currencyCode":     a.CurrencyCode,
+				"balance":          a.Balance,
+				"availableBalance": a.AvailableBalance,
+			}
+		}
+		c.JSON(http.StatusOK, result)
+	}
+}
+
 func DeleteAccount(accountClient pb.AccountServiceClient) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		accountID, err := parseID(c, "accountId")

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"strings"
 	"time"
 
 	"github.com/lib/pq"
@@ -23,6 +24,10 @@ type PaymentServer struct {
 }
 
 func (s *PaymentServer) CreatePayment(ctx context.Context, req *pb.CreatePaymentRequest) (*pb.CreatePaymentResponse, error) {
+	// Normalize account numbers — strip formatting dashes
+	req.FromAccount = strings.ReplaceAll(req.FromAccount, "-", "")
+	req.RecipientAccount = strings.ReplaceAll(req.RecipientAccount, "-", "")
+
 	// 1. Load fromAccount and verify ownership
 	var fromID int64
 	var ownerID int64
@@ -58,7 +63,7 @@ func (s *PaymentServer) CreatePayment(ctx context.Context, req *pb.CreatePayment
 		return nil, status.Errorf(codes.FailedPrecondition, "monthly limit exceeded")
 	}
 
-	// 3. Determine fee (issue #37): same currency → fee=0, different → 0.5%
+	// 3. Check if recipient exists in our system
 	var toCurrencyID int64
 	var toAccountID int64
 	toExists := false
@@ -69,21 +74,101 @@ func (s *PaymentServer) CreatePayment(ctx context.Context, req *pb.CreatePayment
 		toExists = true
 	}
 
+	// 4. Determine exchange rate, fee, and final amount
+	const commission = 0.005
 	fee := 0.0
 	finalAmount := req.Amount
-	if toExists && toCurrencyID != fromCurrencyID {
-		fee = math.Round(req.Amount*0.005*100) / 100
-		finalAmount = req.Amount - fee
+	sameCurrency := !toExists || toCurrencyID == fromCurrencyID
+
+	if !sameCurrency {
+		var fromCode, toCode string
+		if err := s.ExchangeDB.QueryRowContext(ctx,
+			`SELECT code FROM currencies WHERE id = $1`, fromCurrencyID,
+		).Scan(&fromCode); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to resolve source currency: %v", err)
+		}
+		if err := s.ExchangeDB.QueryRowContext(ctx,
+			`SELECT code FROM currencies WHERE id = $1`, toCurrencyID,
+		).Scan(&toCode); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to resolve destination currency: %v", err)
+		}
+
+		today := time.Now().Format("2006-01-02")
+		getRate := func(code, rateType string) (float64, error) {
+			if code == "RSD" {
+				return 1.0, nil
+			}
+			var r float64
+			e := s.ExchangeDB.QueryRowContext(ctx,
+				`SELECT `+rateType+` FROM daily_exchange_rates WHERE currency_code = $1 AND date = $2`,
+				code, today,
+			).Scan(&r)
+			if e == sql.ErrNoRows {
+				e = s.ExchangeDB.QueryRowContext(ctx,
+					`SELECT rate FROM exchange_rates WHERE from_currency = $1 AND to_currency = 'RSD'`,
+					code,
+				).Scan(&r)
+			}
+			return r, e
+		}
+
+		switch {
+		case fromCode == "RSD":
+			toSelling, err := getRate(toCode, "selling_rate")
+			if err != nil {
+				return nil, status.Errorf(codes.Internal, "failed to get rate for %s: %v", toCode, err)
+			}
+			finalAmount = (req.Amount / toSelling) * (1 - commission)
+		case toCode == "RSD":
+			fromBuying, err := getRate(fromCode, "buying_rate")
+			if err != nil {
+				return nil, status.Errorf(codes.Internal, "failed to get rate for %s: %v", fromCode, err)
+			}
+			finalAmount = req.Amount * fromBuying * (1 - commission)
+		default:
+			fromBuying, err := getRate(fromCode, "buying_rate")
+			if err != nil {
+				return nil, status.Errorf(codes.Internal, "failed to get rate for %s: %v", fromCode, err)
+			}
+			toSelling, err := getRate(toCode, "selling_rate")
+			if err != nil {
+				return nil, status.Errorf(codes.Internal, "failed to get rate for %s: %v", toCode, err)
+			}
+			rsdAmount := req.Amount * fromBuying * (1 - commission)
+			finalAmount = (rsdAmount / toSelling) * (1 - commission)
+		}
+		finalAmount = math.Round(finalAmount*100) / 100
+		fee = math.Round(req.Amount*commission*100) / 100
 	}
 
-	// 4. Execute transfer in account_db transaction
+	// 5. Resolve bank intermediary accounts
+	var bankFromAcct string
+	if !sameCurrency || !toExists {
+		if err := s.AccountDB.QueryRowContext(ctx,
+			`SELECT account_number FROM accounts WHERE owner_id = 0 AND account_type = 'BANK' AND currency_id = $1`,
+			fromCurrencyID,
+		).Scan(&bankFromAcct); err != nil {
+			return nil, status.Errorf(codes.Internal, "bank account not found for source currency: %v", err)
+		}
+	}
+	var bankToAcct string
+	if !sameCurrency {
+		if err := s.AccountDB.QueryRowContext(ctx,
+			`SELECT account_number FROM accounts WHERE owner_id = 0 AND account_type = 'BANK' AND currency_id = $1`,
+			toCurrencyID,
+		).Scan(&bankToAcct); err != nil {
+			return nil, status.Errorf(codes.Internal, "bank account not found for destination currency: %v", err)
+		}
+	}
+
+	// 6. Execute balance updates in account_db transaction
 	tx, err := s.AccountDB.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to begin transaction: %v", err)
 	}
 	defer tx.Rollback()
 
-	// Debit fromAccount
+	// Always debit client
 	_, err = tx.ExecContext(ctx, `
 		UPDATE accounts SET
 			balance           = balance - $1,
@@ -95,14 +180,35 @@ func (s *PaymentServer) CreatePayment(ctx context.Context, req *pb.CreatePayment
 		return nil, status.Errorf(codes.Internal, "failed to debit source account: %v", err)
 	}
 
-	// Credit toAccount if it's in our system
-	if toExists {
-		_, err = tx.ExecContext(ctx, `
-			UPDATE accounts SET
-				balance           = balance + $1,
-				available_balance = available_balance + $1
-			WHERE id = $2`, finalAmount, toAccountID)
-		if err != nil {
+	if sameCurrency && toExists {
+		// Same currency, internal: direct credit to recipient
+		if _, err = tx.ExecContext(ctx, `
+			UPDATE accounts SET balance = balance + $1, available_balance = available_balance + $1
+			WHERE id = $2`, req.Amount, toAccountID); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to credit destination account: %v", err)
+		}
+	} else if !toExists {
+		// External recipient: credit bank source-currency account
+		if _, err = tx.ExecContext(ctx, `
+			UPDATE accounts SET balance = balance + $1, available_balance = available_balance + $1
+			WHERE account_number = $2`, req.Amount, bankFromAcct); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to credit bank account: %v", err)
+		}
+	} else {
+		// Cross-currency, internal: route through bank intermediary accounts
+		if _, err = tx.ExecContext(ctx, `
+			UPDATE accounts SET balance = balance + $1, available_balance = available_balance + $1
+			WHERE account_number = $2`, req.Amount, bankFromAcct); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to credit bank source account: %v", err)
+		}
+		if _, err = tx.ExecContext(ctx, `
+			UPDATE accounts SET balance = balance - $1, available_balance = available_balance - $1
+			WHERE account_number = $2`, finalAmount, bankToAcct); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to debit bank destination account: %v", err)
+		}
+		if _, err = tx.ExecContext(ctx, `
+			UPDATE accounts SET balance = balance + $1, available_balance = available_balance + $1
+			WHERE id = $2`, finalAmount, toAccountID); err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to credit destination account: %v", err)
 		}
 	}
@@ -299,6 +405,16 @@ func (s *PaymentServer) GetPaymentById(ctx context.Context, req *pb.GetPaymentBy
 		p.RecipientName = recipientName.String
 	}
 
+	// Resolve currency from from_account
+	var fromCurrencyID int64
+	if err := s.AccountDB.QueryRowContext(ctx,
+		`SELECT currency_id FROM accounts WHERE account_number = $1`, p.FromAccount,
+	).Scan(&fromCurrencyID); err == nil {
+		_ = s.ExchangeDB.QueryRowContext(ctx,
+			`SELECT code FROM currencies WHERE id = $1`, fromCurrencyID,
+		).Scan(&p.Currency)
+	}
+
 	// For incoming payments, resolve sender name and address from client_db
 	if toOwnerID == req.ClientId && fromOwnerID != req.ClientId && s.ClientDB != nil {
 		var senderName, senderAddress string
@@ -401,6 +517,16 @@ func (s *PaymentServer) GetPayments(ctx context.Context, req *pb.GetPaymentsRequ
 		p.Timestamp = ts.Format(time.RFC3339)
 		if recipientName.Valid {
 			p.RecipientName = recipientName.String
+		}
+
+		// Resolve currency from from_account
+		var fromCurrID int64
+		if err := s.AccountDB.QueryRowContext(ctx,
+			`SELECT currency_id FROM accounts WHERE account_number = $1`, p.FromAccount,
+		).Scan(&fromCurrID); err == nil {
+			_ = s.ExchangeDB.QueryRowContext(ctx,
+				`SELECT code FROM currencies WHERE id = $1`, fromCurrID,
+			).Scan(&p.Currency)
 		}
 
 		// For incoming payments, resolve sender info from client_db

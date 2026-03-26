@@ -78,6 +78,7 @@ message Payment {
   string recipient_name   = 13;
   string sender_name      = 14;
   string sender_address   = 15;
+  string currency         = 16;
 }
 
 message GetPaymentByIdRequest {

@@ -1281,6 +1281,162 @@ func (*DeleteAccountResponse) Descriptor() ([]byte, []int) {
 	return file_account_proto_rawDescGZIP(), []int{18}
 }
 
+type BankAccountItem struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	AccountNumber    string                 `protobuf:"bytes,1,opt,name=account_number,json=accountNumber,proto3" json:"account_number,omitempty"`
+	AccountName      string                 `protobuf:"bytes,2,opt,name=account_name,json=accountName,proto3" json:"account_name,omitempty"`
+	CurrencyCode     string                 `protobuf:"bytes,3,opt,name=currency_code,json=currencyCode,proto3" json:"currency_code,omitempty"`
+	Balance          float64                `protobuf:"fixed64,4,opt,name=balance,proto3" json:"balance,omitempty"`
+	AvailableBalance float64                `protobuf:"fixed64,5,opt,name=available_balance,json=availableBalance,proto3" json:"available_balance,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *BankAccountItem) Reset() {
+	*x = BankAccountItem{}
+	mi := &file_account_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BankAccountItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BankAccountItem) ProtoMessage() {}
+
+func (x *BankAccountItem) ProtoReflect() protoreflect.Message {
+	mi := &file_account_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BankAccountItem.ProtoReflect.Descriptor instead.
+func (*BankAccountItem) Descriptor() ([]byte, []int) {
+	return file_account_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *BankAccountItem) GetAccountNumber() string {
+	if x != nil {
+		return x.AccountNumber
+	}
+	return ""
+}
+
+func (x *BankAccountItem) GetAccountName() string {
+	if x != nil {
+		return x.AccountName
+	}
+	return ""
+}
+
+func (x *BankAccountItem) GetCurrencyCode() string {
+	if x != nil {
+		return x.CurrencyCode
+	}
+	return ""
+}
+
+func (x *BankAccountItem) GetBalance() float64 {
+	if x != nil {
+		return x.Balance
+	}
+	return 0
+}
+
+func (x *BankAccountItem) GetAvailableBalance() float64 {
+	if x != nil {
+		return x.AvailableBalance
+	}
+	return 0
+}
+
+type GetBankAccountsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetBankAccountsRequest) Reset() {
+	*x = GetBankAccountsRequest{}
+	mi := &file_account_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetBankAccountsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetBankAccountsRequest) ProtoMessage() {}
+
+func (x *GetBankAccountsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_account_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetBankAccountsRequest.ProtoReflect.Descriptor instead.
+func (*GetBankAccountsRequest) Descriptor() ([]byte, []int) {
+	return file_account_proto_rawDescGZIP(), []int{20}
+}
+
+type GetBankAccountsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Accounts      []*BankAccountItem     `protobuf:"bytes,1,rep,name=accounts,proto3" json:"accounts,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetBankAccountsResponse) Reset() {
+	*x = GetBankAccountsResponse{}
+	mi := &file_account_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetBankAccountsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetBankAccountsResponse) ProtoMessage() {}
+
+func (x *GetBankAccountsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_account_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetBankAccountsResponse.ProtoReflect.Descriptor instead.
+func (*GetBankAccountsResponse) Descriptor() ([]byte, []int) {
+	return file_account_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *GetBankAccountsResponse) GetAccounts() []*BankAccountItem {
+	if x != nil {
+		return x.Accounts
+	}
+	return nil
+}
+
 var File_account_proto protoreflect.FileDescriptor
 
 const file_account_proto_rawDesc = "" +
@@ -1389,7 +1545,16 @@ const file_account_proto_rawDesc = "" +
 	"\x14DeleteAccountRequest\x12\x1d\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\x03R\taccountId\"\x17\n" +
-	"\x15DeleteAccountResponse2\xcc\x04\n" +
+	"\x15DeleteAccountResponse\"\xc7\x01\n" +
+	"\x0fBankAccountItem\x12%\n" +
+	"\x0eaccount_number\x18\x01 \x01(\tR\raccountNumber\x12!\n" +
+	"\faccount_name\x18\x02 \x01(\tR\vaccountName\x12#\n" +
+	"\rcurrency_code\x18\x03 \x01(\tR\fcurrencyCode\x12\x18\n" +
+	"\abalance\x18\x04 \x01(\x01R\abalance\x12+\n" +
+	"\x11available_balance\x18\x05 \x01(\x01R\x10availableBalance\"\x18\n" +
+	"\x16GetBankAccountsRequest\"O\n" +
+	"\x17GetBankAccountsResponse\x124\n" +
+	"\baccounts\x18\x01 \x03(\v2\x18.account.BankAccountItemR\baccounts2\xa2\x05\n" +
 	"\x0eAccountService\x12N\n" +
 	"\rCreateAccount\x12\x1d.account.CreateAccountRequest\x1a\x1e.account.CreateAccountResponse\x12N\n" +
 	"\rGetMyAccounts\x12\x1d.account.GetMyAccountsRequest\x1a\x1e.account.GetMyAccountsResponse\x12E\n" +
@@ -1398,7 +1563,8 @@ const file_account_proto_rawDesc = "" +
 	"\rRenameAccount\x12\x1d.account.RenameAccountRequest\x1a\x1e.account.RenameAccountResponse\x12Q\n" +
 	"\x0eGetAllAccounts\x12\x1e.account.GetAllAccountsRequest\x1a\x1f.account.GetAllAccountsResponse\x12`\n" +
 	"\x13UpdateAccountLimits\x12#.account.UpdateAccountLimitsRequest\x1a$.account.UpdateAccountLimitsResponse\x12N\n" +
-	"\rDeleteAccount\x12\x1d.account.DeleteAccountRequest\x1a\x1e.account.DeleteAccountResponseB<Z:github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/accountb\x06proto3"
+	"\rDeleteAccount\x12\x1d.account.DeleteAccountRequest\x1a\x1e.account.DeleteAccountResponse\x12T\n" +
+	"\x0fGetBankAccounts\x12\x1f.account.GetBankAccountsRequest\x1a .account.GetBankAccountsResponseB<Z:github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/accountb\x06proto3"
 
 var (
 	file_account_proto_rawDescOnce sync.Once
@@ -1412,7 +1578,7 @@ func file_account_proto_rawDescGZIP() []byte {
 	return file_account_proto_rawDescData
 }
 
-var file_account_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_account_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_account_proto_goTypes = []any{
 	(*CompanyData)(nil),                 // 0: account.CompanyData
 	(*CreateAccountRequest)(nil),        // 1: account.CreateAccountRequest
@@ -1433,6 +1599,9 @@ var file_account_proto_goTypes = []any{
 	(*GetAllAccountsResponse)(nil),      // 16: account.GetAllAccountsResponse
 	(*DeleteAccountRequest)(nil),        // 17: account.DeleteAccountRequest
 	(*DeleteAccountResponse)(nil),       // 18: account.DeleteAccountResponse
+	(*BankAccountItem)(nil),             // 19: account.BankAccountItem
+	(*GetBankAccountsRequest)(nil),      // 20: account.GetBankAccountsRequest
+	(*GetBankAccountsResponse)(nil),     // 21: account.GetBankAccountsResponse
 }
 var file_account_proto_depIdxs = []int32{
 	0,  // 0: account.CreateAccountRequest.company_data:type_name -> account.CompanyData
@@ -1441,25 +1610,28 @@ var file_account_proto_depIdxs = []int32{
 	0,  // 3: account.AccountDetails.company_data:type_name -> account.CompanyData
 	8,  // 4: account.GetAccountResponse.account:type_name -> account.AccountDetails
 	15, // 5: account.GetAllAccountsResponse.accounts:type_name -> account.AccountListItem
-	1,  // 6: account.AccountService.CreateAccount:input_type -> account.CreateAccountRequest
-	4,  // 7: account.AccountService.GetMyAccounts:input_type -> account.GetMyAccountsRequest
-	7,  // 8: account.AccountService.GetAccount:input_type -> account.GetAccountRequest
-	10, // 9: account.AccountService.RenameAccount:input_type -> account.RenameAccountRequest
-	14, // 10: account.AccountService.GetAllAccounts:input_type -> account.GetAllAccountsRequest
-	12, // 11: account.AccountService.UpdateAccountLimits:input_type -> account.UpdateAccountLimitsRequest
-	17, // 12: account.AccountService.DeleteAccount:input_type -> account.DeleteAccountRequest
-	3,  // 13: account.AccountService.CreateAccount:output_type -> account.CreateAccountResponse
-	6,  // 14: account.AccountService.GetMyAccounts:output_type -> account.GetMyAccountsResponse
-	9,  // 15: account.AccountService.GetAccount:output_type -> account.GetAccountResponse
-	11, // 16: account.AccountService.RenameAccount:output_type -> account.RenameAccountResponse
-	16, // 17: account.AccountService.GetAllAccounts:output_type -> account.GetAllAccountsResponse
-	13, // 18: account.AccountService.UpdateAccountLimits:output_type -> account.UpdateAccountLimitsResponse
-	18, // 19: account.AccountService.DeleteAccount:output_type -> account.DeleteAccountResponse
-	13, // [13:20] is the sub-list for method output_type
-	6,  // [6:13] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	19, // 6: account.GetBankAccountsResponse.accounts:type_name -> account.BankAccountItem
+	1,  // 7: account.AccountService.CreateAccount:input_type -> account.CreateAccountRequest
+	4,  // 8: account.AccountService.GetMyAccounts:input_type -> account.GetMyAccountsRequest
+	7,  // 9: account.AccountService.GetAccount:input_type -> account.GetAccountRequest
+	10, // 10: account.AccountService.RenameAccount:input_type -> account.RenameAccountRequest
+	14, // 11: account.AccountService.GetAllAccounts:input_type -> account.GetAllAccountsRequest
+	12, // 12: account.AccountService.UpdateAccountLimits:input_type -> account.UpdateAccountLimitsRequest
+	17, // 13: account.AccountService.DeleteAccount:input_type -> account.DeleteAccountRequest
+	20, // 14: account.AccountService.GetBankAccounts:input_type -> account.GetBankAccountsRequest
+	3,  // 15: account.AccountService.CreateAccount:output_type -> account.CreateAccountResponse
+	6,  // 16: account.AccountService.GetMyAccounts:output_type -> account.GetMyAccountsResponse
+	9,  // 17: account.AccountService.GetAccount:output_type -> account.GetAccountResponse
+	11, // 18: account.AccountService.RenameAccount:output_type -> account.RenameAccountResponse
+	16, // 19: account.AccountService.GetAllAccounts:output_type -> account.GetAllAccountsResponse
+	13, // 20: account.AccountService.UpdateAccountLimits:output_type -> account.UpdateAccountLimitsResponse
+	18, // 21: account.AccountService.DeleteAccount:output_type -> account.DeleteAccountResponse
+	21, // 22: account.AccountService.GetBankAccounts:output_type -> account.GetBankAccountsResponse
+	15, // [15:23] is the sub-list for method output_type
+	7,  // [7:15] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_account_proto_init() }
@@ -1473,7 +1645,7 @@ func file_account_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_account_proto_rawDesc), len(file_account_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   19,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

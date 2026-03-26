@@ -207,44 +207,53 @@ func (s *ExchangeServer) ConvertAmount(ctx context.Context, req *pb.ConvertAmoun
 		log.Printf("exchange-service: ensureTodayRates: %v", err)
 	}
 
-	// 4. Get selling rates for involved currencies
-	getSellingRate := func(code string) (float64, error) {
+	// 4. Get rates for involved currencies:
+	//    bank buys foreign at buying_rate (foreign → RSD),
+	//    bank sells foreign at selling_rate (RSD → foreign).
+	getRate := func(code, rateType string) (float64, error) {
 		if code == "RSD" {
 			return 1.0, nil
 		}
 		var r float64
 		err := s.DB.QueryRowContext(ctx,
-			`SELECT selling_rate FROM daily_exchange_rates WHERE currency_code = $1 AND date = CURRENT_DATE`,
+			`SELECT `+rateType+` FROM daily_exchange_rates WHERE currency_code = $1 AND date = CURRENT_DATE`,
 			code,
 		).Scan(&r)
 		return r, err
 	}
 
-	fromSelling, err := getSellingRate(fromCode)
-	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "no exchange rate for %s today", fromCode)
-	}
-	toSelling, err := getSellingRate(toCode)
-	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "no exchange rate for %s today", toCode)
-	}
-
-	// 5. Calculate conversion (issue #75 rules: all via RSD, commission each step)
+	// 5. Calculate conversion (all via RSD, commission each step)
 	var rsdAmount, toAmount, effectiveRate float64
 	switch {
 	case fromCode == "RSD":
-		// RSD → Foreign: rsd / selling_rate(to) * (1 - commission)
+		// RSD → Foreign: bank sells foreign at selling_rate
+		toSelling, err := getRate(toCode, "selling_rate")
+		if err != nil {
+			return nil, status.Errorf(codes.NotFound, "no exchange rate for %s today", toCode)
+		}
 		toAmount = (req.Amount / toSelling) * (1 - commission)
 		effectiveRate = toSelling
 	case toCode == "RSD":
-		// Foreign → RSD: amount * selling_rate(from) * (1 - commission)
-		toAmount = req.Amount * fromSelling * (1 - commission)
-		effectiveRate = fromSelling
+		// Foreign → RSD: bank buys foreign at buying_rate
+		fromBuying, err := getRate(fromCode, "buying_rate")
+		if err != nil {
+			return nil, status.Errorf(codes.NotFound, "no exchange rate for %s today", fromCode)
+		}
+		toAmount = req.Amount * fromBuying * (1 - commission)
+		effectiveRate = fromBuying
 	default:
 		// Foreign → Foreign (2 steps, commission each)
-		rsdAmount = req.Amount * fromSelling * (1 - commission)
+		fromBuying, err := getRate(fromCode, "buying_rate")
+		if err != nil {
+			return nil, status.Errorf(codes.NotFound, "no exchange rate for %s today", fromCode)
+		}
+		toSelling, err := getRate(toCode, "selling_rate")
+		if err != nil {
+			return nil, status.Errorf(codes.NotFound, "no exchange rate for %s today", toCode)
+		}
+		rsdAmount = req.Amount * fromBuying * (1 - commission)
 		toAmount = (rsdAmount / toSelling) * (1 - commission)
-		effectiveRate = fromSelling / toSelling
+		effectiveRate = fromBuying / toSelling
 	}
 
 	toAmount = math.Round(toAmount*100) / 100
@@ -348,39 +357,46 @@ func (s *ExchangeServer) PreviewConversion(ctx context.Context, req *pb.PreviewC
 		log.Printf("exchange-service: ensureTodayRates: %v", err)
 	}
 
-	getSellingRate := func(code string) (float64, error) {
+	getRate := func(code, rateType string) (float64, error) {
 		if code == "RSD" {
 			return 1.0, nil
 		}
 		var r float64
 		err := s.DB.QueryRowContext(ctx,
-			`SELECT selling_rate FROM daily_exchange_rates WHERE currency_code = $1 AND date = CURRENT_DATE`,
+			`SELECT `+rateType+` FROM daily_exchange_rates WHERE currency_code = $1 AND date = CURRENT_DATE`,
 			code,
 		).Scan(&r)
 		return r, err
 	}
 
-	fromSelling, err := getSellingRate(from)
-	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "no exchange rate for %s today", from)
-	}
-	toSelling, err := getSellingRate(to)
-	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "no exchange rate for %s today", to)
-	}
-
 	var toAmount, effectiveRate float64
 	switch {
 	case from == "RSD":
+		toSelling, err := getRate(to, "selling_rate")
+		if err != nil {
+			return nil, status.Errorf(codes.NotFound, "no exchange rate for %s today", to)
+		}
 		toAmount = (req.Amount / toSelling) * (1 - commission)
 		effectiveRate = toSelling
 	case to == "RSD":
-		toAmount = req.Amount * fromSelling * (1 - commission)
-		effectiveRate = fromSelling
+		fromBuying, err := getRate(from, "buying_rate")
+		if err != nil {
+			return nil, status.Errorf(codes.NotFound, "no exchange rate for %s today", from)
+		}
+		toAmount = req.Amount * fromBuying * (1 - commission)
+		effectiveRate = fromBuying
 	default:
-		rsd := req.Amount * fromSelling * (1 - commission)
+		fromBuying, err := getRate(from, "buying_rate")
+		if err != nil {
+			return nil, status.Errorf(codes.NotFound, "no exchange rate for %s today", from)
+		}
+		toSelling, err := getRate(to, "selling_rate")
+		if err != nil {
+			return nil, status.Errorf(codes.NotFound, "no exchange rate for %s today", to)
+		}
+		rsd := req.Amount * fromBuying * (1 - commission)
 		toAmount = (rsd / toSelling) * (1 - commission)
-		effectiveRate = fromSelling / toSelling
+		effectiveRate = fromBuying / toSelling
 	}
 
 	toAmount = math.Round(toAmount*100) / 100

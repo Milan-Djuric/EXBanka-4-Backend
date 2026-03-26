@@ -352,6 +352,7 @@ func GetPaymentById(paymentClient pb.PaymentServiceClient) gin.HandlerFunc {
 			"purpose":         p.Purpose,
 			"timestamp":       p.Timestamp,
 			"status":          p.Status,
+			"currency":        p.Currency,
 		})
 	}
 }
@@ -418,6 +419,7 @@ func GetPayments(paymentClient pb.PaymentServiceClient) gin.HandlerFunc {
 			Purpose         string  `json:"purpose"`
 			Timestamp       string  `json:"timestamp"`
 			Status          string  `json:"status"`
+			Currency        string  `json:"currency"`
 		}
 		result := make([]paymentJSON, 0, len(resp.Payments))
 		for _, p := range resp.Payments {
@@ -437,6 +439,7 @@ func GetPayments(paymentClient pb.PaymentServiceClient) gin.HandlerFunc {
 				Purpose:         p.Purpose,
 				Timestamp:       p.Timestamp,
 				Status:          p.Status,
+				Currency:        p.Currency,
 			})
 		}
 		c.JSON(http.StatusOK, result)
