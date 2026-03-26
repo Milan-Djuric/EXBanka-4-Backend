@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net"
+	"os"
 
 	carddb "github.com/RAF-SI-2025/EXBanka-4-Backend/services/card-service/db"
 	"github.com/RAF-SI-2025/EXBanka-4-Backend/services/card-service/handlers"
@@ -10,20 +11,16 @@ import (
 	"google.golang.org/grpc"
 )
 
-const (
-	cardDBDSN    = "postgres://card_user:card_pass@localhost:5440/card_db?sslmode=disable"
-	accountDBDSN = "postgres://account_user:account_pass@localhost:5436/account_db?sslmode=disable"
-	grpcPort     = ":50059"
-)
+const grpcPort = ":50059"
 
 func main() {
-	cardDB, err := carddb.Connect(cardDBDSN)
+	cardDB, err := carddb.Connect(os.Getenv("CARD_DB_URL"))
 	if err != nil {
 		log.Fatalf("failed to connect to card_db: %v", err)
 	}
 	defer cardDB.Close()
 
-	accountDB, err := carddb.Connect(accountDBDSN)
+	accountDB, err := carddb.Connect(os.Getenv("ACCOUNT_DB_URL"))
 	if err != nil {
 		log.Fatalf("failed to connect to account_db: %v", err)
 	}

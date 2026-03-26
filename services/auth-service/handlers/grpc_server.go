@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"time"
 	"unicode"
 
@@ -23,7 +24,7 @@ import (
 	pb_emp "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/employee"
 )
 
-const jwtSecret = "secret-key-change-in-production"
+var jwtSecret = os.Getenv("JWT_SECRET")
 
 type AuthServer struct {
 	pb_auth.UnimplementedAuthServiceServer

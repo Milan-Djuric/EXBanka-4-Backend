@@ -3,6 +3,7 @@ package middleware
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -42,7 +43,7 @@ func GetUserIDFromToken(c *gin.Context) (int64, error) {
 	}
 }
 
-const jwtSecret = "secret-key-change-in-production"
+var jwtSecret = os.Getenv("JWT_SECRET")
 
 // GetCallerRoleFromToken returns "CLIENT" for client tokens, "EMPLOYEE" for employee tokens.
 func GetCallerRoleFromToken(c *gin.Context) string {
