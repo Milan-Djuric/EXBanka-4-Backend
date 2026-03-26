@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net"
+	"os"
 
 	loandb "github.com/RAF-SI-2025/EXBanka-4-Backend/services/loan-service/db"
 	"github.com/RAF-SI-2025/EXBanka-4-Backend/services/loan-service/handlers"
@@ -13,40 +14,35 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-const (
-	loanDBDSN     = "postgres://loan_user:loan_pass@localhost:5439/loan_db?sslmode=disable"
-	accountDBDSN  = "postgres://account_user:account_pass@localhost:5436/account_db?sslmode=disable"
-	exchangeDBDSN = "postgres://exchange_user:exchange_pass@localhost:5438/exchange_db?sslmode=disable"
-	grpcPort      = ":50058"
-)
+const grpcPort = ":50058"
 
 func main() {
-	loanDB, err := loandb.Connect(loanDBDSN)
+	loanDB, err := loandb.Connect(os.Getenv("LOAN_DB_URL"))
 	if err != nil {
 		log.Fatalf("failed to connect to loan_db: %v", err)
 	}
 	defer loanDB.Close()
 
-	accountDB, err := loandb.Connect(accountDBDSN)
+	accountDB, err := loandb.Connect(os.Getenv("ACCOUNT_DB_URL"))
 	if err != nil {
 		log.Fatalf("failed to connect to account_db: %v", err)
 	}
 	defer accountDB.Close()
 
-	exchangeDB, err := loandb.Connect(exchangeDBDSN)
+	exchangeDB, err := loandb.Connect(os.Getenv("EXCHANGE_DB_URL"))
 	if err != nil {
 		log.Fatalf("failed to connect to exchange_db: %v", err)
 	}
 	defer exchangeDB.Close()
 
-	emailConn, err := grpc.NewClient("localhost:50053", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	emailConn, err := grpc.NewClient(os.Getenv("EMAIL_SERVICE_ADDR"), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("failed to connect to email-service: %v", err)
 	}
 	defer emailConn.Close()
 	emailClient := pb_email.NewEmailServiceClient(emailConn)
 
-	clientConn, err := grpc.NewClient("localhost:50056", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	clientConn, err := grpc.NewClient(os.Getenv("CLIENT_SERVICE_ADDR"), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("failed to connect to client-service: %v", err)
 	}

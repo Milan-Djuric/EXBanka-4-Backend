@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net"
+	"os"
 
 	"google.golang.org/grpc"
 
@@ -12,25 +13,25 @@ import (
 )
 
 func main() {
-	db, err := pmdb.Connect("postgres://payment_user:payment_pass@localhost:5437/payment_db?sslmode=disable")
+	db, err := pmdb.Connect(os.Getenv("PAYMENT_DB_URL"))
 	if err != nil {
 		log.Fatalf("failed to connect to payment_db: %v", err)
 	}
 	defer db.Close()
 
-	accountDB, err := pmdb.Connect("postgres://account_user:account_pass@localhost:5436/account_db?sslmode=disable")
+	accountDB, err := pmdb.Connect(os.Getenv("ACCOUNT_DB_URL"))
 	if err != nil {
 		log.Fatalf("failed to connect to account_db: %v", err)
 	}
 	defer accountDB.Close()
 
-	exchangeDB, err := pmdb.Connect("postgres://exchange_user:exchange_pass@localhost:5438/exchange_db?sslmode=disable")
+	exchangeDB, err := pmdb.Connect(os.Getenv("EXCHANGE_DB_URL"))
 	if err != nil {
 		log.Fatalf("failed to connect to exchange_db: %v", err)
 	}
 	defer exchangeDB.Close()
 
-	clientDB, err := pmdb.Connect("postgres://client_user:client_pass@localhost:5435/client_db?sslmode=disable")
+	clientDB, err := pmdb.Connect(os.Getenv("CLIENT_DB_URL"))
 	if err != nil {
 		log.Fatalf("failed to connect to client_db: %v", err)
 	}

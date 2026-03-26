@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net"
+	"os"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -16,13 +17,13 @@ import (
 )
 
 func main() {
-	database, err := authdb.Connect("postgres://auth_user:auth_pass@localhost:5434/auth_db?sslmode=disable")
+	database, err := authdb.Connect(os.Getenv("DB_URL"))
 	if err != nil {
 		log.Fatalf("failed to connect to auth-db: %v", err)
 	}
 	defer database.Close()
 
-	clientConn, err := grpc.NewClient("localhost:50056", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	clientConn, err := grpc.NewClient(os.Getenv("CLIENT_SERVICE_ADDR"), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("failed to connect to client-service: %v", err)
 	}
@@ -30,7 +31,7 @@ func main() {
 
 	clientClient := pb_client.NewClientServiceClient(clientConn)
 
-	empConn, err := grpc.NewClient("localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	empConn, err := grpc.NewClient(os.Getenv("EMPLOYEE_SERVICE_ADDR"), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("failed to connect to employee-service: %v", err)
 	}
@@ -38,7 +39,7 @@ func main() {
 
 	employeeClient := pb_emp.NewEmployeeServiceClient(empConn)
 
-	emailConn, err := grpc.NewClient("localhost:50053", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	emailConn, err := grpc.NewClient(os.Getenv("EMAIL_SERVICE_ADDR"), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("failed to connect to email-service: %v", err)
 	}

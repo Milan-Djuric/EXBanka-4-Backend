@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net"
+	"os"
 
 	"google.golang.org/grpc"
 	empdb "github.com/RAF-SI-2025/EXBanka-4-Backend/services/employee-service/db"
@@ -11,7 +12,7 @@ import (
 )
 
 func main() {
-	database, err := empdb.Connect("postgres://employee_user:employee_pass@localhost:5433/employee_db?sslmode=disable")
+	database, err := empdb.Connect(os.Getenv("DB_URL"))
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
 	}

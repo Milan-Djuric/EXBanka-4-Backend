@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"net"
+	"os"
 
 	exdb "github.com/RAF-SI-2025/EXBanka-4-Backend/services/exchange-service/db"
 	"github.com/RAF-SI-2025/EXBanka-4-Backend/services/exchange-service/handlers"
@@ -11,11 +12,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-const (
-	exchangeDBDSN = "postgres://exchange_user:exchange_pass@localhost:5438/exchange_db?sslmode=disable"
-	accountDBDSN  = "postgres://account_user:account_pass@localhost:5436/account_db?sslmode=disable"
-	grpcPort      = ":50057"
-)
+const grpcPort = ":50057"
 
 func migrate(db *sql.DB) error {
 	_, err := db.Exec(`
@@ -47,13 +44,13 @@ func migrate(db *sql.DB) error {
 }
 
 func main() {
-	exchangeDB, err := exdb.Connect(exchangeDBDSN)
+	exchangeDB, err := exdb.Connect(os.Getenv("EXCHANGE_DB_URL"))
 	if err != nil {
 		log.Fatalf("failed to connect to exchange_db: %v", err)
 	}
 	defer exchangeDB.Close()
 
-	accountDB, err := exdb.Connect(accountDBDSN)
+	accountDB, err := exdb.Connect(os.Getenv("ACCOUNT_DB_URL"))
 	if err != nil {
 		log.Fatalf("failed to connect to account_db: %v", err)
 	}

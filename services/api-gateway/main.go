@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -23,55 +24,55 @@ import (
 // @in              header
 // @name            Authorization
 func main() {
-	clientClient, clientConn, err := gwgrpc.NewClientClient("localhost:50056")
+	clientClient, clientConn, err := gwgrpc.NewClientClient(os.Getenv("CLIENT_SERVICE_ADDR"))
 	if err != nil {
 		log.Fatalf("failed to connect to client-service: %v", err)
 	}
 	defer clientConn.Close()
 
-	employeeClient, empConn, err := gwgrpc.NewEmployeeClient("localhost:50051")
+	employeeClient, empConn, err := gwgrpc.NewEmployeeClient(os.Getenv("EMPLOYEE_SERVICE_ADDR"))
 	if err != nil {
 		log.Fatalf("failed to connect to employee-service: %v", err)
 	}
 	defer empConn.Close()
 
-	paymentClient, pmConn, err := gwgrpc.NewPaymentClient("localhost:50055")
+	paymentClient, pmConn, err := gwgrpc.NewPaymentClient(os.Getenv("PAYMENT_SERVICE_ADDR"))
 	if err != nil {
 		log.Fatalf("failed to connect to payment-service: %v", err)
 	}
 	defer pmConn.Close()
 
-	accountClient, accConn, err := gwgrpc.NewAccountClient("localhost:50054")
+	accountClient, accConn, err := gwgrpc.NewAccountClient(os.Getenv("ACCOUNT_SERVICE_ADDR"))
 	if err != nil {
 		log.Fatalf("failed to connect to account-service: %v", err)
 	}
 	defer accConn.Close()
 
-	authClient, authConn, err := gwgrpc.NewAuthClient("localhost:50052")
+	authClient, authConn, err := gwgrpc.NewAuthClient(os.Getenv("AUTH_SERVICE_ADDR"))
 	if err != nil {
 		log.Fatalf("failed to connect to auth-service: %v", err)
 	}
 	defer authConn.Close()
 
-	emailClient, emailConn, err := gwgrpc.NewEmailClient("localhost:50053")
+	emailClient, emailConn, err := gwgrpc.NewEmailClient(os.Getenv("EMAIL_SERVICE_ADDR"))
 	if err != nil {
 		log.Fatalf("failed to connect to email-service: %v", err)
 	}
 	defer emailConn.Close()
 
-	loanClient, loanConn, err := gwgrpc.NewLoanClient("localhost:50058")
+	loanClient, loanConn, err := gwgrpc.NewLoanClient(os.Getenv("LOAN_SERVICE_ADDR"))
 	if err != nil {
 		log.Fatalf("failed to connect to loan-service: %v", err)
 	}
 	defer loanConn.Close()
 
-	cardClient, cardConn, err := gwgrpc.NewCardClient("localhost:50059")
+	cardClient, cardConn, err := gwgrpc.NewCardClient(os.Getenv("CARD_SERVICE_ADDR"))
 	if err != nil {
 		log.Fatalf("failed to connect to card-service: %v", err)
 	}
 	defer cardConn.Close()
 
-	exchangeClient, exchangeConn, err := gwgrpc.NewExchangeClient("localhost:50057")
+	exchangeClient, exchangeConn, err := gwgrpc.NewExchangeClient(os.Getenv("EXCHANGE_SERVICE_ADDR"))
 	if err != nil {
 		log.Fatalf("failed to connect to exchange-service: %v", err)
 	}
