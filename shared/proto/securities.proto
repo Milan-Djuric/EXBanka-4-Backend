@@ -1,0 +1,133 @@
+syntax = "proto3";
+
+package securities;
+
+option go_package = "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/securities";
+
+// ── Ping (health check) ───────────────────────────────────────────────────────
+
+message PingRequest {}
+message PingResponse { string message = 1; }
+
+// ── StockExchange ─────────────────────────────────────────────────────────────
+
+message StockExchange {
+  int64  id       = 1;
+  string name     = 2;
+  string acronym  = 3;
+  string mic_code = 4;
+  string polity   = 5;
+  string currency = 6;
+  string timezone = 7;
+}
+
+message GetStockExchangesRequest {}
+message GetStockExchangesResponse { repeated StockExchange exchanges = 1; }
+
+message GetStockExchangeByMICRequest  { string mic_code = 1; }
+message GetStockExchangeByMICResponse { StockExchange exchange = 1; }
+
+message CreateStockExchangeRequest {
+  string name     = 1;
+  string acronym  = 2;
+  string mic_code = 3;
+  string polity   = 4;
+  string currency = 5;
+  string timezone = 6;
+}
+message CreateStockExchangeResponse { StockExchange exchange = 1; }
+
+message UpdateStockExchangeRequest {
+  string mic_code = 1;
+  string name     = 2;
+  string acronym  = 3;
+  string polity   = 4;
+  string currency = 5;
+  string timezone = 6;
+}
+message UpdateStockExchangeResponse { StockExchange exchange = 1; }
+
+message DeleteStockExchangeRequest  { string mic_code = 1; }
+message DeleteStockExchangeResponse {}
+
+// ── Working Hours ─────────────────────────────────────────────────────────────
+// Shared across all exchanges in the same polity (country).
+// segment: "pre_market", "regular", "post_market"
+// Times are "HH:MM" in the exchange's local timezone.
+
+message ExchangeWorkingHours {
+  int64  id         = 1;
+  string polity     = 2;
+  string segment    = 3;
+  string open_time  = 4;
+  string close_time = 5;
+}
+
+message GetWorkingHoursRequest  { string mic_code = 1; }
+message GetWorkingHoursResponse { repeated ExchangeWorkingHours hours = 1; }
+
+message SetWorkingHoursRequest {
+  string polity     = 1;
+  string segment    = 2;
+  string open_time  = 3;
+  string close_time = 4;
+}
+message SetWorkingHoursResponse { ExchangeWorkingHours hours = 1; }
+
+// ── Holidays ──────────────────────────────────────────────────────────────────
+// Shared across all exchanges in the same polity (country).
+
+message ExchangeHoliday {
+  int64  id           = 1;
+  string polity       = 2;
+  string holiday_date = 3; // "YYYY-MM-DD"
+  string description  = 4;
+}
+
+message GetHolidaysRequest  { string polity = 1; }
+message GetHolidaysResponse { repeated ExchangeHoliday holidays = 1; }
+
+message AddHolidayRequest {
+  string polity       = 1;
+  string holiday_date = 2; // "YYYY-MM-DD"
+  string description  = 3;
+}
+message AddHolidayResponse { ExchangeHoliday holiday = 1; }
+
+message DeleteHolidayRequest  { string polity = 1; string holiday_date = 2; }
+message DeleteHolidayResponse {}
+
+// ── Exchange Status ───────────────────────────────────────────────────────────
+
+message IsExchangeOpenRequest  { string mic_code = 1; }
+message IsExchangeOpenResponse {
+  string mic_code          = 1;
+  bool   is_open           = 2;
+  string segment           = 3; // "pre_market", "regular", "post_market", or "closed"
+  string current_time_local = 4; // "HH:MM" in exchange's local timezone
+}
+
+// ── Service ───────────────────────────────────────────────────────────────────
+
+service SecuritiesService {
+  rpc Ping                  (PingRequest)                  returns (PingResponse);
+
+  // Stock Exchanges
+  rpc GetStockExchanges     (GetStockExchangesRequest)     returns (GetStockExchangesResponse);
+  rpc GetStockExchangeByMIC (GetStockExchangeByMICRequest) returns (GetStockExchangeByMICResponse);
+  rpc CreateStockExchange   (CreateStockExchangeRequest)   returns (CreateStockExchangeResponse);
+  rpc UpdateStockExchange   (UpdateStockExchangeRequest)   returns (UpdateStockExchangeResponse);
+  rpc DeleteStockExchange   (DeleteStockExchangeRequest)   returns (DeleteStockExchangeResponse);
+
+  // Working Hours
+  rpc GetWorkingHours       (GetWorkingHoursRequest)       returns (GetWorkingHoursResponse);
+  rpc SetWorkingHours       (SetWorkingHoursRequest)       returns (SetWorkingHoursResponse);
+
+  // Holidays
+  rpc GetHolidays           (GetHolidaysRequest)           returns (GetHolidaysResponse);
+  rpc AddHoliday            (AddHolidayRequest)            returns (AddHolidayResponse);
+  rpc DeleteHoliday         (DeleteHolidayRequest)         returns (DeleteHolidayResponse);
+
+  // Status
+  rpc IsExchangeOpen        (IsExchangeOpenRequest)        returns (IsExchangeOpenResponse);
+}

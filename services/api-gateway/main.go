@@ -78,6 +78,12 @@ func main() {
 	}
 	defer exchangeConn.Close()
 
+	securitiesClient, securitiesConn, err := gwgrpc.NewSecuritiesClient(os.Getenv("SECURITIES_SERVICE_ADDR"))
+	if err != nil {
+		log.Fatalf("failed to connect to securities-service: %v", err)
+	}
+	defer securitiesConn.Close()
+
 	r := gin.Default()
 
 	r.Use(cors.New(cors.Config{
@@ -163,6 +169,17 @@ func main() {
 	r.PUT("/api/cards/:id/unblock", middleware.RequireRole("EMPLOYEE"), handlers.UnblockCard(cardClient))
 	r.PUT("/api/cards/:id/deactivate", middleware.RequireRole("EMPLOYEE"), handlers.DeactivateCard(cardClient))
 	r.PUT("/api/cards/:id/limit", middleware.RequireRole("EMPLOYEE"), handlers.UpdateCardLimit(cardClient))
+	r.GET("/stock-exchanges", middleware.RequireRole("EMPLOYEE"), handlers.GetStockExchanges(securitiesClient))
+	r.POST("/stock-exchanges", middleware.RequireRole("ADMIN"), handlers.CreateStockExchange(securitiesClient))
+	r.GET("/stock-exchanges/:mic", middleware.RequireRole("EMPLOYEE"), handlers.GetStockExchangeByMIC(securitiesClient))
+	r.PUT("/stock-exchanges/:mic", middleware.RequireRole("ADMIN"), handlers.UpdateStockExchange(securitiesClient))
+	r.DELETE("/stock-exchanges/:mic", middleware.RequireRole("ADMIN"), handlers.DeleteStockExchange(securitiesClient))
+	r.GET("/stock-exchanges/:mic/hours", middleware.RequireRole("EMPLOYEE"), handlers.GetWorkingHours(securitiesClient))
+	r.POST("/stock-exchanges/hours", middleware.RequireRole("ADMIN"), handlers.SetWorkingHours(securitiesClient))
+	r.GET("/stock-exchanges/:mic/holidays", middleware.RequireRole("EMPLOYEE"), handlers.GetHolidays(securitiesClient))
+	r.POST("/stock-exchanges/holidays", middleware.RequireRole("ADMIN"), handlers.AddHoliday(securitiesClient))
+	r.DELETE("/stock-exchanges/holidays/:polity/:date", middleware.RequireRole("ADMIN"), handlers.DeleteHoliday(securitiesClient))
+	r.GET("/stock-exchanges/:mic/is-open", middleware.RequireRole("EMPLOYEE"), handlers.IsExchangeOpen(securitiesClient))
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	r.Run(":8083")
 }

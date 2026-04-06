@@ -1,4 +1,4 @@
-module github.com/RAF-SI-2025/EXBanka-4-Backend/services/loan-service
+module github.com/RAF-SI-2025/EXBanka-4-Backend/services/securities-service
 
 go 1.26.1
 
