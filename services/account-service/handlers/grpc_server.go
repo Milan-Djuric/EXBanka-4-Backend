@@ -80,24 +80,25 @@ func (s *AccountServer) GetAccount(ctx context.Context, req *pb.GetAccountReques
 	var a pb.AccountDetails
 	var currencyID int64
 	var ownerID int64
+	var companyID sql.NullInt64
 	err := s.DB.QueryRowContext(ctx, `
 		SELECT id, account_name, account_number, owner_id, balance, available_balance,
 		       balance - available_balance AS reserved_funds,
-		       currency_id, status, account_type,
+		       currency_id, status, account_type, COALESCE(account_subtype, ''),
 		       COALESCE(daily_limit, 0), COALESCE(monthly_limit, 0),
-		       daily_spent, monthly_spent
+		       daily_spent, monthly_spent, company_id
 		FROM accounts WHERE id = $1`, req.AccountId,
 	).Scan(&a.Id, &a.AccountName, &a.AccountNumber, &ownerID,
 		&a.Balance, &a.AvailableBalance, &a.ReservedFunds,
-		&currencyID, &a.Status, &a.AccountType,
-		&a.DailyLimit, &a.MonthlyLimit, &a.DailySpent, &a.MonthlySpent)
+		&currencyID, &a.Status, &a.AccountType, &a.AccountSubtype,
+		&a.DailyLimit, &a.MonthlyLimit, &a.DailySpent, &a.MonthlySpent, &companyID)
 	if err == sql.ErrNoRows {
 		return nil, status.Errorf(codes.NotFound, "account %d not found", req.AccountId)
 	}
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to query account: %v", err)
 	}
-	if ownerID != req.OwnerId {
+	if req.OwnerId != 0 && ownerID != req.OwnerId {
 		return nil, status.Errorf(codes.PermissionDenied, "account does not belong to this user")
 	}
 
@@ -110,6 +111,17 @@ func (s *AccountServer) GetAccount(ctx context.Context, req *pb.GetAccountReques
 		`SELECT first_name, last_name FROM clients WHERE id = $1`, ownerID,
 	).Scan(&firstName, &lastName); err == nil {
 		a.Owner = firstName + " " + lastName
+	}
+
+	// Resolve company data for business accounts
+	if companyID.Valid {
+		var c pb.CompanyData
+		if err := s.DB.QueryRowContext(ctx,
+			`SELECT name, registration_number, pib, activity_code, address FROM companies WHERE id = $1`,
+			companyID.Int64,
+		).Scan(&c.Name, &c.RegistrationNumber, &c.Pib, &c.ActivityCode, &c.Address); err == nil {
+			a.CompanyData = &c
+		}
 	}
 
 	return &pb.GetAccountResponse{Account: &a}, nil
@@ -155,8 +167,10 @@ func (s *AccountServer) RenameAccount(ctx context.Context, req *pb.RenameAccount
 
 func (s *AccountServer) GetAllAccounts(ctx context.Context, _ *pb.GetAllAccountsRequest) (*pb.GetAllAccountsResponse, error) {
 	rows, err := s.DB.QueryContext(ctx,
-		`SELECT id, account_number, account_name, owner_id, account_type, currency_id, available_balance
+		`SELECT id, account_number, account_name, owner_id, account_type, currency_id, available_balance,
+		        COALESCE(account_subtype, '')
 		 FROM accounts
+		 WHERE account_type != 'BANK'
 		 ORDER BY id DESC`)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to query accounts: %v", err)
@@ -171,11 +185,12 @@ func (s *AccountServer) GetAllAccounts(ctx context.Context, _ *pb.GetAllAccounts
 		accountType      string
 		currencyID       int64
 		availableBalance float64
+		accountSubtype   string
 	}
 	var accs []row
 	for rows.Next() {
 		var r row
-		if err := rows.Scan(&r.id, &r.accountNumber, &r.accountName, &r.ownerID, &r.accountType, &r.currencyID, &r.availableBalance); err != nil {
+		if err := rows.Scan(&r.id, &r.accountNumber, &r.accountName, &r.ownerID, &r.accountType, &r.currencyID, &r.availableBalance, &r.accountSubtype); err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to scan account: %v", err)
 		}
 		accs = append(accs, r)
@@ -220,24 +235,21 @@ func (s *AccountServer) GetAllAccounts(ctx context.Context, _ *pb.GetAllAccounts
 			AccountType:      a.accountType,
 			CurrencyCode:     currencyMap[a.currencyID],
 			AvailableBalance: a.availableBalance,
+			AccountSubtype:   a.accountSubtype,
 		})
 	}
 	return &pb.GetAllAccountsResponse{Accounts: items}, nil
 }
 
-// accountTypeCode maps account type string to 2-digit code used in account number generation.
+// accountTypeCode maps account category to 2-digit code used in account number generation.
 func accountTypeCode(accountType string) string {
 	switch accountType {
-	case "CURRENT":
+	case "personal":
 		return "01"
-	case "SAVINGS":
-		return "02"
-	case "FOREIGN_CURRENCY":
-		return "03"
-	case "BUSINESS":
+	case "business":
 		return "04"
 	default:
-		return "00"
+		return "01"
 	}
 }
 
@@ -273,9 +285,9 @@ func (s *AccountServer) CreateAccount(ctx context.Context, req *pb.CreateAccount
 	// 4. Set expiration date 5 years from now
 	expirationDate := time.Now().AddDate(5, 0, 0).Format("2006-01-02")
 
-	// 5. Resolve company for BUSINESS accounts
+	// 5. Resolve company for business accounts
 	var companyID *int64
-	if req.AccountType == "BUSINESS" && req.CompanyData != nil && req.CompanyData.Name != "" {
+	if req.AccountType == "business" && req.CompanyData != nil && req.CompanyData.Name != "" {
 		var cid int64
 		err = s.DB.QueryRowContext(ctx,
 			`SELECT id FROM companies WHERE registration_number = $1`,
@@ -310,8 +322,8 @@ func (s *AccountServer) CreateAccount(ctx context.Context, req *pb.CreateAccount
 	err = s.DB.QueryRowContext(ctx,
 		`INSERT INTO accounts
 			(account_number, account_name, owner_id, employee_id, currency_id,
-			 account_type, status, balance, available_balance, expiration_date, company_id)
-		VALUES ($1, $2, $3, $4, $5, $6, 'ACTIVE', $7, $7, $8, $9)
+			 account_type, account_subtype, status, balance, available_balance, expiration_date, company_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, 'ACTIVE', $8, $8, $9, $10)
 		RETURNING id, created_date`,
 		accountNumber,
 		req.AccountName,
@@ -319,6 +331,7 @@ func (s *AccountServer) CreateAccount(ctx context.Context, req *pb.CreateAccount
 		req.EmployeeId,
 		currencyID,
 		req.AccountType,
+		req.AccountSubtype,
 		req.InitialBalance,
 		expirationDate,
 		companyID,
@@ -357,4 +370,65 @@ func (s *AccountServer) CreateAccount(ctx context.Context, req *pb.CreateAccount
 			CreatedDate:      createdDate,
 		},
 	}, nil
+}
+
+func (s *AccountServer) UpdateAccountLimits(ctx context.Context, req *pb.UpdateAccountLimitsRequest) (*pb.UpdateAccountLimitsResponse, error) {
+	var res sql.Result
+	var err error
+	if req.OwnerId == 0 {
+		// Employee / admin call — no ownership check
+		res, err = s.DB.ExecContext(ctx,
+			`UPDATE accounts SET daily_limit = $1, monthly_limit = $2 WHERE id = $3`,
+			req.DailyLimit, req.MonthlyLimit, req.AccountId,
+		)
+	} else {
+		res, err = s.DB.ExecContext(ctx,
+			`UPDATE accounts SET daily_limit = $1, monthly_limit = $2 WHERE id = $3 AND owner_id = $4`,
+			req.DailyLimit, req.MonthlyLimit, req.AccountId, req.OwnerId,
+		)
+	}
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to update limits: %v", err)
+	}
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		return nil, status.Errorf(codes.NotFound, "account not found or access denied")
+	}
+	return &pb.UpdateAccountLimitsResponse{}, nil
+}
+
+func (s *AccountServer) GetBankAccounts(ctx context.Context, _ *pb.GetBankAccountsRequest) (*pb.GetBankAccountsResponse, error) {
+	rows, err := s.DB.QueryContext(ctx, `
+		SELECT account_number, account_name, balance, available_balance, currency_id
+		FROM accounts
+		WHERE owner_id = 0 AND account_type = 'BANK'
+		ORDER BY currency_id`)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to query bank accounts: %v", err)
+	}
+	defer rows.Close()
+
+	var accounts []*pb.BankAccountItem
+	for rows.Next() {
+		var a pb.BankAccountItem
+		var currencyID int64
+		if err := rows.Scan(&a.AccountNumber, &a.AccountName, &a.Balance, &a.AvailableBalance, &currencyID); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to scan bank account: %v", err)
+		}
+		_ = s.ExchangeDB.QueryRowContext(ctx, `SELECT code FROM currencies WHERE id = $1`, currencyID).Scan(&a.CurrencyCode)
+		accounts = append(accounts, &a)
+	}
+	return &pb.GetBankAccountsResponse{Accounts: accounts}, nil
+}
+
+func (s *AccountServer) DeleteAccount(ctx context.Context, req *pb.DeleteAccountRequest) (*pb.DeleteAccountResponse, error) {
+	res, err := s.DB.ExecContext(ctx, `DELETE FROM accounts WHERE id = $1`, req.AccountId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to delete account: %v", err)
+	}
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		return nil, status.Errorf(codes.NotFound, "account not found")
+	}
+	return &pb.DeleteAccountResponse{}, nil
 }

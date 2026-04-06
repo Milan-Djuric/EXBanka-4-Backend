@@ -31,6 +31,12 @@ func (m *mockEmailClient) SendPasswordConfirmationEmail(_ context.Context, _ *pb
 func (m *mockEmailClient) SendAccountCreatedEmail(_ context.Context, _ *pb_email.SendAccountCreatedEmailRequest, _ ...grpc.CallOption) (*pb_email.SendAccountCreatedEmailResponse, error) {
 	return &pb_email.SendAccountCreatedEmailResponse{}, m.err
 }
+func (m *mockEmailClient) SendCardConfirmationEmail(_ context.Context, _ *pb_email.SendCardConfirmationEmailRequest, _ ...grpc.CallOption) (*pb_email.SendCardConfirmationEmailResponse, error) {
+	return &pb_email.SendCardConfirmationEmailResponse{}, m.err
+}
+func (m *mockEmailClient) SendLoanLatePaymentEmail(_ context.Context, _ *pb_email.SendLoanLatePaymentEmailRequest, _ ...grpc.CallOption) (*pb_email.SendLoanLatePaymentEmailResponse, error) {
+	return &pb_email.SendLoanLatePaymentEmailResponse{}, m.err
+}
 
 func newServer(t *testing.T) (*AccountServer, sqlmock.Sqlmock, sqlmock.Sqlmock, sqlmock.Sqlmock) {
 	t.Helper()
@@ -49,12 +55,10 @@ func newServer(t *testing.T) (*AccountServer, sqlmock.Sqlmock, sqlmock.Sqlmock, 
 
 func TestAccountTypeCode(t *testing.T) {
 	cases := map[string]string{
-		"CURRENT":          "01",
-		"SAVINGS":          "02",
-		"FOREIGN_CURRENCY": "03",
-		"BUSINESS":         "04",
-		"OTHER":            "00",
-		"":                 "00",
+		"personal": "01",
+		"business": "04",
+		"OTHER":    "01",
+		"":         "01",
 	}
 	for input, want := range cases {
 		assert.Equal(t, want, accountTypeCode(input), "accountTypeCode(%q)", input)
@@ -113,8 +117,8 @@ func TestGetAccount_NotFound(t *testing.T) {
 func TestGetAccount_WrongOwner(t *testing.T) {
 	s, dbMock, _, _ := newServer(t)
 	dbMock.ExpectQuery("SELECT").WillReturnRows(
-		sqlmock.NewRows([]string{"id", "account_name", "account_number", "owner_id", "balance", "available_balance", "reserved_funds", "currency_id", "status", "account_type", "daily_limit", "monthly_limit", "daily_spent", "monthly_spent"}).
-			AddRow(int64(1), "Racun", "265000100000000101", int64(99), float64(500), float64(500), float64(0), int64(1), "ACTIVE", "CURRENT", float64(0), float64(0), float64(0), float64(0)),
+		sqlmock.NewRows([]string{"id", "account_name", "account_number", "owner_id", "balance", "available_balance", "reserved_funds", "currency_id", "status", "account_type", "account_subtype", "daily_limit", "monthly_limit", "daily_spent", "monthly_spent", "company_id"}).
+			AddRow(int64(1), "Racun", "265000100000000101", int64(99), float64(500), float64(500), float64(0), int64(1), "ACTIVE", "personal", "", float64(0), float64(0), float64(0), float64(0), nil),
 	)
 
 	_, err := s.GetAccount(context.Background(), &pb.GetAccountRequest{AccountId: 1, OwnerId: 1})
@@ -125,8 +129,8 @@ func TestGetAccount_WrongOwner(t *testing.T) {
 func TestGetAccount_HappyPath(t *testing.T) {
 	s, dbMock, clientMock, exchangeMock := newServer(t)
 	dbMock.ExpectQuery("SELECT").WillReturnRows(
-		sqlmock.NewRows([]string{"id", "account_name", "account_number", "owner_id", "balance", "available_balance", "reserved_funds", "currency_id", "status", "account_type", "daily_limit", "monthly_limit", "daily_spent", "monthly_spent"}).
-			AddRow(int64(1), "Racun", "265000100000000101", int64(5), float64(1000), float64(900), float64(100), int64(1), "ACTIVE", "CURRENT", float64(1000), float64(5000), float64(100), float64(200)),
+		sqlmock.NewRows([]string{"id", "account_name", "account_number", "owner_id", "balance", "available_balance", "reserved_funds", "currency_id", "status", "account_type", "account_subtype", "daily_limit", "monthly_limit", "daily_spent", "monthly_spent", "company_id"}).
+			AddRow(int64(1), "Racun", "265000100000000101", int64(5), float64(1000), float64(900), float64(100), int64(1), "ACTIVE", "personal", "", float64(1000), float64(5000), float64(100), float64(200), nil),
 	)
 	exchangeMock.ExpectQuery("SELECT code").WillReturnRows(sqlmock.NewRows([]string{"code"}).AddRow("RSD"))
 	clientMock.ExpectQuery("SELECT first_name").WillReturnRows(sqlmock.NewRows([]string{"first_name", "last_name"}).AddRow("Ana", "Anic"))
@@ -209,8 +213,8 @@ func TestGetAllAccounts_DBError(t *testing.T) {
 func TestGetAllAccounts_HappyPath(t *testing.T) {
 	s, dbMock, clientMock, exchangeMock := newServer(t)
 	dbMock.ExpectQuery("SELECT").WillReturnRows(
-		sqlmock.NewRows([]string{"id", "account_number", "account_name", "owner_id", "account_type", "currency_id", "available_balance"}).
-			AddRow(int64(1), "265000100000000101", "Racun 1", int64(5), "CURRENT", int64(1), float64(1000)),
+		sqlmock.NewRows([]string{"id", "account_number", "account_name", "owner_id", "account_type", "currency_id", "available_balance", "account_subtype"}).
+			AddRow(int64(1), "265000100000000101", "Racun 1", int64(5), "personal", int64(1), float64(1000), ""),
 	)
 	exchangeMock.ExpectQuery("SELECT code").WillReturnRows(sqlmock.NewRows([]string{"code"}).AddRow("RSD"))
 	clientMock.ExpectQuery("SELECT first_name").WillReturnRows(sqlmock.NewRows([]string{"first_name", "last_name"}).AddRow("Ana", "Anic"))
@@ -291,7 +295,7 @@ func TestCreateAccount_HappyPath_Business_NewCompany(t *testing.T) {
 	)
 
 	resp, err := s.CreateAccount(context.Background(), &pb.CreateAccountRequest{
-		ClientId: 1, EmployeeId: 2, CurrencyCode: "RSD", AccountType: "BUSINESS",
+		ClientId: 1, EmployeeId: 2, CurrencyCode: "RSD", AccountType: "business",
 		AccountName: "Poslovni racun",
 		CompanyData: &pb.CompanyData{
 			Name: "Firma DOO", RegistrationNumber: "12345678", Pib: "987654321",
@@ -299,7 +303,7 @@ func TestCreateAccount_HappyPath_Business_NewCompany(t *testing.T) {
 		},
 	})
 	require.NoError(t, err)
-	assert.Equal(t, "BUSINESS", resp.Account.AccountType)
+	assert.Equal(t, "business", resp.Account.AccountType)
 }
 
 func TestCreateAccount_HappyPath_Business_ExistingCompany(t *testing.T) {
@@ -320,14 +324,14 @@ func TestCreateAccount_HappyPath_Business_ExistingCompany(t *testing.T) {
 	)
 
 	resp, err := s.CreateAccount(context.Background(), &pb.CreateAccountRequest{
-		ClientId: 1, EmployeeId: 2, CurrencyCode: "RSD", AccountType: "BUSINESS",
+		ClientId: 1, EmployeeId: 2, CurrencyCode: "RSD", AccountType: "business",
 		AccountName: "Drugi poslovni",
 		CompanyData: &pb.CompanyData{
 			Name: "Firma DOO", RegistrationNumber: "12345678",
 		},
 	})
 	require.NoError(t, err)
-	assert.Equal(t, "BUSINESS", resp.Account.AccountType)
+	assert.Equal(t, "business", resp.Account.AccountType)
 }
 
 // ---- Additional DB error coverage ----
@@ -472,5 +476,139 @@ func TestCreateAccount_EmailError_DoesNotFail(t *testing.T) {
 		ClientId: 1, CurrencyCode: "RSD", AccountType: "CURRENT", AccountName: "Test",
 	})
 	require.NoError(t, err, "email error must not fail the request")
+	assert.NotNil(t, resp)
+}
+
+// ---- UpdateAccountLimits ----
+
+func TestUpdateAccountLimits_AdminCall_DBError(t *testing.T) {
+	s, dbMock, _, _ := newServer(t)
+	dbMock.ExpectExec(`UPDATE accounts SET daily_limit`).WillReturnError(sql.ErrConnDone)
+	_, err := s.UpdateAccountLimits(context.Background(), &pb.UpdateAccountLimitsRequest{
+		AccountId: 1, OwnerId: 0, DailyLimit: 1000, MonthlyLimit: 5000,
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestUpdateAccountLimits_AdminCall_NotFound(t *testing.T) {
+	s, dbMock, _, _ := newServer(t)
+	dbMock.ExpectExec(`UPDATE accounts SET daily_limit`).WillReturnResult(sqlmock.NewResult(0, 0))
+	_, err := s.UpdateAccountLimits(context.Background(), &pb.UpdateAccountLimitsRequest{
+		AccountId: 99, OwnerId: 0, DailyLimit: 1000, MonthlyLimit: 5000,
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.NotFound, status.Code(err))
+}
+
+func TestUpdateAccountLimits_AdminCall_Happy(t *testing.T) {
+	s, dbMock, _, _ := newServer(t)
+	dbMock.ExpectExec(`UPDATE accounts SET daily_limit`).WillReturnResult(sqlmock.NewResult(1, 1))
+	resp, err := s.UpdateAccountLimits(context.Background(), &pb.UpdateAccountLimitsRequest{
+		AccountId: 1, OwnerId: 0, DailyLimit: 1000, MonthlyLimit: 5000,
+	})
+	require.NoError(t, err)
+	assert.NotNil(t, resp)
+}
+
+func TestUpdateAccountLimits_ClientCall_DBError(t *testing.T) {
+	s, dbMock, _, _ := newServer(t)
+	dbMock.ExpectExec(`UPDATE accounts SET daily_limit`).WillReturnError(sql.ErrConnDone)
+	_, err := s.UpdateAccountLimits(context.Background(), &pb.UpdateAccountLimitsRequest{
+		AccountId: 1, OwnerId: 42, DailyLimit: 500, MonthlyLimit: 2000,
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestUpdateAccountLimits_ClientCall_NotFound(t *testing.T) {
+	s, dbMock, _, _ := newServer(t)
+	dbMock.ExpectExec(`UPDATE accounts SET daily_limit`).WillReturnResult(sqlmock.NewResult(0, 0))
+	_, err := s.UpdateAccountLimits(context.Background(), &pb.UpdateAccountLimitsRequest{
+		AccountId: 99, OwnerId: 42, DailyLimit: 500, MonthlyLimit: 2000,
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.NotFound, status.Code(err))
+}
+
+func TestUpdateAccountLimits_ClientCall_Happy(t *testing.T) {
+	s, dbMock, _, _ := newServer(t)
+	dbMock.ExpectExec(`UPDATE accounts SET daily_limit`).WillReturnResult(sqlmock.NewResult(1, 1))
+	resp, err := s.UpdateAccountLimits(context.Background(), &pb.UpdateAccountLimitsRequest{
+		AccountId: 1, OwnerId: 42, DailyLimit: 500, MonthlyLimit: 2000,
+	})
+	require.NoError(t, err)
+	assert.NotNil(t, resp)
+}
+
+// ---- GetBankAccounts ----
+
+func TestGetBankAccounts_DBError(t *testing.T) {
+	s, dbMock, _, _ := newServer(t)
+	dbMock.ExpectQuery(`SELECT account_number`).WillReturnError(sql.ErrConnDone)
+	_, err := s.GetBankAccounts(context.Background(), &pb.GetBankAccountsRequest{})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestGetBankAccounts_ScanError(t *testing.T) {
+	s, dbMock, _, _ := newServer(t)
+	// Return only 1 column, but Scan expects 5 — causes scan error
+	dbMock.ExpectQuery(`SELECT account_number`).WillReturnRows(
+		sqlmock.NewRows([]string{"account_number"}).AddRow("265000000000000001"),
+	)
+	_, err := s.GetBankAccounts(context.Background(), &pb.GetBankAccountsRequest{})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestGetBankAccounts_Empty(t *testing.T) {
+	s, dbMock, _, _ := newServer(t)
+	dbMock.ExpectQuery(`SELECT account_number`).WillReturnRows(
+		sqlmock.NewRows([]string{"account_number", "account_name", "balance", "available_balance", "currency_id"}),
+	)
+	resp, err := s.GetBankAccounts(context.Background(), &pb.GetBankAccountsRequest{})
+	require.NoError(t, err)
+	assert.Empty(t, resp.Accounts)
+}
+
+func TestGetBankAccounts_Happy(t *testing.T) {
+	s, dbMock, _, exchangeMock := newServer(t)
+	dbMock.ExpectQuery(`SELECT account_number`).WillReturnRows(
+		sqlmock.NewRows([]string{"account_number", "account_name", "balance", "available_balance", "currency_id"}).
+			AddRow("265000000000000001", "EUR Bank", float64(1000000), float64(1000000), int64(2)),
+	)
+	exchangeMock.ExpectQuery(`SELECT code FROM currencies`).WillReturnRows(
+		sqlmock.NewRows([]string{"code"}).AddRow("EUR"),
+	)
+	resp, err := s.GetBankAccounts(context.Background(), &pb.GetBankAccountsRequest{})
+	require.NoError(t, err)
+	require.Len(t, resp.Accounts, 1)
+	assert.Equal(t, "EUR", resp.Accounts[0].CurrencyCode)
+}
+
+// ---- DeleteAccount ----
+
+func TestDeleteAccount_DBError(t *testing.T) {
+	s, dbMock, _, _ := newServer(t)
+	dbMock.ExpectExec(`DELETE FROM accounts`).WillReturnError(sql.ErrConnDone)
+	_, err := s.DeleteAccount(context.Background(), &pb.DeleteAccountRequest{AccountId: 1})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestDeleteAccount_NotFound(t *testing.T) {
+	s, dbMock, _, _ := newServer(t)
+	dbMock.ExpectExec(`DELETE FROM accounts`).WillReturnResult(sqlmock.NewResult(0, 0))
+	_, err := s.DeleteAccount(context.Background(), &pb.DeleteAccountRequest{AccountId: 99})
+	require.Error(t, err)
+	assert.Equal(t, codes.NotFound, status.Code(err))
+}
+
+func TestDeleteAccount_Happy(t *testing.T) {
+	s, dbMock, _, _ := newServer(t)
+	dbMock.ExpectExec(`DELETE FROM accounts`).WillReturnResult(sqlmock.NewResult(1, 1))
+	resp, err := s.DeleteAccount(context.Background(), &pb.DeleteAccountRequest{AccountId: 1})
+	require.NoError(t, err)
 	assert.NotNil(t, resp)
 }

@@ -3,12 +3,24 @@ package handlers
 import (
 	"context"
 	"database/sql"
+	"strings"
 
 	"github.com/lib/pq"
 	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/employee"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+// containsPermission returns true if perms contains the given permission (case-insensitive).
+func containsPermission(perms []string, perm string) bool {
+	upper := strings.ToUpper(perm)
+	for _, p := range perms {
+		if strings.ToUpper(p) == upper {
+			return true
+		}
+	}
+	return false
+}
 
 type EmployeeServer struct {
 	pb.UnimplementedEmployeeServiceServer
@@ -40,8 +52,8 @@ func (s *EmployeeServer) GetAllEmployees(ctx context.Context, req *pb.GetAllEmpl
 	}
 
 	rows, err := s.DB.QueryContext(ctx, `
-		SELECT id, ime, prezime, datum_rodjenja::text, pol, email,
-		       broj_telefona, adresa, username, pozicija, departman, aktivan, dozvole, jmbg
+		SELECT id, first_name, last_name, date_of_birth::text, gender, email,
+		       phone_number, address, username, position, department, active, permissions, jmbg
 		FROM employees
 		LIMIT $1 OFFSET $2`, limit, offset)
 	if err != nil {
@@ -52,15 +64,15 @@ func (s *EmployeeServer) GetAllEmployees(ctx context.Context, req *pb.GetAllEmpl
 	var employees []*pb.Employee
 	for rows.Next() {
 		var e pb.Employee
-		var dozvole pq.StringArray
+		var permissions pq.StringArray
 		if err := rows.Scan(
-			&e.Id, &e.Ime, &e.Prezime, &e.DatumRodjenja, &e.Pol, &e.Email,
-			&e.BrojTelefona, &e.Adresa, &e.Username, &e.Pozicija,
-			&e.Departman, &e.Aktivan, &dozvole, &e.Jmbg,
+			&e.Id, &e.FirstName, &e.LastName, &e.DateOfBirth, &e.Gender, &e.Email,
+			&e.PhoneNumber, &e.Address, &e.Username, &e.Position,
+			&e.Department, &e.Active, &permissions, &e.Jmbg,
 		); err != nil {
 			return nil, err
 		}
-		e.Dozvole = dozvole
+		e.Permissions = permissions
 		employees = append(employees, &e)
 	}
 	return &pb.GetAllEmployeesResponse{Employees: employees, TotalCount: total}, nil
@@ -72,25 +84,25 @@ func (s *EmployeeServer) SearchEmployees(ctx context.Context, req *pb.SearchEmpl
 	var total int32
 	if err := s.DB.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM employees
-		WHERE ($1 = '' OR email    ILIKE '%' || $1 || '%')
-		  AND ($2 = '' OR ime      ILIKE '%' || $2 || '%')
-		  AND ($3 = '' OR prezime  ILIKE '%' || $3 || '%')
-		  AND ($4 = '' OR pozicija ILIKE '%' || $4 || '%')`,
-		req.Email, req.Ime, req.Prezime, req.Pozicija,
+		WHERE ($1 = '' OR email      ILIKE '%' || $1 || '%')
+		  AND ($2 = '' OR first_name ILIKE '%' || $2 || '%')
+		  AND ($3 = '' OR last_name  ILIKE '%' || $3 || '%')
+		  AND ($4 = '' OR position   ILIKE '%' || $4 || '%')`,
+		req.Email, req.FirstName, req.LastName, req.Position,
 	).Scan(&total); err != nil {
 		return nil, err
 	}
 
 	rows, err := s.DB.QueryContext(ctx, `
-		SELECT id, ime, prezime, datum_rodjenja::text, pol, email,
-		       broj_telefona, adresa, username, pozicija, departman, aktivan, dozvole, jmbg
+		SELECT id, first_name, last_name, date_of_birth::text, gender, email,
+		       phone_number, address, username, position, department, active, permissions, jmbg
 		FROM employees
-		WHERE ($1 = '' OR email    ILIKE '%' || $1 || '%')
-		  AND ($2 = '' OR ime      ILIKE '%' || $2 || '%')
-		  AND ($3 = '' OR prezime  ILIKE '%' || $3 || '%')
-		  AND ($4 = '' OR pozicija ILIKE '%' || $4 || '%')
+		WHERE ($1 = '' OR email      ILIKE '%' || $1 || '%')
+		  AND ($2 = '' OR first_name ILIKE '%' || $2 || '%')
+		  AND ($3 = '' OR last_name  ILIKE '%' || $3 || '%')
+		  AND ($4 = '' OR position   ILIKE '%' || $4 || '%')
 		LIMIT $5 OFFSET $6`,
-		req.Email, req.Ime, req.Prezime, req.Pozicija, limit, offset)
+		req.Email, req.FirstName, req.LastName, req.Position, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -99,15 +111,15 @@ func (s *EmployeeServer) SearchEmployees(ctx context.Context, req *pb.SearchEmpl
 	var employees []*pb.Employee
 	for rows.Next() {
 		var e pb.Employee
-		var dozvole pq.StringArray
+		var permissions pq.StringArray
 		if err := rows.Scan(
-			&e.Id, &e.Ime, &e.Prezime, &e.DatumRodjenja, &e.Pol, &e.Email,
-			&e.BrojTelefona, &e.Adresa, &e.Username, &e.Pozicija,
-			&e.Departman, &e.Aktivan, &dozvole, &e.Jmbg,
+			&e.Id, &e.FirstName, &e.LastName, &e.DateOfBirth, &e.Gender, &e.Email,
+			&e.PhoneNumber, &e.Address, &e.Username, &e.Position,
+			&e.Department, &e.Active, &permissions, &e.Jmbg,
 		); err != nil {
 			return nil, err
 		}
-		e.Dozvole = dozvole
+		e.Permissions = permissions
 		employees = append(employees, &e)
 	}
 	return &pb.SearchEmployeesResponse{Employees: employees, TotalCount: total}, nil
@@ -116,32 +128,32 @@ func (s *EmployeeServer) SearchEmployees(ctx context.Context, req *pb.SearchEmpl
 func (s *EmployeeServer) GetEmployeeCredentials(ctx context.Context, req *pb.GetEmployeeCredentialsRequest) (*pb.GetEmployeeCredentialsResponse, error) {
 	var id int64
 	var passwordHash string
-	var aktivan bool
-	var dozvole pq.StringArray
+	var active bool
+	var permissions pq.StringArray
 	err := s.DB.QueryRowContext(ctx,
-		`SELECT id, password, aktivan, dozvole FROM employees WHERE email = $1`,
+		`SELECT id, password, active, permissions FROM employees WHERE email = $1`,
 		req.Email,
-	).Scan(&id, &passwordHash, &aktivan, &dozvole)
+	).Scan(&id, &passwordHash, &active, &permissions)
 	if err == sql.ErrNoRows {
 		return nil, status.Error(codes.NotFound, "user not found")
 	}
 	if err != nil {
 		return nil, err
 	}
-	return &pb.GetEmployeeCredentialsResponse{Id: id, PasswordHash: passwordHash, Aktivan: aktivan, Dozvole: dozvole}, nil
+	return &pb.GetEmployeeCredentialsResponse{Id: id, PasswordHash: passwordHash, Active: active, Permissions: permissions}, nil
 }
 
 func (s *EmployeeServer) GetEmployeeById(ctx context.Context, req *pb.GetEmployeeByIdRequest) (*pb.GetEmployeeByIdResponse, error) {
 	var e pb.Employee
-	var dozvole pq.StringArray
+	var permissions pq.StringArray
 	err := s.DB.QueryRowContext(ctx, `
-		SELECT id, ime, prezime, datum_rodjenja::text, pol, email,
-		       broj_telefona, adresa, username, pozicija, departman, aktivan, dozvole, jmbg
+		SELECT id, first_name, last_name, date_of_birth::text, gender, email,
+		       phone_number, address, username, position, department, active, permissions, jmbg
 		FROM employees WHERE id = $1`, req.Id,
 	).Scan(
-		&e.Id, &e.Ime, &e.Prezime, &e.DatumRodjenja, &e.Pol, &e.Email,
-		&e.BrojTelefona, &e.Adresa, &e.Username, &e.Pozicija,
-		&e.Departman, &e.Aktivan, &dozvole, &e.Jmbg,
+		&e.Id, &e.FirstName, &e.LastName, &e.DateOfBirth, &e.Gender, &e.Email,
+		&e.PhoneNumber, &e.Address, &e.Username, &e.Position,
+		&e.Department, &e.Active, &permissions, &e.Jmbg,
 	)
 	if err == sql.ErrNoRows {
 		return nil, status.Error(codes.NotFound, "employee not found")
@@ -149,13 +161,51 @@ func (s *EmployeeServer) GetEmployeeById(ctx context.Context, req *pb.GetEmploye
 	if err != nil {
 		return nil, err
 	}
-	e.Dozvole = dozvole
+	e.Permissions = permissions
 	return &pb.GetEmployeeByIdResponse{Employee: &e}, nil
 }
 
 func (s *EmployeeServer) UpdateEmployee(ctx context.Context, req *pb.UpdateEmployeeRequest) (*pb.UpdateEmployeeResponse, error) {
-	// Activating an employee requires a password to be set first.
-	if req.Aktivan {
+	// --- Permission validation (#143) ---
+	hasAgent, hasSupervisor, hasAdmin := false, false, false
+	for _, p := range req.Permissions {
+		switch strings.ToUpper(p) {
+		case "AGENT":
+			hasAgent = true
+		case "SUPERVISOR":
+			hasSupervisor = true
+		case "ADMIN":
+			hasAdmin = true
+		}
+	}
+	if hasAgent && hasSupervisor {
+		return nil, status.Error(codes.InvalidArgument, "employee cannot have both AGENT and SUPERVISOR")
+	}
+	// Spec: Admin → automatically also Supervisor
+	if hasAdmin && !hasSupervisor {
+		req.Permissions = append(req.Permissions, "SUPERVISOR")
+		hasSupervisor = true
+	}
+
+	// Spec: Admin cannot edit another admin
+	var targetPerms pq.StringArray
+	err := s.DB.QueryRowContext(ctx, `SELECT permissions FROM employees WHERE id = $1`, req.Id).Scan(&targetPerms)
+	if err == sql.ErrNoRows {
+		return nil, status.Error(codes.NotFound, "employee not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+	if containsPermission(targetPerms, "ADMIN") {
+		return nil, status.Error(codes.PermissionDenied, "admins cannot be edited by other admins")
+	}
+
+	// Track old actuary roles for actuary_info sync (#144)
+	hadAgent := containsPermission(targetPerms, "AGENT")
+	hadSupervisor := containsPermission(targetPerms, "SUPERVISOR")
+
+	// --- Active check ---
+	if req.Active {
 		var pwd string
 		err := s.DB.QueryRowContext(ctx, `SELECT password FROM employees WHERE id = $1`, req.Id).Scan(&pwd)
 		if err == sql.ErrNoRows {
@@ -170,22 +220,22 @@ func (s *EmployeeServer) UpdateEmployee(ctx context.Context, req *pb.UpdateEmplo
 	}
 
 	var e pb.Employee
-	var dozvole pq.StringArray
-	err := s.DB.QueryRowContext(ctx, `
+	var permissions pq.StringArray
+	err = s.DB.QueryRowContext(ctx, `
 		UPDATE employees
-		SET ime=$2, prezime=$3, datum_rodjenja=$4::date, pol=$5, email=$6,
-		    broj_telefona=$7, adresa=$8, username=$9, pozicija=$10,
-		    departman=$11, aktivan=$12, dozvole=$13, jmbg=$14
+		SET first_name=$2, last_name=$3, date_of_birth=$4::date, gender=$5, email=$6,
+		    phone_number=$7, address=$8, username=$9, position=$10,
+		    department=$11, active=$12, permissions=$13, jmbg=$14
 		WHERE id=$1
-		RETURNING id, ime, prezime, datum_rodjenja::text, pol, email,
-		          broj_telefona, adresa, username, pozicija, departman, aktivan, dozvole, jmbg`,
-		req.Id, req.Ime, req.Prezime, req.DatumRodjenja, req.Pol, req.Email,
-		req.BrojTelefona, req.Adresa, req.Username, req.Pozicija,
-		req.Departman, req.Aktivan, pq.StringArray(req.Dozvole), req.Jmbg,
+		RETURNING id, first_name, last_name, date_of_birth::text, gender, email,
+		          phone_number, address, username, position, department, active, permissions, jmbg`,
+		req.Id, req.FirstName, req.LastName, req.DateOfBirth, req.Gender, req.Email,
+		req.PhoneNumber, req.Address, req.Username, req.Position,
+		req.Department, req.Active, pq.StringArray(req.Permissions), req.Jmbg,
 	).Scan(
-		&e.Id, &e.Ime, &e.Prezime, &e.DatumRodjenja, &e.Pol, &e.Email,
-		&e.BrojTelefona, &e.Adresa, &e.Username, &e.Pozicija,
-		&e.Departman, &e.Aktivan, &dozvole, &e.Jmbg,
+		&e.Id, &e.FirstName, &e.LastName, &e.DateOfBirth, &e.Gender, &e.Email,
+		&e.PhoneNumber, &e.Address, &e.Username, &e.Position,
+		&e.Department, &e.Active, &permissions, &e.Jmbg,
 	)
 	if err == sql.ErrNoRows {
 		return nil, status.Error(codes.NotFound, "employee not found")
@@ -203,24 +253,41 @@ func (s *EmployeeServer) UpdateEmployee(ctx context.Context, req *pb.UpdateEmplo
 		}
 		return nil, err
 	}
-	e.Dozvole = dozvole
+	e.Permissions = permissions
+
+	// --- Sync actuary_info (#144) ---
+	// If employee gained AGENT or SUPERVISOR for the first time → insert row
+	willHaveAgent := hasAgent
+	willHaveSupervisor := hasSupervisor
+	if (!hadAgent && willHaveAgent) || (!hadSupervisor && willHaveSupervisor) {
+		if !hadAgent && !hadSupervisor {
+			_, _ = s.DB.ExecContext(ctx,
+				`INSERT INTO actuary_info (employee_id) VALUES ($1) ON CONFLICT DO NOTHING`,
+				req.Id)
+		}
+	}
+	// If employee lost both AGENT and SUPERVISOR → delete row
+	if (hadAgent || hadSupervisor) && !willHaveAgent && !willHaveSupervisor {
+		_, _ = s.DB.ExecContext(ctx, `DELETE FROM actuary_info WHERE employee_id = $1`, req.Id)
+	}
+
 	return &pb.UpdateEmployeeResponse{Employee: &e}, nil
 }
 
 func (s *EmployeeServer) ActivateEmployee(ctx context.Context, req *pb.ActivateEmployeeRequest) (*pb.ActivateEmployeeResponse, error) {
-	var aktivan bool
+	var active bool
 	var pwd string
-	err := s.DB.QueryRowContext(ctx, `SELECT aktivan, password FROM employees WHERE id = $1`, req.EmployeeId).Scan(&aktivan, &pwd)
+	err := s.DB.QueryRowContext(ctx, `SELECT active, password FROM employees WHERE id = $1`, req.EmployeeId).Scan(&active, &pwd)
 	if err == sql.ErrNoRows {
 		return nil, status.Error(codes.NotFound, "employee not found")
 	}
 	if err != nil {
 		return nil, err
 	}
-	if aktivan || pwd != "" {
+	if active || pwd != "" {
 		return nil, status.Error(codes.FailedPrecondition, "employee already activated")
 	}
-	_, err = s.DB.ExecContext(ctx, `UPDATE employees SET password = $2, aktivan = true WHERE id = $1`, req.EmployeeId, req.PasswordHash)
+	_, err = s.DB.ExecContext(ctx, `UPDATE employees SET password = $2, active = true WHERE id = $1`, req.EmployeeId, req.PasswordHash)
 	if err != nil {
 		return nil, err
 	}
@@ -231,7 +298,7 @@ func (s *EmployeeServer) GetEmployeeByEmail(ctx context.Context, req *pb.GetEmpl
 	var id int64
 	var firstName, email string
 	err := s.DB.QueryRowContext(ctx,
-		`SELECT id, ime, email FROM employees WHERE email = $1`,
+		`SELECT id, first_name, email FROM employees WHERE email = $1`,
 		req.Email,
 	).Scan(&id, &firstName, &email)
 	if err == sql.ErrNoRows {
@@ -265,12 +332,12 @@ func (s *EmployeeServer) CreateEmployee(ctx context.Context, req *pb.CreateEmplo
 	var id int64
 	err := s.DB.QueryRowContext(ctx, `
 		INSERT INTO employees
-			(ime, prezime, datum_rodjenja, pol, email, broj_telefona, adresa, username,
-			 password, pozicija, departman, aktivan, dozvole, jmbg)
+			(first_name, last_name, date_of_birth, gender, email, phone_number, address, username,
+			 password, position, department, active, permissions, jmbg)
 		VALUES ($1, $2, $3::date, $4, $5, $6, $7, $8, '', $9, $10, false, '{}', $11)
 		RETURNING id`,
-		req.Ime, req.Prezime, req.DatumRodjenja, req.Pol, req.Email,
-		req.BrojTelefona, req.Adresa, req.Username, req.Pozicija, req.Departman, req.Jmbg,
+		req.FirstName, req.LastName, req.DateOfBirth, req.Gender, req.Email,
+		req.PhoneNumber, req.Address, req.Username, req.Position, req.Department, req.Jmbg,
 	).Scan(&id)
 	if err != nil {
 		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
@@ -287,20 +354,134 @@ func (s *EmployeeServer) CreateEmployee(ctx context.Context, req *pb.CreateEmplo
 	}
 	return &pb.CreateEmployeeResponse{
 		Employee: &pb.Employee{
-			Id:            id,
-			Ime:           req.Ime,
-			Prezime:       req.Prezime,
-			DatumRodjenja: req.DatumRodjenja,
-			Pol:           req.Pol,
-			Email:         req.Email,
-			BrojTelefona:  req.BrojTelefona,
-			Adresa:        req.Adresa,
-			Username:      req.Username,
-			Pozicija:      req.Pozicija,
-			Departman:     req.Departman,
-			Aktivan:       false,
-			Dozvole:       []string{},
-			Jmbg:          req.Jmbg,
+			Id:          id,
+			FirstName:   req.FirstName,
+			LastName:    req.LastName,
+			DateOfBirth: req.DateOfBirth,
+			Gender:      req.Gender,
+			Email:       req.Email,
+			PhoneNumber: req.PhoneNumber,
+			Address:     req.Address,
+			Username:    req.Username,
+			Position:    req.Position,
+			Department:  req.Department,
+			Active:      false,
+			Permissions: []string{},
+			Jmbg:        req.Jmbg,
 		},
 	}, nil
+}
+
+// --- Actuary management handlers (issues #144–#145) ---
+
+func (s *EmployeeServer) GetActuaries(ctx context.Context, req *pb.GetActuariesRequest) (*pb.GetActuariesResponse, error) {
+	rows, err := s.DB.QueryContext(ctx, `
+		SELECT e.id, e.first_name, e.last_name, e.email, e.position,
+		       a.limit_amount, a.used_limit, a.need_approval
+		FROM employees e
+		JOIN actuary_info a ON a.employee_id = e.id
+		WHERE 'AGENT' = ANY(e.permissions)
+		  AND ($1 = '' OR e.email      ILIKE '%' || $1 || '%')
+		  AND ($2 = '' OR e.first_name ILIKE '%' || $2 || '%')
+		  AND ($3 = '' OR e.last_name  ILIKE '%' || $3 || '%')
+		  AND ($4 = '' OR e.position   ILIKE '%' || $4 || '%')
+		ORDER BY e.last_name, e.first_name`,
+		req.Email, req.FirstName, req.LastName, req.Position,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var actuaries []*pb.ActuaryInfo
+	for rows.Next() {
+		var a pb.ActuaryInfo
+		if err := rows.Scan(&a.EmployeeId, &a.FirstName, &a.LastName, &a.Email, &a.Position,
+			&a.LimitAmount, &a.UsedLimit, &a.NeedApproval); err != nil {
+			return nil, err
+		}
+		actuaries = append(actuaries, &a)
+	}
+	if actuaries == nil {
+		actuaries = []*pb.ActuaryInfo{}
+	}
+	return &pb.GetActuariesResponse{Actuaries: actuaries}, nil
+}
+
+func (s *EmployeeServer) SetAgentLimit(ctx context.Context, req *pb.SetAgentLimitRequest) (*pb.SetAgentLimitResponse, error) {
+	if req.LimitAmount < 0 {
+		return nil, status.Error(codes.InvalidArgument, "limit must be non-negative")
+	}
+	// Verify the employee is an agent
+	var perms pq.StringArray
+	err := s.DB.QueryRowContext(ctx, `SELECT permissions FROM employees WHERE id = $1`, req.EmployeeId).Scan(&perms)
+	if err == sql.ErrNoRows {
+		return nil, status.Error(codes.NotFound, "employee not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+	if !containsPermission(perms, "AGENT") {
+		return nil, status.Error(codes.InvalidArgument, "employee is not an agent")
+	}
+	res, err := s.DB.ExecContext(ctx,
+		`UPDATE actuary_info SET limit_amount = $2 WHERE employee_id = $1`,
+		req.EmployeeId, req.LimitAmount)
+	if err != nil {
+		return nil, err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return nil, status.Error(codes.NotFound, "actuary info not found")
+	}
+	return &pb.SetAgentLimitResponse{}, nil
+}
+
+func (s *EmployeeServer) ResetAgentUsedLimit(ctx context.Context, req *pb.ResetAgentUsedLimitRequest) (*pb.ResetAgentUsedLimitResponse, error) {
+	// Verify the employee is an agent
+	var perms pq.StringArray
+	err := s.DB.QueryRowContext(ctx, `SELECT permissions FROM employees WHERE id = $1`, req.EmployeeId).Scan(&perms)
+	if err == sql.ErrNoRows {
+		return nil, status.Error(codes.NotFound, "employee not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+	if !containsPermission(perms, "AGENT") {
+		return nil, status.Error(codes.InvalidArgument, "employee is not an agent")
+	}
+	res, err := s.DB.ExecContext(ctx,
+		`UPDATE actuary_info SET used_limit = 0 WHERE employee_id = $1`,
+		req.EmployeeId)
+	if err != nil {
+		return nil, err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return nil, status.Error(codes.NotFound, "actuary info not found")
+	}
+	return &pb.ResetAgentUsedLimitResponse{}, nil
+}
+
+func (s *EmployeeServer) SetNeedApproval(ctx context.Context, req *pb.SetNeedApprovalRequest) (*pb.SetNeedApprovalResponse, error) {
+	// Verify the employee is an agent
+	var perms pq.StringArray
+	err := s.DB.QueryRowContext(ctx, `SELECT permissions FROM employees WHERE id = $1`, req.EmployeeId).Scan(&perms)
+	if err == sql.ErrNoRows {
+		return nil, status.Error(codes.NotFound, "employee not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+	if !containsPermission(perms, "AGENT") {
+		return nil, status.Error(codes.InvalidArgument, "employee is not an agent")
+	}
+	res, err := s.DB.ExecContext(ctx,
+		`UPDATE actuary_info SET need_approval = $2 WHERE employee_id = $1`,
+		req.EmployeeId, req.NeedApproval)
+	if err != nil {
+		return nil, err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return nil, status.Error(codes.NotFound, "actuary info not found")
+	}
+	return &pb.SetNeedApprovalResponse{}, nil
 }

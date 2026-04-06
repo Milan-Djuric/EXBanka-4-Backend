@@ -180,6 +180,7 @@ func GetPaymentRecipients(paymentClient pb.PaymentServiceClient) gin.HandlerFunc
 			ClientID      int64  `json:"clientId"`
 			Name          string `json:"name"`
 			AccountNumber string `json:"accountNumber"`
+			Order         int32  `json:"order"`
 		}
 		result := make([]recipientJSON, 0, len(resp.Recipients))
 		for _, r := range resp.Recipients {
@@ -188,9 +189,37 @@ func GetPaymentRecipients(paymentClient pb.PaymentServiceClient) gin.HandlerFunc
 				ClientID:      r.ClientId,
 				Name:          r.Name,
 				AccountNumber: r.AccountNumber,
+				Order:         r.Order,
 			})
 		}
 		c.JSON(http.StatusOK, result)
+	}
+}
+
+func ReorderPaymentRecipients(paymentClient pb.PaymentServiceClient) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		clientID, err := middleware.GetUserIDFromToken(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "could not extract identity from token"})
+			return
+		}
+		var req struct {
+			OrderedIDs []int64 `json:"orderedIds" binding:"required"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+		defer cancel()
+		if _, err := paymentClient.ReorderPaymentRecipients(ctx, &pb.ReorderPaymentRecipientsRequest{
+			ClientId:   clientID,
+			OrderedIds: req.OrderedIDs,
+		}); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.Status(http.StatusNoContent)
 	}
 }
 
@@ -323,6 +352,7 @@ func GetPaymentById(paymentClient pb.PaymentServiceClient) gin.HandlerFunc {
 			"purpose":         p.Purpose,
 			"timestamp":       p.Timestamp,
 			"status":          p.Status,
+			"currency":        p.Currency,
 		})
 	}
 }
@@ -352,6 +382,8 @@ func GetPayments(paymentClient pb.PaymentServiceClient) gin.HandlerFunc {
 
 		amountMin, _ := strconv.ParseFloat(c.Query("amount_min"), 64)
 		amountMax, _ := strconv.ParseFloat(c.Query("amount_max"), 64)
+		limit, _ := strconv.ParseInt(c.Query("limit"), 10, 32)
+		offset, _ := strconv.ParseInt(c.Query("offset"), 10, 32)
 
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 		defer cancel()
@@ -363,6 +395,8 @@ func GetPayments(paymentClient pb.PaymentServiceClient) gin.HandlerFunc {
 			AmountMin: amountMin,
 			AmountMax: amountMax,
 			Status:    c.Query("status"),
+			Limit:     int32(limit),
+			Offset:    int32(offset),
 		})
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -385,6 +419,7 @@ func GetPayments(paymentClient pb.PaymentServiceClient) gin.HandlerFunc {
 			Purpose         string  `json:"purpose"`
 			Timestamp       string  `json:"timestamp"`
 			Status          string  `json:"status"`
+			Currency        string  `json:"currency"`
 		}
 		result := make([]paymentJSON, 0, len(resp.Payments))
 		for _, p := range resp.Payments {
@@ -404,6 +439,7 @@ func GetPayments(paymentClient pb.PaymentServiceClient) gin.HandlerFunc {
 				Purpose:         p.Purpose,
 				Timestamp:       p.Timestamp,
 				Status:          p.Status,
+				Currency:        p.Currency,
 			})
 		}
 		c.JSON(http.StatusOK, result)
@@ -479,6 +515,61 @@ func CreateTransfer(paymentClient pb.PaymentServiceClient) gin.HandlerFunc {
 			"fee":           resp.Fee,
 			"timestamp":     resp.Timestamp,
 		})
+	}
+}
+
+// GetTransfers godoc
+// @Summary      List client transfers
+// @Description  Returns all internal transfers for the authenticated client's accounts.
+// @Tags         transfers
+// @Produce      json
+// @Success      200  {array}   map[string]interface{}
+// @Failure      401  {object}  map[string]string
+// @Failure      500  {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /api/transfers [get]
+func GetTransfers(paymentClient pb.PaymentServiceClient) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		clientID, err := middleware.GetUserIDFromToken(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "could not extract identity from token"})
+			return
+		}
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+		defer cancel()
+
+		resp, err := paymentClient.GetTransfers(ctx, &pb.GetTransfersRequest{ClientId: clientID})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		type transferJSON struct {
+			ID            int64   `json:"id"`
+			OrderNumber   string  `json:"orderNumber"`
+			FromAccount   string  `json:"fromAccount"`
+			ToAccount     string  `json:"toAccount"`
+			InitialAmount float64 `json:"initialAmount"`
+			FinalAmount   float64 `json:"finalAmount"`
+			ExchangeRate  float64 `json:"exchangeRate"`
+			Fee           float64 `json:"fee"`
+			Timestamp     string  `json:"timestamp"`
+		}
+		result := make([]transferJSON, 0, len(resp.Transfers))
+		for _, t := range resp.Transfers {
+			result = append(result, transferJSON{
+				ID:            t.Id,
+				OrderNumber:   t.OrderNumber,
+				FromAccount:   t.FromAccount,
+				ToAccount:     t.ToAccount,
+				InitialAmount: t.InitialAmount,
+				FinalAmount:   t.FinalAmount,
+				ExchangeRate:  t.ExchangeRate,
+				Fee:           t.Fee,
+				Timestamp:     t.Timestamp,
+			})
+		}
+		c.JSON(http.StatusOK, result)
 	}
 }
 

@@ -3,11 +3,13 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/account"
+	pbcard "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/card"
 	"github.com/RAF-SI-2025/EXBanka-4-Backend/services/api-gateway/middleware"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -20,7 +22,12 @@ type CreateAccountRequest struct {
 	CurrencyCode   string      `json:"currencyCode"   binding:"required"`
 	InitialBalance float64     `json:"initialBalance"`
 	AccountName    string      `json:"accountName"`
+	AccountSubtype string      `json:"accountSubtype"`
+	DailyLimit     float64     `json:"dailyLimit"`
+	MonthlyLimit   float64     `json:"monthlyLimit"`
 	CreateCard     bool        `json:"createCard"`
+	CardName       string      `json:"cardName"`
+	CardLimit      float64     `json:"cardLimit"`
 	CompanyData    *companyReq `json:"companyData"`
 }
 
@@ -113,7 +120,7 @@ func GetAccount(accountClient pb.AccountServiceClient) gin.HandlerFunc {
 			return
 		}
 		a := resp.Account
-		c.JSON(http.StatusOK, gin.H{
+		body := gin.H{
 			"accountName":      a.AccountName,
 			"accountNumber":    a.AccountNumber,
 			"owner":            a.Owner,
@@ -123,11 +130,84 @@ func GetAccount(accountClient pb.AccountServiceClient) gin.HandlerFunc {
 			"currency":         a.CurrencyCode,
 			"status":           a.Status,
 			"accountType":      a.AccountType,
+			"accountSubtype":   a.AccountSubtype,
 			"dailyLimit":       a.DailyLimit,
 			"monthlyLimit":     a.MonthlyLimit,
 			"dailySpent":       a.DailySpent,
 			"monthlySpent":     a.MonthlySpent,
-		})
+		}
+		if a.CompanyData != nil {
+			body["company"] = gin.H{
+				"name":               a.CompanyData.Name,
+				"registrationNumber": a.CompanyData.RegistrationNumber,
+				"pib":                a.CompanyData.Pib,
+				"activityCode":       a.CompanyData.ActivityCode,
+				"address":            a.CompanyData.Address,
+			}
+		}
+		c.JSON(http.StatusOK, body)
+	}
+}
+
+// GetAccountAdmin godoc
+// @Summary      Get account details (employee)
+// @Description  Returns full account details for any account. Requires employee authentication.
+// @Tags         accounts
+// @Produce      json
+// @Param        accountId  path      int  true  "Account ID"
+// @Success      200        {object}  map[string]interface{}
+// @Failure      404        {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /api/admin/accounts/{accountId} [get]
+func GetAccountAdmin(accountClient pb.AccountServiceClient) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		accountID, err := parseID(c, "accountId")
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid accountId"})
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+		defer cancel()
+
+		// OwnerId=0 bypasses the ownership check in account-service
+		resp, err := accountClient.GetAccount(ctx, &pb.GetAccountRequest{AccountId: accountID, OwnerId: 0})
+		if err != nil {
+			switch status.Code(err) {
+			case codes.NotFound:
+				c.JSON(http.StatusNotFound, gin.H{"error": status.Convert(err).Message()})
+			default:
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			}
+			return
+		}
+		a := resp.Account
+		body := gin.H{
+			"accountName":      a.AccountName,
+			"accountNumber":    a.AccountNumber,
+			"owner":            a.Owner,
+			"balance":          a.Balance,
+			"availableBalance": a.AvailableBalance,
+			"reservedFunds":    a.ReservedFunds,
+			"currency":         a.CurrencyCode,
+			"status":           a.Status,
+			"accountType":      a.AccountType,
+			"accountSubtype":   a.AccountSubtype,
+			"dailyLimit":       a.DailyLimit,
+			"monthlyLimit":     a.MonthlyLimit,
+			"dailySpent":       a.DailySpent,
+			"monthlySpent":     a.MonthlySpent,
+		}
+		if a.CompanyData != nil {
+			body["company"] = gin.H{
+				"name":               a.CompanyData.Name,
+				"registrationNumber": a.CompanyData.RegistrationNumber,
+				"pib":                a.CompanyData.Pib,
+				"activityCode":       a.CompanyData.ActivityCode,
+				"address":            a.CompanyData.Address,
+			}
+		}
+		c.JSON(http.StatusOK, body)
 	}
 }
 
@@ -221,11 +301,65 @@ func GetAllAccounts(accountClient pb.AccountServiceClient) gin.HandlerFunc {
 				"ownerFirstName":   a.OwnerFirstName,
 				"ownerLastName":    a.OwnerLastName,
 				"accountType":      a.AccountType,
+				"accountSubtype":   a.AccountSubtype,
 				"currencyCode":     a.CurrencyCode,
 				"availableBalance": a.AvailableBalance,
 			})
 		}
 		c.JSON(http.StatusOK, result)
+	}
+}
+
+// UpdateAccountLimits godoc
+// @Summary      Update account limits
+// @Description  Sets the daily and monthly spending limits for an account. Requires employee authentication.
+// @Tags         accounts
+// @Accept       json
+// @Produce      json
+// @Param        accountId  path      int                    true  "Account ID"
+// @Param        body       body      map[string]number      true  "Limits"
+// @Success      200        {object}  map[string]string
+// @Failure      400        {object}  map[string]string
+// @Failure      404        {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /api/accounts/{accountId}/limits [put]
+func UpdateAccountLimits(accountClient pb.AccountServiceClient) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		accountID, err := parseID(c, "accountId")
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid accountId"})
+			return
+		}
+
+		var body struct {
+			DailyLimit   float64 `json:"dailyLimit"   binding:"required"`
+			MonthlyLimit float64 `json:"monthlyLimit" binding:"required"`
+		}
+		if err := c.ShouldBindJSON(&body); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "dailyLimit and monthlyLimit are required"})
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+		defer cancel()
+
+		// OwnerId=0 signals employee/admin access — no ownership check in account-service
+		_, err = accountClient.UpdateAccountLimits(ctx, &pb.UpdateAccountLimitsRequest{
+			AccountId:    accountID,
+			OwnerId:      0,
+			DailyLimit:   body.DailyLimit,
+			MonthlyLimit: body.MonthlyLimit,
+		})
+		if err != nil {
+			switch status.Code(err) {
+			case codes.NotFound:
+				c.JSON(http.StatusNotFound, gin.H{"error": status.Convert(err).Message()})
+			default:
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			}
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "limits updated successfully"})
 	}
 }
 
@@ -249,7 +383,7 @@ func parseID(c *gin.Context, param string) (int64, error) {
 // @Failure      500   {object}  map[string]string
 // @Security     BearerAuth
 // @Router       /api/accounts/create [post]
-func CreateAccount(accountClient pb.AccountServiceClient) gin.HandlerFunc {
+func CreateAccount(accountClient pb.AccountServiceClient, cardClient pbcard.CardServiceClient) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req CreateAccountRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -264,13 +398,14 @@ func CreateAccount(accountClient pb.AccountServiceClient) gin.HandlerFunc {
 		}
 
 		grpcReq := &pb.CreateAccountRequest{
-			ClientId:       req.ClientID,
-			AccountType:    req.AccountType,
-			CurrencyCode:   req.CurrencyCode,
-			InitialBalance: req.InitialBalance,
-			AccountName:    req.AccountName,
-			CreateCard:     req.CreateCard,
-			EmployeeId:     employeeID,
+			ClientId:        req.ClientID,
+			AccountType:     req.AccountType,
+			AccountSubtype:  req.AccountSubtype,
+			CurrencyCode:    req.CurrencyCode,
+			InitialBalance:  req.InitialBalance,
+			AccountName:     req.AccountName,
+			CreateCard:      req.CreateCard,
+			EmployeeId:      employeeID,
 		}
 		if req.CompanyData != nil {
 			grpcReq.CompanyData = &pb.CompanyData{
@@ -299,6 +434,50 @@ func CreateAccount(accountClient pb.AccountServiceClient) gin.HandlerFunc {
 		}
 
 		a := resp.Account
+
+		// Set transaction limits if provided
+		if req.DailyLimit > 0 || req.MonthlyLimit > 0 {
+			limCtx, limCancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer limCancel()
+			_, limErr := accountClient.UpdateAccountLimits(limCtx, &pb.UpdateAccountLimitsRequest{
+				AccountId:    a.Id,
+				OwnerId:      0, // bypass ownership check
+				DailyLimit:   req.DailyLimit,
+				MonthlyLimit: req.MonthlyLimit,
+			})
+			if limErr != nil {
+				log.Printf("failed to set limits for account %s: %v", a.AccountNumber, limErr)
+			}
+		}
+
+		if req.CreateCard {
+			cardName := req.CardName
+			if cardName == "" {
+				cardName = "VISA"
+			}
+			cardCtx, cardCancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cardCancel()
+			cardResp, cardErr := cardClient.CreateCard(cardCtx, &pbcard.CreateCardRequest{
+				AccountNumber:  a.AccountNumber,
+				CardName:       cardName,
+				CallerClientId: 0,
+				ForSelf:        true,
+			})
+			if cardErr != nil {
+				log.Printf("auto card creation failed for account %s: %v", a.AccountNumber, cardErr)
+			} else if req.CardLimit > 0 {
+				limitCtx, limitCancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer limitCancel()
+				_, limitErr := cardClient.UpdateCardLimit(limitCtx, &pbcard.UpdateCardLimitRequest{
+					CardNumber: cardResp.Card.CardNumber,
+					NewLimit:   req.CardLimit,
+				})
+				if limitErr != nil {
+					log.Printf("failed to set card limit for %s: %v", cardResp.Card.CardNumber, limitErr)
+				}
+			}
+		}
+
 		c.JSON(http.StatusCreated, gin.H{
 			"id":                a.Id,
 			"accountNumber":     a.AccountNumber,
@@ -312,5 +491,50 @@ func CreateAccount(accountClient pb.AccountServiceClient) gin.HandlerFunc {
 			"availableBalance":  a.AvailableBalance,
 			"createdDate":       a.CreatedDate,
 		})
+	}
+}
+
+func GetBankAccounts(accountClient pb.AccountServiceClient) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+		defer cancel()
+		resp, err := accountClient.GetBankAccounts(ctx, &pb.GetBankAccountsRequest{})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		result := make([]gin.H, len(resp.Accounts))
+		for i, a := range resp.Accounts {
+			result[i] = gin.H{
+				"accountNumber":    a.AccountNumber,
+				"accountName":      a.AccountName,
+				"currencyCode":     a.CurrencyCode,
+				"balance":          a.Balance,
+				"availableBalance": a.AvailableBalance,
+			}
+		}
+		c.JSON(http.StatusOK, result)
+	}
+}
+
+func DeleteAccount(accountClient pb.AccountServiceClient) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		accountID, err := parseID(c, "accountId")
+		if err != nil {
+			return
+		}
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+		defer cancel()
+		_, err = accountClient.DeleteAccount(ctx, &pb.DeleteAccountRequest{AccountId: accountID})
+		if err != nil {
+			switch status.Code(err) {
+			case codes.NotFound:
+				c.JSON(http.StatusNotFound, gin.H{"error": status.Convert(err).Message()})
+			default:
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			}
+			return
+		}
+		c.Status(http.StatusOK)
 	}
 }

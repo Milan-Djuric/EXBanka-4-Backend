@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net"
+	"os"
 
 	acdb "github.com/RAF-SI-2025/EXBanka-4-Backend/services/account-service/db"
 	"github.com/RAF-SI-2025/EXBanka-4-Backend/services/account-service/handlers"
@@ -13,25 +14,25 @@ import (
 )
 
 func main() {
-	database, err := acdb.Connect("postgres://account_user:account_pass@localhost:5436/account_db?sslmode=disable")
+	database, err := acdb.Connect(os.Getenv("ACCOUNT_DB_URL"))
 	if err != nil {
 		log.Fatalf("failed to connect to account_db: %v", err)
 	}
 	defer database.Close()
 
-	clientDB, err := acdb.Connect("postgres://client_user:client_pass@localhost:5435/client_db?sslmode=disable")
+	clientDB, err := acdb.Connect(os.Getenv("CLIENT_DB_URL"))
 	if err != nil {
 		log.Fatalf("failed to connect to client_db: %v", err)
 	}
 	defer clientDB.Close()
 
-	exchangeDB, err := acdb.Connect("postgres://exchange_user:exchange_pass@localhost:5438/exchange_db?sslmode=disable")
+	exchangeDB, err := acdb.Connect(os.Getenv("EXCHANGE_DB_URL"))
 	if err != nil {
 		log.Fatalf("failed to connect to exchange_db: %v", err)
 	}
 	defer exchangeDB.Close()
 
-	emailConn, err := grpc.NewClient("localhost:50053", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	emailConn, err := grpc.NewClient(os.Getenv("EMAIL_SERVICE_ADDR"), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("failed to connect to email-service: %v", err)
 	}

@@ -132,6 +132,13 @@ func (m *mockEmailClient) SendAccountCreatedEmail(ctx context.Context, in *pb_em
 	return &pb_email.SendAccountCreatedEmailResponse{}, nil
 }
 
+func (m *mockEmailClient) SendCardConfirmationEmail(ctx context.Context, in *pb_email.SendCardConfirmationEmailRequest, opts ...grpc.CallOption) (*pb_email.SendCardConfirmationEmailResponse, error) {
+	return &pb_email.SendCardConfirmationEmailResponse{}, nil
+}
+func (m *mockEmailClient) SendLoanLatePaymentEmail(ctx context.Context, in *pb_email.SendLoanLatePaymentEmailRequest, opts ...grpc.CallOption) (*pb_email.SendLoanLatePaymentEmailResponse, error) {
+	return &pb_email.SendLoanLatePaymentEmailResponse{}, nil
+}
+
 type mockClientClient struct {
 	mock.Mock
 }
@@ -374,7 +381,7 @@ func TestActivateAccount_AlreadyActivated(t *testing.T) {
 
 	empClient := &mockEmployeeClient{}
 	empClient.On("GetEmployeeById", mock.Anything, mock.Anything).Return(
-		&pb_emp.GetEmployeeByIdResponse{Employee: &pb_emp.Employee{Aktivan: true}}, nil,
+		&pb_emp.GetEmployeeByIdResponse{Employee: &pb_emp.Employee{Active: true}}, nil,
 	)
 
 	s := newAuthServer(db, empClient, &mockEmailClient{})
@@ -396,7 +403,7 @@ func TestActivateAccount_PasswordMismatch(t *testing.T) {
 
 	empClient := &mockEmployeeClient{}
 	empClient.On("GetEmployeeById", mock.Anything, mock.Anything).Return(
-		&pb_emp.GetEmployeeByIdResponse{Employee: &pb_emp.Employee{Aktivan: false}}, nil,
+		&pb_emp.GetEmployeeByIdResponse{Employee: &pb_emp.Employee{Active: false}}, nil,
 	)
 
 	s := newAuthServer(db, empClient, &mockEmailClient{})
@@ -418,7 +425,7 @@ func TestActivateAccount_InvalidPassword(t *testing.T) {
 
 	empClient := &mockEmployeeClient{}
 	empClient.On("GetEmployeeById", mock.Anything, mock.Anything).Return(
-		&pb_emp.GetEmployeeByIdResponse{Employee: &pb_emp.Employee{Aktivan: false}}, nil,
+		&pb_emp.GetEmployeeByIdResponse{Employee: &pb_emp.Employee{Active: false}}, nil,
 	)
 
 	s := newAuthServer(db, empClient, &mockEmailClient{})
@@ -442,7 +449,7 @@ func TestActivateAccount_HappyPath(t *testing.T) {
 	empClient := &mockEmployeeClient{}
 	empClient.On("GetEmployeeById", mock.Anything, mock.Anything).Return(
 		&pb_emp.GetEmployeeByIdResponse{Employee: &pb_emp.Employee{
-			Id: 1, Aktivan: false, Email: "emp@example.com", Ime: "John",
+			Id: 1, Active: false, Email: "emp@example.com", FirstName: "John",
 		}}, nil,
 	)
 	empClient.On("ActivateEmployee", mock.Anything, mock.Anything).Return(
@@ -574,7 +581,7 @@ func TestLogin_CredentialsNotFound(t *testing.T) {
 func TestLogin_EmptyPasswordHash(t *testing.T) {
 	empClient := &mockEmployeeClient{}
 	empClient.On("GetEmployeeCredentials", mock.Anything, mock.Anything).Return(
-		&pb_emp.GetEmployeeCredentialsResponse{Id: 1, PasswordHash: "", Aktivan: true, Dozvole: []string{}}, nil,
+		&pb_emp.GetEmployeeCredentialsResponse{Id: 1, PasswordHash: "", Active: true, Permissions: []string{}}, nil,
 	)
 
 	s := &AuthServer{EmployeeClient: empClient, EmailClient: &mockEmailClient{}}
@@ -587,7 +594,7 @@ func TestLogin_AccountNotActive(t *testing.T) {
 	hash, _ := bcrypt.GenerateFromPassword([]byte("Abcdef12"), bcrypt.MinCost)
 	empClient := &mockEmployeeClient{}
 	empClient.On("GetEmployeeCredentials", mock.Anything, mock.Anything).Return(
-		&pb_emp.GetEmployeeCredentialsResponse{Id: 1, PasswordHash: string(hash), Aktivan: false, Dozvole: []string{}}, nil,
+		&pb_emp.GetEmployeeCredentialsResponse{Id: 1, PasswordHash: string(hash), Active: false, Permissions: []string{}}, nil,
 	)
 
 	s := &AuthServer{EmployeeClient: empClient, EmailClient: &mockEmailClient{}}
@@ -600,7 +607,7 @@ func TestLogin_WrongPassword(t *testing.T) {
 	hash, _ := bcrypt.GenerateFromPassword([]byte("OtherPass12"), bcrypt.MinCost)
 	empClient := &mockEmployeeClient{}
 	empClient.On("GetEmployeeCredentials", mock.Anything, mock.Anything).Return(
-		&pb_emp.GetEmployeeCredentialsResponse{Id: 1, PasswordHash: string(hash), Aktivan: true, Dozvole: []string{}}, nil,
+		&pb_emp.GetEmployeeCredentialsResponse{Id: 1, PasswordHash: string(hash), Active: true, Permissions: []string{}}, nil,
 	)
 
 	s := &AuthServer{EmployeeClient: empClient, EmailClient: &mockEmailClient{}}
@@ -613,11 +620,11 @@ func TestLogin_HappyPath(t *testing.T) {
 	hash, _ := bcrypt.GenerateFromPassword([]byte("Abcdef12"), bcrypt.MinCost)
 	empClient := &mockEmployeeClient{}
 	empClient.On("GetEmployeeCredentials", mock.Anything, mock.Anything).Return(
-		&pb_emp.GetEmployeeCredentialsResponse{Id: 1, PasswordHash: string(hash), Aktivan: true, Dozvole: []string{"ADMIN"}}, nil,
+		&pb_emp.GetEmployeeCredentialsResponse{Id: 1, PasswordHash: string(hash), Active: true, Permissions: []string{"ADMIN"}}, nil,
 	)
 	empClient.On("GetEmployeeById", mock.Anything, mock.Anything).Return(
 		&pb_emp.GetEmployeeByIdResponse{Employee: &pb_emp.Employee{
-			Id: 1, Email: "user@example.com", Ime: "John", Prezime: "Doe",
+			Id: 1, Email: "user@example.com", FirstName: "John", LastName: "Doe",
 		}}, nil,
 	)
 
@@ -681,7 +688,7 @@ func TestClientLogin_HappyPath(t *testing.T) {
 	)
 
 	s := &AuthServer{ClientClient: clientClient}
-	resp, err := s.ClientLogin(context.Background(), &pb_auth.ClientLoginRequest{Email: "ana@example.com", Password: "Abcdef12"})
+	resp, err := s.ClientLogin(context.Background(), &pb_auth.ClientLoginRequest{Email: "ana@example.com", Password: "Abcdef12", Source: "mobile"})
 	require.NoError(t, err)
 	assert.NotEmpty(t, resp.AccessToken)
 	assert.NotEmpty(t, resp.RefreshToken)
@@ -944,7 +951,7 @@ func TestLogin_GetEmployeeByIdError(t *testing.T) {
 	hash, _ := bcrypt.GenerateFromPassword([]byte("Abcdef12"), bcrypt.MinCost)
 	empClient := &mockEmployeeClient{}
 	empClient.On("GetEmployeeCredentials", mock.Anything, mock.Anything).Return(
-		&pb_emp.GetEmployeeCredentialsResponse{Id: 1, PasswordHash: string(hash), Aktivan: true, Dozvole: []string{}}, nil,
+		&pb_emp.GetEmployeeCredentialsResponse{Id: 1, PasswordHash: string(hash), Active: true, Permissions: []string{}}, nil,
 	)
 	empClient.On("GetEmployeeById", mock.Anything, mock.Anything).Return(nil, status.Error(codes.Internal, "db down"))
 
@@ -1056,7 +1063,7 @@ func TestActivateAccount_ActivateEmployeeError(t *testing.T) {
 
 	empClient := &mockEmployeeClient{}
 	empClient.On("GetEmployeeById", mock.Anything, mock.Anything).Return(
-		&pb_emp.GetEmployeeByIdResponse{Employee: &pb_emp.Employee{Id: 1, Aktivan: false}}, nil,
+		&pb_emp.GetEmployeeByIdResponse{Employee: &pb_emp.Employee{Id: 1, Active: false}}, nil,
 	)
 	empClient.On("ActivateEmployee", mock.Anything, mock.Anything).Return(nil, status.Error(codes.Internal, "activate failed"))
 
@@ -1302,7 +1309,7 @@ func TestActivateAccount_DeleteUsedTokenFails(t *testing.T) {
 	empClient := &mockEmployeeClient{}
 	empClient.On("GetEmployeeById", mock.Anything, mock.Anything).Return(
 		&pb_emp.GetEmployeeByIdResponse{Employee: &pb_emp.Employee{
-			Id: 1, Aktivan: false, Email: "emp@example.com", Ime: "John",
+			Id: 1, Active: false, Email: "emp@example.com", FirstName: "John",
 		}}, nil,
 	)
 	empClient.On("ActivateEmployee", mock.Anything, mock.Anything).Return(
@@ -1415,4 +1422,420 @@ func TestActivateClientAuth_HappyPath(t *testing.T) {
 	time.Sleep(50 * time.Millisecond) // wait for email goroutine
 	clientClient.AssertExpectations(t)
 	emailClient.AssertExpectations(t)
+}
+
+// ---- ClientLogin: web branch + remaining paths ----
+
+func TestClientLogin_WebBranch_HappyPath(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+
+	hash, _ := bcrypt.GenerateFromPassword([]byte("Abcdef12"), bcrypt.MinCost)
+	now := time.Now()
+
+	clientClient := &mockClientClient{}
+	clientClient.On("GetClientCredentials", mock.Anything, mock.Anything).Return(
+		&pb_client.GetClientCredentialsResponse{Id: 1, PasswordHash: string(hash), Active: true}, nil,
+	)
+	clientClient.On("GetClientById", mock.Anything, mock.Anything).Return(
+		&pb_client.GetClientByIdResponse{Client: &pb_client.Client{
+			Id: 1, Email: "ana@test.com", FirstName: "Ana", LastName: "Petrović",
+		}}, nil,
+	)
+	dbMock.ExpectQuery("INSERT INTO two_factor_approvals").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "expires_at"}).
+			AddRow(int64(42), now, now.Add(5*time.Minute)))
+
+	s := &AuthServer{DB: db, ClientClient: clientClient}
+	resp, err := s.ClientLogin(context.Background(), &pb_auth.ClientLoginRequest{
+		Email: "ana@test.com", Password: "Abcdef12", Source: "web",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, int64(42), resp.ApprovalRequestId)
+	assert.Empty(t, resp.AccessToken)
+}
+
+func TestClientLogin_WebBranch_DBError(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+
+	hash, _ := bcrypt.GenerateFromPassword([]byte("Abcdef12"), bcrypt.MinCost)
+
+	clientClient := &mockClientClient{}
+	clientClient.On("GetClientCredentials", mock.Anything, mock.Anything).Return(
+		&pb_client.GetClientCredentialsResponse{Id: 1, PasswordHash: string(hash), Active: true}, nil,
+	)
+	clientClient.On("GetClientById", mock.Anything, mock.Anything).Return(
+		&pb_client.GetClientByIdResponse{Client: &pb_client.Client{
+			Id: 1, Email: "ana@test.com", FirstName: "Ana", LastName: "Petrović",
+		}}, nil,
+	)
+	dbMock.ExpectQuery("INSERT INTO two_factor_approvals").WillReturnError(sql.ErrConnDone)
+
+	s := &AuthServer{DB: db, ClientClient: clientClient}
+	_, err = s.ClientLogin(context.Background(), &pb_auth.ClientLoginRequest{
+		Email: "ana@test.com", Password: "Abcdef12", Source: "web",
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+// ---- PollApproval ----
+
+func TestPollApproval_NotFound(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	dbMock.ExpectQuery("SELECT action_type, payload, status, expires_at FROM two_factor_approvals").
+		WillReturnRows(sqlmock.NewRows([]string{"action_type", "payload", "status", "expires_at"}))
+
+	s := newAuthServer(db, &mockEmployeeClient{}, &mockEmailClient{})
+	_, err = s.PollApproval(context.Background(), &pb_auth.PollApprovalRequest{Id: 99})
+	require.Error(t, err)
+	assert.Equal(t, codes.NotFound, status.Code(err))
+}
+
+func TestPollApproval_Pending(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	dbMock.ExpectQuery("SELECT action_type, payload, status, expires_at FROM two_factor_approvals").
+		WillReturnRows(sqlmock.NewRows([]string{"action_type", "payload", "status", "expires_at"}).
+			AddRow("PAYMENT", "{}", "PENDING", time.Now().Add(5*time.Minute)))
+
+	s := newAuthServer(db, &mockEmployeeClient{}, &mockEmailClient{})
+	resp, err := s.PollApproval(context.Background(), &pb_auth.PollApprovalRequest{Id: 1})
+	require.NoError(t, err)
+	assert.Equal(t, "PENDING", resp.Status)
+}
+
+func TestPollApproval_Expired(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	dbMock.ExpectQuery("SELECT action_type, payload, status, expires_at FROM two_factor_approvals").
+		WillReturnRows(sqlmock.NewRows([]string{"action_type", "payload", "status", "expires_at"}).
+			AddRow("PAYMENT", "{}", "PENDING", time.Now().Add(-1*time.Minute)))
+	dbMock.ExpectExec("UPDATE two_factor_approvals SET status = 'EXPIRED'").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	s := newAuthServer(db, &mockEmployeeClient{}, &mockEmailClient{})
+	resp, err := s.PollApproval(context.Background(), &pb_auth.PollApprovalRequest{Id: 1})
+	require.NoError(t, err)
+	assert.Equal(t, "EXPIRED", resp.Status)
+}
+
+func TestPollApproval_ApprovedLogin(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	payload := `{"access_token":"acc123","refresh_token":"ref456"}`
+	dbMock.ExpectQuery("SELECT action_type, payload, status, expires_at FROM two_factor_approvals").
+		WillReturnRows(sqlmock.NewRows([]string{"action_type", "payload", "status", "expires_at"}).
+			AddRow("LOGIN", payload, "APPROVED", time.Now().Add(5*time.Minute)))
+
+	s := newAuthServer(db, &mockEmployeeClient{}, &mockEmailClient{})
+	resp, err := s.PollApproval(context.Background(), &pb_auth.PollApprovalRequest{Id: 1})
+	require.NoError(t, err)
+	assert.Equal(t, "APPROVED", resp.Status)
+	assert.Equal(t, "acc123", resp.AccessToken)
+	assert.Equal(t, "ref456", resp.RefreshToken)
+}
+
+func TestPollApproval_DBError(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	dbMock.ExpectQuery("SELECT action_type, payload, status, expires_at FROM two_factor_approvals").
+		WillReturnError(sql.ErrConnDone)
+
+	s := newAuthServer(db, &mockEmployeeClient{}, &mockEmailClient{})
+	_, err = s.PollApproval(context.Background(), &pb_auth.PollApprovalRequest{Id: 1})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+// ---- CreateApproval ----
+
+func TestCreateApproval_HappyPath(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	now := time.Now()
+	dbMock.ExpectQuery("INSERT INTO two_factor_approvals").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "expires_at"}).
+			AddRow(int64(1), now, now.Add(5*time.Minute)))
+
+	s := newAuthServer(db, &mockEmployeeClient{}, &mockEmailClient{})
+	resp, err := s.CreateApproval(context.Background(), &pb_auth.CreateApprovalRequest{
+		ClientId: 1, ActionType: "PAYMENT", Payload: `{"amount":100}`,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), resp.Approval.Id)
+	assert.Equal(t, "PENDING", resp.Approval.Status)
+	assert.Equal(t, "PAYMENT", resp.Approval.ActionType)
+}
+
+func TestCreateApproval_DBError(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	dbMock.ExpectQuery("INSERT INTO two_factor_approvals").WillReturnError(sql.ErrConnDone)
+
+	s := newAuthServer(db, &mockEmployeeClient{}, &mockEmailClient{})
+	_, err = s.CreateApproval(context.Background(), &pb_auth.CreateApprovalRequest{
+		ClientId: 1, ActionType: "PAYMENT", Payload: "{}",
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+// ---- GetApproval ----
+
+func TestGetApproval_NotFound(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	dbMock.ExpectQuery("SELECT id, client_id, action_type, payload, status, created_at, expires_at FROM two_factor_approvals WHERE id").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "client_id", "action_type", "payload", "status", "created_at", "expires_at"}))
+
+	s := newAuthServer(db, &mockEmployeeClient{}, &mockEmailClient{})
+	_, err = s.GetApproval(context.Background(), &pb_auth.GetApprovalRequest{Id: 99})
+	require.Error(t, err)
+	assert.Equal(t, codes.NotFound, status.Code(err))
+}
+
+func TestGetApproval_HappyPath(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	now := time.Now()
+	dbMock.ExpectQuery("SELECT id, client_id, action_type, payload, status, created_at, expires_at FROM two_factor_approvals WHERE id").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "client_id", "action_type", "payload", "status", "created_at", "expires_at"}).
+			AddRow(int64(1), int64(5), "TRANSFER", "{}", "PENDING", now, now.Add(5*time.Minute)))
+
+	s := newAuthServer(db, &mockEmployeeClient{}, &mockEmailClient{})
+	resp, err := s.GetApproval(context.Background(), &pb_auth.GetApprovalRequest{Id: 1})
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), resp.Approval.Id)
+	assert.Equal(t, "PENDING", resp.Approval.Status)
+}
+
+func TestGetApproval_AutoExpires(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	now := time.Now()
+	dbMock.ExpectQuery("SELECT id, client_id, action_type, payload, status, created_at, expires_at FROM two_factor_approvals WHERE id").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "client_id", "action_type", "payload", "status", "created_at", "expires_at"}).
+			AddRow(int64(1), int64(5), "TRANSFER", "{}", "PENDING", now, now.Add(-1*time.Minute)))
+	dbMock.ExpectExec("UPDATE two_factor_approvals SET status = 'EXPIRED'").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	s := newAuthServer(db, &mockEmployeeClient{}, &mockEmailClient{})
+	resp, err := s.GetApproval(context.Background(), &pb_auth.GetApprovalRequest{Id: 1})
+	require.NoError(t, err)
+	assert.Equal(t, "EXPIRED", resp.Approval.Status)
+}
+
+// ---- GetClientApprovals ----
+
+func TestGetClientApprovals_HappyPath(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	now := time.Now()
+	dbMock.ExpectExec("UPDATE two_factor_approvals SET status = 'EXPIRED'").
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	dbMock.ExpectQuery("SELECT id, client_id, action_type, payload, status, created_at, expires_at FROM two_factor_approvals WHERE client_id").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "client_id", "action_type", "payload", "status", "created_at", "expires_at"}).
+			AddRow(int64(1), int64(5), "LOGIN", "{}", "APPROVED", now, now.Add(5*time.Minute)).
+			AddRow(int64(2), int64(5), "PAYMENT", "{}", "PENDING", now, now.Add(5*time.Minute)))
+
+	s := newAuthServer(db, &mockEmployeeClient{}, &mockEmailClient{})
+	resp, err := s.GetClientApprovals(context.Background(), &pb_auth.GetClientApprovalsRequest{ClientId: 5})
+	require.NoError(t, err)
+	assert.Len(t, resp.Approvals, 2)
+}
+
+func TestGetClientApprovals_Empty(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	dbMock.ExpectExec("UPDATE two_factor_approvals SET status = 'EXPIRED'").
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	dbMock.ExpectQuery("SELECT id, client_id, action_type, payload, status, created_at, expires_at FROM two_factor_approvals WHERE client_id").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "client_id", "action_type", "payload", "status", "created_at", "expires_at"}))
+
+	s := newAuthServer(db, &mockEmployeeClient{}, &mockEmailClient{})
+	resp, err := s.GetClientApprovals(context.Background(), &pb_auth.GetClientApprovalsRequest{ClientId: 99})
+	require.NoError(t, err)
+	assert.Empty(t, resp.Approvals)
+}
+
+// ---- UpdateApprovalStatus ----
+
+func TestUpdateApprovalStatus_InvalidStatus(t *testing.T) {
+	db, _, err := sqlmock.New()
+	require.NoError(t, err)
+	s := newAuthServer(db, &mockEmployeeClient{}, &mockEmailClient{})
+	_, err = s.UpdateApprovalStatus(context.Background(), &pb_auth.UpdateApprovalStatusRequest{
+		Id: 1, ClientId: 1, Status: "INVALID",
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, status.Code(err))
+}
+
+func TestUpdateApprovalStatus_NotFound(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	dbMock.ExpectQuery("UPDATE two_factor_approvals SET status").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "client_id", "action_type", "payload", "status", "created_at", "expires_at"}))
+
+	s := newAuthServer(db, &mockEmployeeClient{}, &mockEmailClient{})
+	_, err = s.UpdateApprovalStatus(context.Background(), &pb_auth.UpdateApprovalStatusRequest{
+		Id: 99, ClientId: 1, Status: "APPROVED",
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.NotFound, status.Code(err))
+}
+
+func TestUpdateApprovalStatus_HappyPath(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	now := time.Now()
+	dbMock.ExpectQuery("UPDATE two_factor_approvals SET status").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "client_id", "action_type", "payload", "status", "created_at", "expires_at"}).
+			AddRow(int64(1), int64(5), "PAYMENT", "{}", "APPROVED", now, now.Add(5*time.Minute)))
+
+	s := newAuthServer(db, &mockEmployeeClient{}, &mockEmailClient{})
+	resp, err := s.UpdateApprovalStatus(context.Background(), &pb_auth.UpdateApprovalStatusRequest{
+		Id: 1, ClientId: 5, Status: "APPROVED",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "APPROVED", resp.Approval.Status)
+}
+
+// ---- RegisterPushToken / UnregisterPushToken / GetPushToken ----
+
+func TestRegisterPushToken_HappyPath(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	dbMock.ExpectExec("INSERT INTO push_tokens").WillReturnResult(sqlmock.NewResult(1, 1))
+
+	s := newAuthServer(db, &mockEmployeeClient{}, &mockEmailClient{})
+	_, err = s.RegisterPushToken(context.Background(), &pb_auth.RegisterPushTokenRequest{
+		ClientId: 1, Token: "expo-push-token-abc",
+	})
+	require.NoError(t, err)
+}
+
+func TestRegisterPushToken_DBError(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	dbMock.ExpectExec("INSERT INTO push_tokens").WillReturnError(sql.ErrConnDone)
+
+	s := newAuthServer(db, &mockEmployeeClient{}, &mockEmailClient{})
+	_, err = s.RegisterPushToken(context.Background(), &pb_auth.RegisterPushTokenRequest{
+		ClientId: 1, Token: "expo-push-token-abc",
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestUnregisterPushToken_HappyPath(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	dbMock.ExpectExec("DELETE FROM push_tokens").WillReturnResult(sqlmock.NewResult(1, 1))
+
+	s := newAuthServer(db, &mockEmployeeClient{}, &mockEmailClient{})
+	_, err = s.UnregisterPushToken(context.Background(), &pb_auth.UnregisterPushTokenRequest{ClientId: 1})
+	require.NoError(t, err)
+}
+
+func TestGetPushToken_NotFound(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	dbMock.ExpectQuery("SELECT token FROM push_tokens").
+		WillReturnRows(sqlmock.NewRows([]string{"token"}))
+
+	s := newAuthServer(db, &mockEmployeeClient{}, &mockEmailClient{})
+	_, err = s.GetPushToken(context.Background(), &pb_auth.GetPushTokenRequest{ClientId: 99})
+	require.Error(t, err)
+	assert.Equal(t, codes.NotFound, status.Code(err))
+}
+
+func TestGetPushToken_HappyPath(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	dbMock.ExpectQuery("SELECT token FROM push_tokens").
+		WillReturnRows(sqlmock.NewRows([]string{"token"}).AddRow("expo-push-token-xyz"))
+
+	s := newAuthServer(db, &mockEmployeeClient{}, &mockEmailClient{})
+	resp, err := s.GetPushToken(context.Background(), &pb_auth.GetPushTokenRequest{ClientId: 1})
+	require.NoError(t, err)
+	assert.Equal(t, "expo-push-token-xyz", resp.Token)
+}
+
+func TestGetPushToken_DBError(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	dbMock.ExpectQuery("SELECT token FROM push_tokens").WillReturnError(sql.ErrConnDone)
+
+	s := newAuthServer(db, &mockEmployeeClient{}, &mockEmailClient{})
+	_, err = s.GetPushToken(context.Background(), &pb_auth.GetPushTokenRequest{ClientId: 1})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestUnregisterPushToken_DBError(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	dbMock.ExpectExec("DELETE FROM push_tokens").WillReturnError(sql.ErrConnDone)
+
+	s := newAuthServer(db, &mockEmployeeClient{}, &mockEmailClient{})
+	_, err = s.UnregisterPushToken(context.Background(), &pb_auth.UnregisterPushTokenRequest{ClientId: 1})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestGetClientApprovals_QueryError(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	dbMock.ExpectExec("UPDATE two_factor_approvals SET status = 'EXPIRED'").
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	dbMock.ExpectQuery("SELECT id, client_id, action_type, payload, status, created_at, expires_at FROM two_factor_approvals WHERE client_id").
+		WillReturnError(sql.ErrConnDone)
+
+	s := newAuthServer(db, &mockEmployeeClient{}, &mockEmailClient{})
+	_, err = s.GetClientApprovals(context.Background(), &pb_auth.GetClientApprovalsRequest{ClientId: 1})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+
+// ---- approvalPushMessage ----
+
+func TestApprovalPushMessage_Login(t *testing.T) {
+	title, body := approvalPushMessage("LOGIN")
+	assert.Equal(t, "Zahtev za prijavu", title)
+	assert.NotEmpty(t, body)
+}
+
+func TestApprovalPushMessage_Payment(t *testing.T) {
+	title, body := approvalPushMessage("PAYMENT")
+	assert.Equal(t, "Zahtev za plaćanje", title)
+	assert.NotEmpty(t, body)
+}
+
+func TestApprovalPushMessage_Transfer(t *testing.T) {
+	title, body := approvalPushMessage("TRANSFER")
+	assert.Equal(t, "Zahtev za transfer", title)
+	assert.NotEmpty(t, body)
+}
+
+func TestApprovalPushMessage_LimitChange(t *testing.T) {
+	title, body := approvalPushMessage("LIMIT_CHANGE")
+	assert.Equal(t, "Promena limita", title)
+	assert.NotEmpty(t, body)
+}
+
+func TestApprovalPushMessage_CardRequest(t *testing.T) {
+	title, body := approvalPushMessage("CARD_REQUEST")
+	assert.Equal(t, "Zahtev za karticu", title)
+	assert.NotEmpty(t, body)
+}
+
+func TestApprovalPushMessage_Default(t *testing.T) {
+	title, body := approvalPushMessage("UNKNOWN_ACTION")
+	assert.Equal(t, "Zahtev za odobrenje", title)
+	assert.NotEmpty(t, body)
 }

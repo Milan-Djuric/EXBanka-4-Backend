@@ -6,10 +6,12 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-const QueueName              = "email.activation"
-const ResetQueueName         = "email.passwordreset"
-const ConfirmQueueName       = "email.passwordconfirmation"
-const AccountCreatedQueueName = "email.accountcreated"
+const QueueName                  = "email.activation"
+const ResetQueueName             = "email.passwordreset"
+const ConfirmQueueName           = "email.passwordconfirmation"
+const AccountCreatedQueueName    = "email.accountcreated"
+const CardConfirmationQueueName  = "email.cardconfirmation"
+const LoanLatePaymentQueueName   = "email.loanlate"
 
 type ActivationMessage struct {
 	Email          string `json:"email"`
@@ -36,6 +38,21 @@ type AccountCreatedMessage struct {
 	CurrencyCode  string `json:"currency_code"`
 }
 
+type CardConfirmationMessage struct {
+	Email            string `json:"email"`
+	FirstName        string `json:"first_name"`
+	ConfirmationCode string `json:"confirmation_code"`
+}
+
+type LoanLatePaymentMessage struct {
+	Email      string  `json:"email"`
+	FirstName  string  `json:"first_name"`
+	LoanNumber string  `json:"loan_number"`
+	AmountDue  float64 `json:"amount_due"`
+	Currency   string  `json:"currency"`
+	RetryCount int32   `json:"retry_count"`
+}
+
 type Producer struct {
 	ch *amqp.Channel
 }
@@ -51,6 +68,12 @@ func NewProducer(ch *amqp.Channel) (*Producer, error) {
 		return nil, err
 	}
 	if _, err := ch.QueueDeclare(AccountCreatedQueueName, true, false, false, false, nil); err != nil {
+		return nil, err
+	}
+	if _, err := ch.QueueDeclare(CardConfirmationQueueName, true, false, false, false, nil); err != nil {
+		return nil, err
+	}
+	if _, err := ch.QueueDeclare(LoanLatePaymentQueueName, true, false, false, false, nil); err != nil {
 		return nil, err
 	}
 	return &Producer{ch: ch}, nil
@@ -98,6 +121,30 @@ func (p *Producer) PublishAccountCreated(msg AccountCreatedMessage) error {
 		return err
 	}
 	return p.ch.Publish("", AccountCreatedQueueName, false, false, amqp.Publishing{
+		ContentType:  "application/json",
+		DeliveryMode: amqp.Persistent,
+		Body:         body,
+	})
+}
+
+func (p *Producer) PublishCardConfirmation(msg CardConfirmationMessage) error {
+	body, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	return p.ch.Publish("", CardConfirmationQueueName, false, false, amqp.Publishing{
+		ContentType:  "application/json",
+		DeliveryMode: amqp.Persistent,
+		Body:         body,
+	})
+}
+
+func (p *Producer) PublishLoanLatePayment(msg LoanLatePaymentMessage) error {
+	body, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	return p.ch.Publish("", LoanLatePaymentQueueName, false, false, amqp.Publishing{
 		ContentType:  "application/json",
 		DeliveryMode: amqp.Persistent,
 		Body:         body,

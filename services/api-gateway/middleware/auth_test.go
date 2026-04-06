@@ -170,3 +170,82 @@ func TestGetUserIDFromToken_MissingUserIdClaim(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, int64(0), id)
 }
+
+func TestGetUserIDFromToken_UserIdWrongType(t *testing.T) {
+	claims := jwt.MapClaims{
+		"user_id": "not-a-number",
+		"type":    "access",
+		"exp":     time.Now().Add(time.Hour).Unix(),
+	}
+	tokenStr, _ := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(jwtSecret))
+	id, err := runGetUserID("Bearer " + tokenStr)
+	assert.Error(t, err)
+	assert.Equal(t, int64(0), id)
+}
+
+// ---- GetCallerRoleFromToken tests ----
+
+func runGetCallerRole(authHeader string) string {
+	var role string
+	router := gin.New()
+	router.GET("/test", func(c *gin.Context) {
+		role = GetCallerRoleFromToken(c)
+		c.Status(http.StatusOK)
+	})
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/test", nil)
+	if authHeader != "" {
+		req.Header.Set("Authorization", authHeader)
+	}
+	router.ServeHTTP(w, req)
+	return role
+}
+
+func TestGetCallerRoleFromToken_NoHeader(t *testing.T) {
+	assert.Equal(t, "", runGetCallerRole(""))
+}
+
+func TestGetCallerRoleFromToken_NonBearerPrefix(t *testing.T) {
+	token := makeToken("access", []string{"ADMIN"}, time.Hour)
+	assert.Equal(t, "", runGetCallerRole("Token "+token))
+}
+
+func TestGetCallerRoleFromToken_InvalidToken(t *testing.T) {
+	assert.Equal(t, "", runGetCallerRole("Bearer not.a.valid.jwt"))
+}
+
+func TestGetCallerRoleFromToken_WithRoleClaim(t *testing.T) {
+	// Client token: has "role" claim, no "dozvole"
+	claims := jwt.MapClaims{
+		"user_id": float64(42),
+		"role":    "CLIENT",
+		"exp":     time.Now().Add(time.Hour).Unix(),
+	}
+	tokenStr, _ := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(jwtSecret))
+	assert.Equal(t, "CLIENT", runGetCallerRole("Bearer "+tokenStr))
+}
+
+func TestGetCallerRoleFromToken_WithDozvoleClaim(t *testing.T) {
+	// Employee token: has "dozvole" claim, no "role"
+	token := makeToken("access", []string{"OPERATOR"}, time.Hour)
+	assert.Equal(t, "EMPLOYEE", runGetCallerRole("Bearer "+token))
+}
+
+func TestGetCallerRoleFromToken_NeitherClaim(t *testing.T) {
+	// Token with neither "role" nor "dozvole"
+	claims := jwt.MapClaims{
+		"user_id": float64(1),
+		"exp":     time.Now().Add(time.Hour).Unix(),
+	}
+	tokenStr, _ := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(jwtSecret))
+	assert.Equal(t, "", runGetCallerRole("Bearer "+tokenStr))
+}
+
+func TestGetCallerRoleFromToken_InvalidSigningMethod(t *testing.T) {
+	claims := jwt.MapClaims{
+		"user_id": float64(1), "role": "CLIENT",
+		"exp": time.Now().Add(time.Hour).Unix(),
+	}
+	tokenStr, _ := jwt.NewWithClaims(jwt.SigningMethodNone, claims).SignedString(jwt.UnsafeAllowNoneSignatureType)
+	assert.Equal(t, "", runGetCallerRole("Bearer "+tokenStr))
+}

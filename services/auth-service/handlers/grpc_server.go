@@ -1,11 +1,15 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"log"
+	"net/http"
+	"os"
 	"time"
 	"unicode"
 
@@ -20,7 +24,7 @@ import (
 	pb_emp "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/employee"
 )
 
-const jwtSecret = "secret-key-change-in-production"
+var jwtSecret = os.Getenv("JWT_SECRET")
 
 type AuthServer struct {
 	pb_auth.UnimplementedAuthServiceServer
@@ -41,7 +45,7 @@ func (s *AuthServer) Login(ctx context.Context, req *pb_auth.LoginRequest) (*pb_
 	if creds.PasswordHash == "" {
 		return nil, status.Error(codes.Unauthenticated, "invalid credentials")
 	}
-	if !creds.Aktivan {
+	if !creds.Active {
 		return nil, status.Error(codes.Unauthenticated, "invalid credentials")
 	}
 
@@ -55,12 +59,12 @@ func (s *AuthServer) Login(ctx context.Context, req *pb_auth.LoginRequest) (*pb_
 	}
 	emp := empResp.Employee
 
-	accessToken, err := generateToken(creds.Id, emp.Email, "access", creds.Dozvole, emp.Ime, emp.Prezime, emp.Email, 15*time.Minute)
+	accessToken, err := generateToken(creds.Id, emp.Email, "access", creds.Permissions, emp.FirstName, emp.LastName, emp.Email, 15*time.Minute)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to generate token")
 	}
 
-	refreshToken, err := generateToken(creds.Id, emp.Email, "refresh", creds.Dozvole, emp.Ime, emp.Prezime, emp.Email, 7*24*time.Hour)
+	refreshToken, err := generateToken(creds.Id, emp.Email, "refresh", creds.Permissions, emp.FirstName, emp.LastName, emp.Email, 7*24*time.Hour)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to generate token")
 	}
@@ -180,7 +184,7 @@ func (s *AuthServer) ActivateAccount(ctx context.Context, req *pb_auth.ActivateA
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to fetch employee: %v", err)
 	}
-	if empResp.Employee.Aktivan {
+	if empResp.Employee.Active {
 		return nil, status.Error(codes.FailedPrecondition, "account already activated")
 	}
 
@@ -212,7 +216,7 @@ func (s *AuthServer) ActivateAccount(ctx context.Context, req *pb_auth.ActivateA
 	go func() {
 		_, err := s.EmailClient.SendPasswordConfirmationEmail(context.Background(), &pb_email.SendActivationEmailRequest{
 			Email:     emp.Email,
-			FirstName: emp.Ime,
+			FirstName: emp.FirstName,
 		})
 		if err != nil {
 			log.Printf("failed to send password confirmation email: %v", err)
@@ -373,10 +377,72 @@ func (s *AuthServer) ClientLogin(ctx context.Context, req *pb_auth.ClientLoginRe
 		return nil, status.Error(codes.Internal, "failed to generate token")
 	}
 
-	return &pb_auth.ClientLoginResponse{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-	}, nil
+	// Mobile login: return tokens directly (mobile is the approving device)
+	if req.Source == "mobile" {
+		return &pb_auth.ClientLoginResponse{
+			AccessToken:  accessToken,
+			RefreshToken: refreshToken,
+		}, nil
+	}
+
+	// Web login: create LOGIN approval with tokens in payload, return approvalRequestId
+	payload, _ := json.Marshal(map[string]string{
+		"access_token":  accessToken,
+		"refresh_token": refreshToken,
+	})
+	var approvalID int64
+	var createdAt, expiresAt time.Time
+	err = s.DB.QueryRowContext(ctx,
+		`INSERT INTO two_factor_approvals (client_id, action_type, payload) VALUES ($1, 'LOGIN', $2) RETURNING id, created_at, expires_at`,
+		creds.Id, string(payload),
+	).Scan(&approvalID, &createdAt, &expiresAt)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to create login approval: %v", err)
+	}
+
+	go s.sendApprovalPush(creds.Id, &pb_auth.Approval{
+		Id:         approvalID,
+		ClientId:   creds.Id,
+		ActionType: "LOGIN",
+		Payload:    string(payload),
+		Status:     "PENDING",
+		CreatedAt:  createdAt.Format(time.RFC3339),
+		ExpiresAt:  expiresAt.Format(time.RFC3339),
+	})
+
+	return &pb_auth.ClientLoginResponse{ApprovalRequestId: approvalID}, nil
+}
+
+func (s *AuthServer) PollApproval(ctx context.Context, req *pb_auth.PollApprovalRequest) (*pb_auth.PollApprovalResponse, error) {
+	var actionType, approvalStatus, payload string
+	var expiresAt time.Time
+	err := s.DB.QueryRowContext(ctx,
+		`SELECT action_type, payload, status, expires_at FROM two_factor_approvals WHERE id = $1`,
+		req.Id,
+	).Scan(&actionType, &payload, &approvalStatus, &expiresAt)
+	if err == sql.ErrNoRows {
+		return nil, status.Error(codes.NotFound, "approval not found")
+	}
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to poll approval: %v", err)
+	}
+
+	if approvalStatus == "PENDING" && time.Now().After(expiresAt) {
+		_, _ = s.DB.ExecContext(ctx, `UPDATE two_factor_approvals SET status = 'EXPIRED' WHERE id = $1`, req.Id)
+		approvalStatus = "EXPIRED"
+	}
+
+	resp := &pb_auth.PollApprovalResponse{Status: approvalStatus}
+
+	if approvalStatus == "APPROVED" && actionType == "LOGIN" {
+		var tokens map[string]string
+		if err := json.Unmarshal([]byte(payload), &tokens); err == nil {
+			resp.AccessToken = tokens["access_token"]
+			resp.RefreshToken = tokens["refresh_token"]
+		}
+	}
+
+	return resp, nil
 }
 
 func (s *AuthServer) ClientRefresh(_ context.Context, req *pb_auth.ClientRefreshRequest) (*pb_auth.ClientRefreshResponse, error) {
@@ -504,4 +570,183 @@ func generateActivationToken() (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(b), nil
+}
+
+func (s *AuthServer) CreateApproval(ctx context.Context, req *pb_auth.CreateApprovalRequest) (*pb_auth.CreateApprovalResponse, error) {
+	var id int64
+	var createdAt, expiresAt time.Time
+	err := s.DB.QueryRowContext(ctx,
+		`INSERT INTO two_factor_approvals (client_id, action_type, payload) VALUES ($1, $2, $3) RETURNING id, created_at, expires_at`,
+		req.ClientId, req.ActionType, req.Payload,
+	).Scan(&id, &createdAt, &expiresAt)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to create approval: %v", err)
+	}
+	approval := &pb_auth.Approval{
+		Id:         id,
+		ClientId:   req.ClientId,
+		ActionType: req.ActionType,
+		Payload:    req.Payload,
+		Status:     "PENDING",
+		CreatedAt:  createdAt.Format(time.RFC3339),
+		ExpiresAt:  expiresAt.Format(time.RFC3339),
+	}
+	go s.sendApprovalPush(req.ClientId, approval)
+	return &pb_auth.CreateApprovalResponse{Approval: approval}, nil
+}
+
+func (s *AuthServer) GetApproval(ctx context.Context, req *pb_auth.GetApprovalRequest) (*pb_auth.GetApprovalResponse, error) {
+	var a pb_auth.Approval
+	var createdAt, expiresAt time.Time
+	err := s.DB.QueryRowContext(ctx,
+		`SELECT id, client_id, action_type, payload, status, created_at, expires_at FROM two_factor_approvals WHERE id = $1`,
+		req.Id,
+	).Scan(&a.Id, &a.ClientId, &a.ActionType, &a.Payload, &a.Status, &createdAt, &expiresAt)
+	if err == sql.ErrNoRows {
+		return nil, status.Error(codes.NotFound, "approval not found")
+	}
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get approval: %v", err)
+	}
+	if a.Status == "PENDING" && time.Now().After(expiresAt) {
+		_, _ = s.DB.ExecContext(ctx, `UPDATE two_factor_approvals SET status = 'EXPIRED' WHERE id = $1`, req.Id)
+		a.Status = "EXPIRED"
+	}
+	a.CreatedAt = createdAt.Format(time.RFC3339)
+	a.ExpiresAt = expiresAt.Format(time.RFC3339)
+	return &pb_auth.GetApprovalResponse{Approval: &a}, nil
+}
+
+func (s *AuthServer) GetClientApprovals(ctx context.Context, req *pb_auth.GetClientApprovalsRequest) (*pb_auth.GetClientApprovalsResponse, error) {
+	_, _ = s.DB.ExecContext(ctx,
+		`UPDATE two_factor_approvals SET status = 'EXPIRED' WHERE client_id = $1 AND status = 'PENDING' AND expires_at < now()`,
+		req.ClientId,
+	)
+	rows, err := s.DB.QueryContext(ctx,
+		`SELECT id, client_id, action_type, payload, status, created_at, expires_at FROM two_factor_approvals WHERE client_id = $1 ORDER BY created_at DESC`,
+		req.ClientId,
+	)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to query approvals: %v", err)
+	}
+	defer rows.Close()
+	var approvals []*pb_auth.Approval
+	for rows.Next() {
+		var a pb_auth.Approval
+		var createdAt, expiresAt time.Time
+		if err := rows.Scan(&a.Id, &a.ClientId, &a.ActionType, &a.Payload, &a.Status, &createdAt, &expiresAt); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to scan approval: %v", err)
+		}
+		a.CreatedAt = createdAt.Format(time.RFC3339)
+		a.ExpiresAt = expiresAt.Format(time.RFC3339)
+		approvals = append(approvals, &a)
+	}
+	return &pb_auth.GetClientApprovalsResponse{Approvals: approvals}, nil
+}
+
+func (s *AuthServer) UpdateApprovalStatus(ctx context.Context, req *pb_auth.UpdateApprovalStatusRequest) (*pb_auth.UpdateApprovalStatusResponse, error) {
+	if req.Status != "APPROVED" && req.Status != "REJECTED" {
+		return nil, status.Error(codes.InvalidArgument, "status must be APPROVED or REJECTED")
+	}
+	var a pb_auth.Approval
+	var createdAt, expiresAt time.Time
+	err := s.DB.QueryRowContext(ctx,
+		`UPDATE two_factor_approvals SET status = $1 WHERE id = $2 AND client_id = $3 AND status = 'PENDING' RETURNING id, client_id, action_type, payload, status, created_at, expires_at`,
+		req.Status, req.Id, req.ClientId,
+	).Scan(&a.Id, &a.ClientId, &a.ActionType, &a.Payload, &a.Status, &createdAt, &expiresAt)
+	if err == sql.ErrNoRows {
+		return nil, status.Error(codes.NotFound, "approval not found or already resolved")
+	}
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to update approval: %v", err)
+	}
+	a.CreatedAt = createdAt.Format(time.RFC3339)
+	a.ExpiresAt = expiresAt.Format(time.RFC3339)
+	return &pb_auth.UpdateApprovalStatusResponse{Approval: &a}, nil
+}
+
+func (s *AuthServer) RegisterPushToken(ctx context.Context, req *pb_auth.RegisterPushTokenRequest) (*pb_auth.RegisterPushTokenResponse, error) {
+	_, err := s.DB.ExecContext(ctx,
+		`INSERT INTO push_tokens (client_id, token) VALUES ($1, $2) ON CONFLICT (client_id) DO UPDATE SET token = EXCLUDED.token`,
+		req.ClientId, req.Token,
+	)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to register push token: %v", err)
+	}
+	return &pb_auth.RegisterPushTokenResponse{}, nil
+}
+
+func (s *AuthServer) UnregisterPushToken(ctx context.Context, req *pb_auth.UnregisterPushTokenRequest) (*pb_auth.UnregisterPushTokenResponse, error) {
+	_, err := s.DB.ExecContext(ctx,
+		`DELETE FROM push_tokens WHERE client_id = $1`,
+		req.ClientId,
+	)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to unregister push token: %v", err)
+	}
+	return &pb_auth.UnregisterPushTokenResponse{}, nil
+}
+
+func (s *AuthServer) GetPushToken(ctx context.Context, req *pb_auth.GetPushTokenRequest) (*pb_auth.GetPushTokenResponse, error) {
+	var token string
+	err := s.DB.QueryRowContext(ctx,
+		`SELECT token FROM push_tokens WHERE client_id = $1`,
+		req.ClientId,
+	).Scan(&token)
+	if err == sql.ErrNoRows {
+		return nil, status.Error(codes.NotFound, "push token not found")
+	}
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get push token: %v", err)
+	}
+	return &pb_auth.GetPushTokenResponse{Token: token}, nil
+}
+
+func (s *AuthServer) sendApprovalPush(clientID int64, approval *pb_auth.Approval) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var pushToken string
+	err := s.DB.QueryRowContext(ctx, `SELECT token FROM push_tokens WHERE client_id = $1`, clientID).Scan(&pushToken)
+	if err != nil {
+		return // no push token registered — silent
+	}
+
+	title, body := approvalPushMessage(approval.ActionType)
+	payload, _ := json.Marshal(map[string]interface{}{
+		"to":        pushToken,
+		"title":     title,
+		"body":      body,
+		"data":      map[string]interface{}{"approvalId": approval.Id},
+		"channelId": "approvals",
+	})
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://exp.host/--/api/v2/push/send", bytes.NewReader(payload))
+	if err != nil {
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Printf("push notification failed for client %d: %v", clientID, err)
+		return
+	}
+	defer resp.Body.Close()
+}
+
+func approvalPushMessage(actionType string) (title, body string) {
+	switch actionType {
+	case "LOGIN":
+		return "Zahtev za prijavu", "Neko pokušava da se prijavi na vaš nalog."
+	case "PAYMENT":
+		return "Zahtev za plaćanje", "Tražimo vaše odobrenje za plaćanje."
+	case "TRANSFER":
+		return "Zahtev za transfer", "Tražimo vaše odobrenje za prenos sredstava."
+	case "LIMIT_CHANGE":
+		return "Promena limita", "Tražimo vaše odobrenje za promenu limita."
+	case "CARD_REQUEST":
+		return "Zahtev za karticu", "Tražimo vaše odobrenje za izdavanje kartice."
+	default:
+		return "Zahtev za odobrenje", "Imate novi zahtev koji čeka vaše odobrenje."
+	}
 }

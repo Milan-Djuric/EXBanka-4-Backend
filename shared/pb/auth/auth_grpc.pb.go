@@ -29,6 +29,14 @@ const (
 	AuthService_ClientRefresh_FullMethodName               = "/auth.AuthService/ClientRefresh"
 	AuthService_CreateClientActivationToken_FullMethodName = "/auth.AuthService/CreateClientActivationToken"
 	AuthService_ActivateClient_FullMethodName              = "/auth.AuthService/ActivateClient"
+	AuthService_PollApproval_FullMethodName                = "/auth.AuthService/PollApproval"
+	AuthService_CreateApproval_FullMethodName              = "/auth.AuthService/CreateApproval"
+	AuthService_GetApproval_FullMethodName                 = "/auth.AuthService/GetApproval"
+	AuthService_GetClientApprovals_FullMethodName          = "/auth.AuthService/GetClientApprovals"
+	AuthService_UpdateApprovalStatus_FullMethodName        = "/auth.AuthService/UpdateApprovalStatus"
+	AuthService_RegisterPushToken_FullMethodName           = "/auth.AuthService/RegisterPushToken"
+	AuthService_UnregisterPushToken_FullMethodName         = "/auth.AuthService/UnregisterPushToken"
+	AuthService_GetPushToken_FullMethodName                = "/auth.AuthService/GetPushToken"
 )
 
 // AuthServiceClient is the client API for AuthService service.
@@ -45,6 +53,14 @@ type AuthServiceClient interface {
 	ClientRefresh(ctx context.Context, in *ClientRefreshRequest, opts ...grpc.CallOption) (*ClientRefreshResponse, error)
 	CreateClientActivationToken(ctx context.Context, in *CreateClientActivationTokenRequest, opts ...grpc.CallOption) (*CreateClientActivationTokenResponse, error)
 	ActivateClient(ctx context.Context, in *ActivateClientRequest, opts ...grpc.CallOption) (*ActivateClientResponse, error)
+	PollApproval(ctx context.Context, in *PollApprovalRequest, opts ...grpc.CallOption) (*PollApprovalResponse, error)
+	CreateApproval(ctx context.Context, in *CreateApprovalRequest, opts ...grpc.CallOption) (*CreateApprovalResponse, error)
+	GetApproval(ctx context.Context, in *GetApprovalRequest, opts ...grpc.CallOption) (*GetApprovalResponse, error)
+	GetClientApprovals(ctx context.Context, in *GetClientApprovalsRequest, opts ...grpc.CallOption) (*GetClientApprovalsResponse, error)
+	UpdateApprovalStatus(ctx context.Context, in *UpdateApprovalStatusRequest, opts ...grpc.CallOption) (*UpdateApprovalStatusResponse, error)
+	RegisterPushToken(ctx context.Context, in *RegisterPushTokenRequest, opts ...grpc.CallOption) (*RegisterPushTokenResponse, error)
+	UnregisterPushToken(ctx context.Context, in *UnregisterPushTokenRequest, opts ...grpc.CallOption) (*UnregisterPushTokenResponse, error)
+	GetPushToken(ctx context.Context, in *GetPushTokenRequest, opts ...grpc.CallOption) (*GetPushTokenResponse, error)
 }
 
 type authServiceClient struct {
@@ -155,6 +171,86 @@ func (c *authServiceClient) ActivateClient(ctx context.Context, in *ActivateClie
 	return out, nil
 }
 
+func (c *authServiceClient) PollApproval(ctx context.Context, in *PollApprovalRequest, opts ...grpc.CallOption) (*PollApprovalResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PollApprovalResponse)
+	err := c.cc.Invoke(ctx, AuthService_PollApproval_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) CreateApproval(ctx context.Context, in *CreateApprovalRequest, opts ...grpc.CallOption) (*CreateApprovalResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateApprovalResponse)
+	err := c.cc.Invoke(ctx, AuthService_CreateApproval_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) GetApproval(ctx context.Context, in *GetApprovalRequest, opts ...grpc.CallOption) (*GetApprovalResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetApprovalResponse)
+	err := c.cc.Invoke(ctx, AuthService_GetApproval_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) GetClientApprovals(ctx context.Context, in *GetClientApprovalsRequest, opts ...grpc.CallOption) (*GetClientApprovalsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetClientApprovalsResponse)
+	err := c.cc.Invoke(ctx, AuthService_GetClientApprovals_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) UpdateApprovalStatus(ctx context.Context, in *UpdateApprovalStatusRequest, opts ...grpc.CallOption) (*UpdateApprovalStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateApprovalStatusResponse)
+	err := c.cc.Invoke(ctx, AuthService_UpdateApprovalStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) RegisterPushToken(ctx context.Context, in *RegisterPushTokenRequest, opts ...grpc.CallOption) (*RegisterPushTokenResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RegisterPushTokenResponse)
+	err := c.cc.Invoke(ctx, AuthService_RegisterPushToken_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) UnregisterPushToken(ctx context.Context, in *UnregisterPushTokenRequest, opts ...grpc.CallOption) (*UnregisterPushTokenResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UnregisterPushTokenResponse)
+	err := c.cc.Invoke(ctx, AuthService_UnregisterPushToken_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) GetPushToken(ctx context.Context, in *GetPushTokenRequest, opts ...grpc.CallOption) (*GetPushTokenResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPushTokenResponse)
+	err := c.cc.Invoke(ctx, AuthService_GetPushToken_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuthServiceServer is the server API for AuthService service.
 // All implementations must embed UnimplementedAuthServiceServer
 // for forward compatibility.
@@ -169,6 +265,14 @@ type AuthServiceServer interface {
 	ClientRefresh(context.Context, *ClientRefreshRequest) (*ClientRefreshResponse, error)
 	CreateClientActivationToken(context.Context, *CreateClientActivationTokenRequest) (*CreateClientActivationTokenResponse, error)
 	ActivateClient(context.Context, *ActivateClientRequest) (*ActivateClientResponse, error)
+	PollApproval(context.Context, *PollApprovalRequest) (*PollApprovalResponse, error)
+	CreateApproval(context.Context, *CreateApprovalRequest) (*CreateApprovalResponse, error)
+	GetApproval(context.Context, *GetApprovalRequest) (*GetApprovalResponse, error)
+	GetClientApprovals(context.Context, *GetClientApprovalsRequest) (*GetClientApprovalsResponse, error)
+	UpdateApprovalStatus(context.Context, *UpdateApprovalStatusRequest) (*UpdateApprovalStatusResponse, error)
+	RegisterPushToken(context.Context, *RegisterPushTokenRequest) (*RegisterPushTokenResponse, error)
+	UnregisterPushToken(context.Context, *UnregisterPushTokenRequest) (*UnregisterPushTokenResponse, error)
+	GetPushToken(context.Context, *GetPushTokenRequest) (*GetPushTokenResponse, error)
 	mustEmbedUnimplementedAuthServiceServer()
 }
 
@@ -208,6 +312,30 @@ func (UnimplementedAuthServiceServer) CreateClientActivationToken(context.Contex
 }
 func (UnimplementedAuthServiceServer) ActivateClient(context.Context, *ActivateClientRequest) (*ActivateClientResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ActivateClient not implemented")
+}
+func (UnimplementedAuthServiceServer) PollApproval(context.Context, *PollApprovalRequest) (*PollApprovalResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method PollApproval not implemented")
+}
+func (UnimplementedAuthServiceServer) CreateApproval(context.Context, *CreateApprovalRequest) (*CreateApprovalResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateApproval not implemented")
+}
+func (UnimplementedAuthServiceServer) GetApproval(context.Context, *GetApprovalRequest) (*GetApprovalResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetApproval not implemented")
+}
+func (UnimplementedAuthServiceServer) GetClientApprovals(context.Context, *GetClientApprovalsRequest) (*GetClientApprovalsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetClientApprovals not implemented")
+}
+func (UnimplementedAuthServiceServer) UpdateApprovalStatus(context.Context, *UpdateApprovalStatusRequest) (*UpdateApprovalStatusResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateApprovalStatus not implemented")
+}
+func (UnimplementedAuthServiceServer) RegisterPushToken(context.Context, *RegisterPushTokenRequest) (*RegisterPushTokenResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RegisterPushToken not implemented")
+}
+func (UnimplementedAuthServiceServer) UnregisterPushToken(context.Context, *UnregisterPushTokenRequest) (*UnregisterPushTokenResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UnregisterPushToken not implemented")
+}
+func (UnimplementedAuthServiceServer) GetPushToken(context.Context, *GetPushTokenRequest) (*GetPushTokenResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPushToken not implemented")
 }
 func (UnimplementedAuthServiceServer) mustEmbedUnimplementedAuthServiceServer() {}
 func (UnimplementedAuthServiceServer) testEmbeddedByValue()                     {}
@@ -410,6 +538,150 @@ func _AuthService_ActivateClient_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AuthService_PollApproval_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PollApprovalRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).PollApproval(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_PollApproval_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).PollApproval(ctx, req.(*PollApprovalRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_CreateApproval_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateApprovalRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).CreateApproval(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_CreateApproval_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).CreateApproval(ctx, req.(*CreateApprovalRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_GetApproval_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetApprovalRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).GetApproval(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_GetApproval_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).GetApproval(ctx, req.(*GetApprovalRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_GetClientApprovals_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetClientApprovalsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).GetClientApprovals(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_GetClientApprovals_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).GetClientApprovals(ctx, req.(*GetClientApprovalsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_UpdateApprovalStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateApprovalStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).UpdateApprovalStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_UpdateApprovalStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).UpdateApprovalStatus(ctx, req.(*UpdateApprovalStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_RegisterPushToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RegisterPushTokenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).RegisterPushToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_RegisterPushToken_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).RegisterPushToken(ctx, req.(*RegisterPushTokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_UnregisterPushToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnregisterPushTokenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).UnregisterPushToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_UnregisterPushToken_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).UnregisterPushToken(ctx, req.(*UnregisterPushTokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_GetPushToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPushTokenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).GetPushToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_GetPushToken_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).GetPushToken(ctx, req.(*GetPushTokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AuthService_ServiceDesc is the grpc.ServiceDesc for AuthService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -456,6 +728,38 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ActivateClient",
 			Handler:    _AuthService_ActivateClient_Handler,
+		},
+		{
+			MethodName: "PollApproval",
+			Handler:    _AuthService_PollApproval_Handler,
+		},
+		{
+			MethodName: "CreateApproval",
+			Handler:    _AuthService_CreateApproval_Handler,
+		},
+		{
+			MethodName: "GetApproval",
+			Handler:    _AuthService_GetApproval_Handler,
+		},
+		{
+			MethodName: "GetClientApprovals",
+			Handler:    _AuthService_GetClientApprovals_Handler,
+		},
+		{
+			MethodName: "UpdateApprovalStatus",
+			Handler:    _AuthService_UpdateApprovalStatus_Handler,
+		},
+		{
+			MethodName: "RegisterPushToken",
+			Handler:    _AuthService_RegisterPushToken_Handler,
+		},
+		{
+			MethodName: "UnregisterPushToken",
+			Handler:    _AuthService_UnregisterPushToken_Handler,
+		},
+		{
+			MethodName: "GetPushToken",
+			Handler:    _AuthService_GetPushToken_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

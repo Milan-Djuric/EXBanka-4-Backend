@@ -49,11 +49,20 @@ message ResetPasswordResponse {}
 message ClientLoginRequest {
   string email    = 1;
   string password = 2;
+  string source   = 3;  // "mobile" = direct tokens; empty = web 2FA flow
 }
 
 message ClientLoginResponse {
-  string access_token  = 1;
-  string refresh_token = 2;
+  string access_token        = 1;  // set on mobile login
+  string refresh_token       = 2;  // set on mobile login
+  int64  approval_request_id = 3;  // set on web login (2FA flow)
+}
+
+message PollApprovalRequest  { int64 id = 1; }
+message PollApprovalResponse {
+  string status        = 1;  // PENDING | APPROVED | REJECTED | EXPIRED
+  string access_token  = 2;  // set when APPROVED (LOGIN type only)
+  string refresh_token = 3;  // set when APPROVED (LOGIN type only)
 }
 
 message ClientRefreshRequest  { string refresh_token = 1; }
@@ -69,6 +78,52 @@ message ActivateClientRequest {
 }
 message ActivateClientResponse {}
 
+// ── TwoFactor Approval ────────────────────────────────────────────────────────
+
+message Approval {
+  int64  id          = 1;
+  int64  client_id   = 2;
+  string action_type = 3;  // LOGIN | PAYMENT | TRANSFER | LIMIT_CHANGE | CARD_REQUEST
+  string payload     = 4;  // JSON string
+  string status      = 5;  // PENDING | APPROVED | REJECTED | EXPIRED
+  string created_at  = 6;
+  string expires_at  = 7;
+}
+
+message CreateApprovalRequest {
+  int64  client_id   = 1;
+  string action_type = 2;
+  string payload     = 3;  // JSON string with action details
+}
+message CreateApprovalResponse { Approval approval = 1; }
+
+message GetApprovalRequest   { int64 id = 1; }
+message GetApprovalResponse  { Approval approval = 1; }
+
+message GetClientApprovalsRequest { int64 client_id = 1; }
+message GetClientApprovalsResponse { repeated Approval approvals = 1; }
+
+message UpdateApprovalStatusRequest {
+  int64  id        = 1;
+  int64  client_id = 2;  // for ownership check
+  string status    = 3;  // APPROVED | REJECTED
+}
+message UpdateApprovalStatusResponse { Approval approval = 1; }
+
+// ── Push tokens ───────────────────────────────────────────────────────────────
+
+message RegisterPushTokenRequest {
+  int64  client_id = 1;
+  string token     = 2;
+}
+message RegisterPushTokenResponse {}
+
+message UnregisterPushTokenRequest { int64 client_id = 1; }
+message UnregisterPushTokenResponse {}
+
+message GetPushTokenRequest  { int64 client_id = 1; }
+message GetPushTokenResponse { string token = 1; }
+
 service AuthService {
   rpc Login(LoginRequest)                                   returns (LoginResponse);
   rpc Refresh(RefreshRequest)                               returns (RefreshResponse);
@@ -80,4 +135,14 @@ service AuthService {
   rpc ClientRefresh(ClientRefreshRequest)                                 returns (ClientRefreshResponse);
   rpc CreateClientActivationToken(CreateClientActivationTokenRequest)     returns (CreateClientActivationTokenResponse);
   rpc ActivateClient(ActivateClientRequest)                               returns (ActivateClientResponse);
+
+  rpc PollApproval(PollApprovalRequest)                     returns (PollApprovalResponse);
+  rpc CreateApproval(CreateApprovalRequest)                 returns (CreateApprovalResponse);
+  rpc GetApproval(GetApprovalRequest)                       returns (GetApprovalResponse);
+  rpc GetClientApprovals(GetClientApprovalsRequest)         returns (GetClientApprovalsResponse);
+  rpc UpdateApprovalStatus(UpdateApprovalStatusRequest)     returns (UpdateApprovalStatusResponse);
+
+  rpc RegisterPushToken(RegisterPushTokenRequest)           returns (RegisterPushTokenResponse);
+  rpc UnregisterPushToken(UnregisterPushTokenRequest)       returns (UnregisterPushTokenResponse);
+  rpc GetPushToken(GetPushTokenRequest)                     returns (GetPushTokenResponse);
 }

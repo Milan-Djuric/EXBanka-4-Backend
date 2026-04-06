@@ -32,7 +32,14 @@ message PaymentRecipient {
   int64  client_id      = 2;
   string name           = 3;
   string account_number = 4;
+  int32  order          = 5;
 }
+
+message ReorderPaymentRecipientsRequest {
+  int64          client_id   = 1;
+  repeated int64 ordered_ids = 2;
+}
+message ReorderPaymentRecipientsResponse {}
 
 message CreatePaymentRecipientRequest {
   int64  client_id      = 1;
@@ -71,6 +78,7 @@ message Payment {
   string recipient_name   = 13;
   string sender_name      = 14;
   string sender_address   = 15;
+  string currency         = 16;
 }
 
 message GetPaymentByIdRequest {
@@ -87,6 +95,8 @@ message GetPaymentsRequest {
   double amount_min = 4;
   double amount_max = 5;
   string status     = 6;
+  int32  limit      = 7;
+  int32  offset     = 8;
 }
 
 message GetPaymentsResponse {
@@ -112,6 +122,21 @@ message CreateTransferResponse {
   string timestamp      = 9;
 }
 
+message Transfer {
+  int64  id             = 1;
+  string order_number   = 2;
+  string from_account   = 3;
+  string to_account     = 4;
+  double initial_amount = 5;
+  double final_amount   = 6;
+  double exchange_rate  = 7;
+  double fee            = 8;
+  string timestamp      = 9;
+}
+
+message GetTransfersRequest  { int64 client_id = 1; }
+message GetTransfersResponse { repeated Transfer transfers = 1; }
+
 service PaymentService {
   rpc CreatePayment(CreatePaymentRequest)                     returns (CreatePaymentResponse);
   rpc GetPayments(GetPaymentsRequest)                         returns (GetPaymentsResponse);
@@ -121,4 +146,6 @@ service PaymentService {
   rpc GetPaymentRecipients(GetPaymentRecipientsRequest)       returns (GetPaymentRecipientsResponse);
   rpc UpdatePaymentRecipient(UpdatePaymentRecipientRequest)   returns (UpdatePaymentRecipientResponse);
   rpc DeletePaymentRecipient(DeletePaymentRecipientRequest)   returns (DeletePaymentRecipientResponse);
+  rpc ReorderPaymentRecipients(ReorderPaymentRecipientsRequest) returns (ReorderPaymentRecipientsResponse);
+  rpc GetTransfers(GetTransfersRequest)                       returns (GetTransfersResponse);
 }
