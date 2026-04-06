@@ -1,0 +1,2 @@
+-- securities-service schema
+-- Tables will be added in subsequent issues (#137 Stock Exchange entity, etc.)

@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package securities;
+
+option go_package = "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/securities";
+
+// ── Ping (health check / placeholder) ───────────────────────────────────────
+
+message PingRequest {}
+message PingResponse { string message = 1; }
+
+// ── Service ──────────────────────────────────────────────────────────────────
+
+service SecuritiesService {
+  rpc Ping (PingRequest) returns (PingResponse);
+}

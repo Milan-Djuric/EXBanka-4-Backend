@@ -78,6 +78,12 @@ func main() {
 	}
 	defer exchangeConn.Close()
 
+	securitiesClient, securitiesConn, err := gwgrpc.NewSecuritiesClient(os.Getenv("SECURITIES_SERVICE_ADDR"))
+	if err != nil {
+		log.Fatalf("failed to connect to securities-service: %v", err)
+	}
+	defer securitiesConn.Close()
+
 	r := gin.Default()
 
 	r.Use(cors.New(cors.Config{
@@ -159,6 +165,7 @@ func main() {
 	r.PUT("/api/cards/:id/unblock", middleware.RequireRole("EMPLOYEE"), handlers.UnblockCard(cardClient))
 	r.PUT("/api/cards/:id/deactivate", middleware.RequireRole("EMPLOYEE"), handlers.DeactivateCard(cardClient))
 	r.PUT("/api/cards/:id/limit", middleware.RequireRole("EMPLOYEE"), handlers.UpdateCardLimit(cardClient))
+	r.GET("/stock-exchanges/ping", handlers.PingSecurities(securitiesClient))
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	r.Run(":8083")
 }
