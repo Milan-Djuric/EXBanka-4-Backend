@@ -124,6 +124,47 @@ message UpdatePasswordRequest {
 }
 message UpdatePasswordResponse {}
 
+// Actuary management messages (issues #143–#145)
+
+message ActuaryInfo {
+  int64  employee_id   = 1;
+  string first_name    = 2;
+  string last_name     = 3;
+  string email         = 4;
+  string position      = 5;
+  double limit_amount  = 6;
+  double used_limit    = 7;
+  bool   need_approval = 8;
+}
+
+message GetActuariesRequest {
+  string email      = 1;
+  string first_name = 2;
+  string last_name  = 3;
+  string position   = 4;
+}
+
+message GetActuariesResponse {
+  repeated ActuaryInfo actuaries = 1;
+}
+
+message SetAgentLimitRequest {
+  int64  employee_id  = 1;
+  double limit_amount = 2;
+}
+message SetAgentLimitResponse {}
+
+message ResetAgentUsedLimitRequest {
+  int64 employee_id = 1;
+}
+message ResetAgentUsedLimitResponse {}
+
+message SetNeedApprovalRequest {
+  int64 employee_id   = 1;
+  bool  need_approval = 2;
+}
+message SetNeedApprovalResponse {}
+
 service EmployeeService {
   rpc GetAllEmployees(GetAllEmployeesRequest) returns (GetAllEmployeesResponse);
   rpc SearchEmployees(SearchEmployeesRequest) returns (SearchEmployeesResponse);
@@ -134,4 +175,8 @@ service EmployeeService {
   rpc ActivateEmployee(ActivateEmployeeRequest) returns (ActivateEmployeeResponse);
   rpc GetEmployeeByEmail(GetEmployeeByEmailRequest) returns (GetEmployeeByEmailResponse);
   rpc UpdatePassword(UpdatePasswordRequest) returns (UpdatePasswordResponse);
+  rpc GetActuaries(GetActuariesRequest) returns (GetActuariesResponse);
+  rpc SetAgentLimit(SetAgentLimitRequest) returns (SetAgentLimitResponse);
+  rpc ResetAgentUsedLimit(ResetAgentUsedLimitRequest) returns (ResetAgentUsedLimitResponse);
+  rpc SetNeedApproval(SetNeedApprovalRequest) returns (SetNeedApprovalResponse);
 }

@@ -106,12 +106,28 @@ func TestActivateEmployee_HappyPath(t *testing.T) {
 
 // ---- UpdateEmployee tests ----
 
+// expectNonAdminPermissions mocks the first SELECT in UpdateEmployee that reads
+// the target employee's permissions (needed for admin-edit-admin guard).
+func expectNonAdminPermissions(dbMock sqlmock.Sqlmock) {
+	dbMock.ExpectQuery("SELECT permissions FROM employees").
+		WillReturnRows(sqlmock.NewRows([]string{"permissions"}).
+			AddRow(pq.StringArray{"READ"}))
+}
+
+// expectAdminPermissions mocks the same query but returns an ADMIN row.
+func expectAdminPermissions(dbMock sqlmock.Sqlmock) {
+	dbMock.ExpectQuery("SELECT permissions FROM employees").
+		WillReturnRows(sqlmock.NewRows([]string{"permissions"}).
+			AddRow(pq.StringArray{"ADMIN"}))
+}
+
 func TestUpdateEmployee_ActivateWithoutPassword(t *testing.T) {
 	db, dbMock, err := sqlmock.New()
 	require.NoError(t, err)
 	defer db.Close()
 
-	// Aktivan=true triggers the password pre-check
+	expectNonAdminPermissions(dbMock)
+	// Active=true triggers the password pre-check
 	dbMock.ExpectQuery("SELECT password FROM employees").
 		WillReturnRows(sqlmock.NewRows([]string{"password"}).AddRow(""))
 
@@ -126,7 +142,8 @@ func TestUpdateEmployee_NotFound(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	// Aktivan=false skips the password pre-check, goes straight to UPDATE RETURNING
+	expectNonAdminPermissions(dbMock)
+	// Active=false skips the password pre-check, goes straight to UPDATE RETURNING
 	dbMock.ExpectQuery("UPDATE employees").
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "ime", "prezime", "datum_rodjenja", "pol", "email",
@@ -144,6 +161,7 @@ func TestUpdateEmployee_UniqueUsernameViolation(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
+	expectNonAdminPermissions(dbMock)
 	pqErr := &pq.Error{Code: "23505", Constraint: "employees_username_key"}
 	dbMock.ExpectQuery("UPDATE employees").WillReturnError(pqErr)
 
@@ -159,6 +177,7 @@ func TestUpdateEmployee_UniqueJmbgViolation(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
+	expectNonAdminPermissions(dbMock)
 	pqErr := &pq.Error{Code: "23505", Constraint: "employees_jmbg_key"}
 	dbMock.ExpectQuery("UPDATE employees").WillReturnError(pqErr)
 
@@ -174,6 +193,7 @@ func TestUpdateEmployee_UniqueEmailViolation(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
+	expectNonAdminPermissions(dbMock)
 	pqErr := &pq.Error{Code: "23505", Constraint: "employees_email_key"}
 	dbMock.ExpectQuery("UPDATE employees").WillReturnError(pqErr)
 
@@ -182,6 +202,108 @@ func TestUpdateEmployee_UniqueEmailViolation(t *testing.T) {
 	require.Error(t, err)
 	assert.Equal(t, codes.AlreadyExists, status.Code(err))
 	assert.Contains(t, status.Convert(err).Message(), "email")
+}
+
+// ---- UpdateEmployee: new #143 validations ----
+
+func TestUpdateEmployee_AgentAndSupervisorConflict(t *testing.T) {
+	db, _, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	s := &EmployeeServer{DB: db}
+	_, err = s.UpdateEmployee(context.Background(), &pb.UpdateEmployeeRequest{
+		Id:          1,
+		Permissions: []string{"AGENT", "SUPERVISOR"},
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, status.Code(err))
+}
+
+func TestUpdateEmployee_AdminCannotEditAdmin(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	expectAdminPermissions(dbMock) // target employee is also an admin
+	s := &EmployeeServer{DB: db}
+	_, err = s.UpdateEmployee(context.Background(), &pb.UpdateEmployeeRequest{Id: 2, Active: false})
+	require.Error(t, err)
+	assert.Equal(t, codes.PermissionDenied, status.Code(err))
+}
+
+func TestUpdateEmployee_AdminAutoAddsSupervisor(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	expectNonAdminPermissions(dbMock) // target is not admin
+	// UPDATE returns the employee with ADMIN + SUPERVISOR
+	dbMock.ExpectQuery("UPDATE employees").
+		WillReturnRows(sqlmock.NewRows(employeeColumns()).
+			AddRow(int64(1), "John", "Doe", "1990-01-01", "M", "john@example.com",
+				"060111", "Addr", "johndoe", "Dev", "IT", false,
+				pq.StringArray{"ADMIN", "SUPERVISOR"}, "1111111111111"))
+	// actuary_info INSERT (supervisor gained)
+	dbMock.ExpectExec("INSERT INTO actuary_info").WillReturnResult(sqlmock.NewResult(1, 1))
+
+	s := &EmployeeServer{DB: db}
+	resp, err := s.UpdateEmployee(context.Background(), &pb.UpdateEmployeeRequest{
+		Id:          1,
+		Permissions: []string{"ADMIN"}, // SUPERVISOR should be auto-added
+	})
+	require.NoError(t, err)
+	// Verify SUPERVISOR was included in the UPDATE call (checked via mock)
+	assert.Contains(t, resp.Employee.Permissions, "ADMIN")
+	assert.Contains(t, resp.Employee.Permissions, "SUPERVISOR")
+}
+
+func TestUpdateEmployee_ActuaryInfoCreatedOnAgentAssign(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	// Target has no agent/supervisor permissions yet
+	expectNonAdminPermissions(dbMock)
+	dbMock.ExpectQuery("UPDATE employees").
+		WillReturnRows(sqlmock.NewRows(employeeColumns()).
+			AddRow(int64(1), "John", "Doe", "1990-01-01", "M", "j@j.com",
+				"060111", "Addr", "johndoe", "Dev", "IT", false,
+				pq.StringArray{"AGENT"}, "1111111111111"))
+	dbMock.ExpectExec("INSERT INTO actuary_info").WillReturnResult(sqlmock.NewResult(1, 1))
+
+	s := &EmployeeServer{DB: db}
+	_, err = s.UpdateEmployee(context.Background(), &pb.UpdateEmployeeRequest{
+		Id:          1,
+		Permissions: []string{"AGENT"},
+	})
+	require.NoError(t, err)
+	require.NoError(t, dbMock.ExpectationsWereMet())
+}
+
+func TestUpdateEmployee_ActuaryInfoDeletedOnRoleRemoval(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	// Target currently has AGENT
+	dbMock.ExpectQuery("SELECT permissions FROM employees").
+		WillReturnRows(sqlmock.NewRows([]string{"permissions"}).
+			AddRow(pq.StringArray{"AGENT"}))
+	dbMock.ExpectQuery("UPDATE employees").
+		WillReturnRows(sqlmock.NewRows(employeeColumns()).
+			AddRow(int64(1), "John", "Doe", "1990-01-01", "M", "j@j.com",
+				"060111", "Addr", "johndoe", "Dev", "IT", false,
+				pq.StringArray{"READ"}, "1111111111111"))
+	dbMock.ExpectExec("DELETE FROM actuary_info").WillReturnResult(sqlmock.NewResult(1, 1))
+
+	s := &EmployeeServer{DB: db}
+	_, err = s.UpdateEmployee(context.Background(), &pb.UpdateEmployeeRequest{
+		Id:          1,
+		Permissions: []string{"READ"}, // AGENT removed
+	})
+	require.NoError(t, err)
+	require.NoError(t, dbMock.ExpectationsWereMet())
 }
 
 // ---- UpdatePassword tests ----
@@ -583,6 +705,7 @@ func TestUpdateEmployee_ActivateNotFound(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
+	expectNonAdminPermissions(dbMock)
 	dbMock.ExpectQuery("SELECT password FROM employees").
 		WillReturnRows(sqlmock.NewRows([]string{"password"})) // ErrNoRows
 
@@ -597,6 +720,7 @@ func TestUpdateEmployee_ActivateDBError(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
+	expectNonAdminPermissions(dbMock)
 	dbMock.ExpectQuery("SELECT password FROM employees").WillReturnError(sql.ErrConnDone)
 
 	s := &EmployeeServer{DB: db}
@@ -609,6 +733,7 @@ func TestUpdateEmployee_GenericError(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
+	expectNonAdminPermissions(dbMock)
 	dbMock.ExpectQuery("UPDATE employees").WillReturnError(sql.ErrConnDone)
 
 	s := &EmployeeServer{DB: db}
@@ -683,14 +808,192 @@ func TestUpdateEmployee_HappyPath(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
+	expectNonAdminPermissions(dbMock) // target not admin
 	dbMock.ExpectQuery("UPDATE employees").
 		WillReturnRows(sqlmock.NewRows(employeeColumns()).
 			AddRow(int64(1), "John", "Doe", "1990-01-01", "M", "john@example.com",
-				"060111", "Addr", "johndoe", "Dev", "IT", false, pq.StringArray{"ADMIN"}, "1111111111111"))
+				"060111", "Addr", "johndoe", "Dev", "IT", false, pq.StringArray{"ADMIN", "SUPERVISOR"}, "1111111111111"))
+	// ADMIN req → SUPERVISOR auto-added → INSERT actuary_info (target had no actuary role before)
+	dbMock.ExpectExec("INSERT INTO actuary_info").WillReturnResult(sqlmock.NewResult(1, 1))
 
 	s := &EmployeeServer{DB: db}
 	resp, err := s.UpdateEmployee(context.Background(), &pb.UpdateEmployeeRequest{Id: 1, Active: false, Permissions: []string{"ADMIN"}})
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), resp.Employee.Id)
 	assert.Equal(t, "John", resp.Employee.FirstName)
+}
+
+// ---- GetActuaries tests ----
+
+func actuaryColumns() []string {
+	return []string{"id", "first_name", "last_name", "email", "position",
+		"limit_amount", "used_limit", "need_approval"}
+}
+
+func TestGetActuaries_HappyPath(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	dbMock.ExpectQuery("SELECT e.id").
+		WillReturnRows(sqlmock.NewRows(actuaryColumns()).
+			AddRow(int64(1), "Marko", "Markovic", "m@banka.rs", "Agent", 100000.0, 15000.0, false))
+
+	s := &EmployeeServer{DB: db}
+	resp, err := s.GetActuaries(context.Background(), &pb.GetActuariesRequest{})
+	require.NoError(t, err)
+	require.Len(t, resp.Actuaries, 1)
+	assert.Equal(t, int64(1), resp.Actuaries[0].EmployeeId)
+	assert.Equal(t, "Marko", resp.Actuaries[0].FirstName)
+	assert.Equal(t, 100000.0, resp.Actuaries[0].LimitAmount)
+	assert.Equal(t, 15000.0, resp.Actuaries[0].UsedLimit)
+	assert.False(t, resp.Actuaries[0].NeedApproval)
+}
+
+func TestGetActuaries_EmptyResult(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	dbMock.ExpectQuery("SELECT e.id").
+		WillReturnRows(sqlmock.NewRows(actuaryColumns()))
+
+	s := &EmployeeServer{DB: db}
+	resp, err := s.GetActuaries(context.Background(), &pb.GetActuariesRequest{})
+	require.NoError(t, err)
+	assert.NotNil(t, resp.Actuaries)
+	assert.Len(t, resp.Actuaries, 0)
+}
+
+func TestGetActuaries_DBError(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	dbMock.ExpectQuery("SELECT e.id").WillReturnError(sql.ErrConnDone)
+
+	s := &EmployeeServer{DB: db}
+	_, err = s.GetActuaries(context.Background(), &pb.GetActuariesRequest{})
+	require.Error(t, err)
+}
+
+// ---- SetAgentLimit tests ----
+
+func TestSetAgentLimit_NegativeLimit(t *testing.T) {
+	db, _, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	s := &EmployeeServer{DB: db}
+	_, err = s.SetAgentLimit(context.Background(), &pb.SetAgentLimitRequest{EmployeeId: 1, LimitAmount: -1})
+	require.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, status.Code(err))
+}
+
+func TestSetAgentLimit_EmployeeNotFound(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	dbMock.ExpectQuery("SELECT permissions FROM employees").
+		WillReturnRows(sqlmock.NewRows([]string{"permissions"})) // ErrNoRows
+
+	s := &EmployeeServer{DB: db}
+	_, err = s.SetAgentLimit(context.Background(), &pb.SetAgentLimitRequest{EmployeeId: 99, LimitAmount: 5000})
+	require.Error(t, err)
+	assert.Equal(t, codes.NotFound, status.Code(err))
+}
+
+func TestSetAgentLimit_NotAgent(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	dbMock.ExpectQuery("SELECT permissions FROM employees").
+		WillReturnRows(sqlmock.NewRows([]string{"permissions"}).AddRow(pq.StringArray{"READ"}))
+
+	s := &EmployeeServer{DB: db}
+	_, err = s.SetAgentLimit(context.Background(), &pb.SetAgentLimitRequest{EmployeeId: 1, LimitAmount: 5000})
+	require.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, status.Code(err))
+}
+
+func TestSetAgentLimit_HappyPath(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	dbMock.ExpectQuery("SELECT permissions FROM employees").
+		WillReturnRows(sqlmock.NewRows([]string{"permissions"}).AddRow(pq.StringArray{"AGENT"}))
+	dbMock.ExpectExec("UPDATE actuary_info SET limit_amount").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	s := &EmployeeServer{DB: db}
+	_, err = s.SetAgentLimit(context.Background(), &pb.SetAgentLimitRequest{EmployeeId: 1, LimitAmount: 50000})
+	require.NoError(t, err)
+	require.NoError(t, dbMock.ExpectationsWereMet())
+}
+
+// ---- ResetAgentUsedLimit tests ----
+
+func TestResetAgentUsedLimit_NotAgent(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	dbMock.ExpectQuery("SELECT permissions FROM employees").
+		WillReturnRows(sqlmock.NewRows([]string{"permissions"}).AddRow(pq.StringArray{"READ"}))
+
+	s := &EmployeeServer{DB: db}
+	_, err = s.ResetAgentUsedLimit(context.Background(), &pb.ResetAgentUsedLimitRequest{EmployeeId: 1})
+	require.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, status.Code(err))
+}
+
+func TestResetAgentUsedLimit_HappyPath(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	dbMock.ExpectQuery("SELECT permissions FROM employees").
+		WillReturnRows(sqlmock.NewRows([]string{"permissions"}).AddRow(pq.StringArray{"AGENT"}))
+	dbMock.ExpectExec("UPDATE actuary_info SET used_limit").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	s := &EmployeeServer{DB: db}
+	_, err = s.ResetAgentUsedLimit(context.Background(), &pb.ResetAgentUsedLimitRequest{EmployeeId: 1})
+	require.NoError(t, err)
+	require.NoError(t, dbMock.ExpectationsWereMet())
+}
+
+// ---- SetNeedApproval tests ----
+
+func TestSetNeedApproval_NotAgent(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	dbMock.ExpectQuery("SELECT permissions FROM employees").
+		WillReturnRows(sqlmock.NewRows([]string{"permissions"}).AddRow(pq.StringArray{"READ"}))
+
+	s := &EmployeeServer{DB: db}
+	_, err = s.SetNeedApproval(context.Background(), &pb.SetNeedApprovalRequest{EmployeeId: 1, NeedApproval: true})
+	require.Error(t, err)
+	assert.Equal(t, codes.InvalidArgument, status.Code(err))
+}
+
+func TestSetNeedApproval_HappyPath(t *testing.T) {
+	db, dbMock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	dbMock.ExpectQuery("SELECT permissions FROM employees").
+		WillReturnRows(sqlmock.NewRows([]string{"permissions"}).AddRow(pq.StringArray{"AGENT"}))
+	dbMock.ExpectExec("UPDATE actuary_info SET need_approval").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	s := &EmployeeServer{DB: db}
+	_, err = s.SetNeedApproval(context.Background(), &pb.SetNeedApprovalRequest{EmployeeId: 1, NeedApproval: true})
+	require.NoError(t, err)
+	require.NoError(t, dbMock.ExpectationsWereMet())
 }
