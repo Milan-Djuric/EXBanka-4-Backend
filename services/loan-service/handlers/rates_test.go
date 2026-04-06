@@ -29,6 +29,18 @@ func TestRateTiers(t *testing.T) {
 	}
 }
 
+func TestRateTiers_Variable(t *testing.T) {
+	// Variable rate: should return baseRate (same value as fixedRate in current tiers)
+	got := lookupRateTier(400_000, false)
+	if got != 6.25 {
+		t.Errorf("lookupRateTier(400k, variable) = %.2f, want 6.25", got)
+	}
+	got = lookupRateTier(1_500_000, false)
+	if got != 5.75 {
+		t.Errorf("lookupRateTier(1.5M, variable) = %.2f, want 5.75", got)
+	}
+}
+
 func TestEffectiveRate(t *testing.T) {
 	// CASH 300k RSD fixed: base=6.25 + margin=1.75 = 8.00
 	got := effectiveAnnualRate("CASH", 300_000, true, 0)

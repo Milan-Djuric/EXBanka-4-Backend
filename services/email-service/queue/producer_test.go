@@ -70,3 +70,88 @@ func TestPasswordConfirmationMessage_JSON(t *testing.T) {
 	require.NoError(t, json.Unmarshal(data, &decoded))
 	assert.Equal(t, orig, decoded)
 }
+
+func TestAccountCreatedMessage_JSON(t *testing.T) {
+	orig := AccountCreatedMessage{
+		Email:         "user@example.com",
+		FirstName:     "Ana",
+		AccountName:   "Tekući račun",
+		AccountNumber: "265000191399797801",
+		CurrencyCode:  "RSD",
+	}
+	data, err := json.Marshal(orig)
+	require.NoError(t, err)
+
+	var decoded AccountCreatedMessage
+	require.NoError(t, json.Unmarshal(data, &decoded))
+	assert.Equal(t, orig, decoded)
+}
+
+func TestAccountCreatedMessage_JSONKeys(t *testing.T) {
+	msg := AccountCreatedMessage{Email: "a@b.com", FirstName: "X", AccountName: "N", AccountNumber: "123", CurrencyCode: "RSD"}
+	data, _ := json.Marshal(msg)
+
+	var raw map[string]string
+	require.NoError(t, json.Unmarshal(data, &raw))
+	assert.Contains(t, raw, "email")
+	assert.Contains(t, raw, "first_name")
+	assert.Contains(t, raw, "account_name")
+	assert.Contains(t, raw, "account_number")
+	assert.Contains(t, raw, "currency_code")
+}
+
+func TestCardConfirmationMessage_JSON(t *testing.T) {
+	orig := CardConfirmationMessage{
+		Email:            "user@example.com",
+		FirstName:        "Marko",
+		ConfirmationCode: "482019",
+	}
+	data, err := json.Marshal(orig)
+	require.NoError(t, err)
+
+	var decoded CardConfirmationMessage
+	require.NoError(t, json.Unmarshal(data, &decoded))
+	assert.Equal(t, orig, decoded)
+}
+
+func TestCardConfirmationMessage_JSONKeys(t *testing.T) {
+	msg := CardConfirmationMessage{Email: "a@b.com", FirstName: "X", ConfirmationCode: "123456"}
+	data, _ := json.Marshal(msg)
+
+	var raw map[string]string
+	require.NoError(t, json.Unmarshal(data, &raw))
+	assert.Contains(t, raw, "email")
+	assert.Contains(t, raw, "first_name")
+	assert.Contains(t, raw, "confirmation_code")
+}
+
+func TestLoanLatePaymentMessage_JSON(t *testing.T) {
+	orig := LoanLatePaymentMessage{
+		Email:      "user@example.com",
+		FirstName:  "Petar",
+		LoanNumber: "1234567890123",
+		AmountDue:  12500.50,
+		Currency:   "RSD",
+		RetryCount: 2,
+	}
+	data, err := json.Marshal(orig)
+	require.NoError(t, err)
+
+	var decoded LoanLatePaymentMessage
+	require.NoError(t, json.Unmarshal(data, &decoded))
+	assert.Equal(t, orig, decoded)
+}
+
+func TestLoanLatePaymentMessage_JSONKeys(t *testing.T) {
+	msg := LoanLatePaymentMessage{Email: "a@b.com", FirstName: "X", LoanNumber: "123", AmountDue: 100.0, Currency: "RSD", RetryCount: 1}
+	data, _ := json.Marshal(msg)
+
+	var raw map[string]any
+	require.NoError(t, json.Unmarshal(data, &raw))
+	assert.Contains(t, raw, "email")
+	assert.Contains(t, raw, "first_name")
+	assert.Contains(t, raw, "loan_number")
+	assert.Contains(t, raw, "amount_due")
+	assert.Contains(t, raw, "currency")
+	assert.Contains(t, raw, "retry_count")
+}

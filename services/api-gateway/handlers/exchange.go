@@ -132,6 +132,7 @@ func GetExchangeRate(client pb.ExchangeServiceClient) gin.HandlerFunc {
 			"from":        from,
 			"to":          to,
 			"sellingRate": rFrom.SellingRate / rTo.SellingRate,
+			"buyingRate":  rFrom.BuyingRate / rTo.BuyingRate,
 			"middleRate":  rFrom.MiddleRate / rTo.MiddleRate,
 		})
 	}

@@ -1800,3 +1800,42 @@ func TestGetClientApprovals_QueryError(t *testing.T) {
 	require.Error(t, err)
 	assert.Equal(t, codes.Internal, status.Code(err))
 }
+
+
+// ---- approvalPushMessage ----
+
+func TestApprovalPushMessage_Login(t *testing.T) {
+	title, body := approvalPushMessage("LOGIN")
+	assert.Equal(t, "Zahtev za prijavu", title)
+	assert.NotEmpty(t, body)
+}
+
+func TestApprovalPushMessage_Payment(t *testing.T) {
+	title, body := approvalPushMessage("PAYMENT")
+	assert.Equal(t, "Zahtev za plaćanje", title)
+	assert.NotEmpty(t, body)
+}
+
+func TestApprovalPushMessage_Transfer(t *testing.T) {
+	title, body := approvalPushMessage("TRANSFER")
+	assert.Equal(t, "Zahtev za transfer", title)
+	assert.NotEmpty(t, body)
+}
+
+func TestApprovalPushMessage_LimitChange(t *testing.T) {
+	title, body := approvalPushMessage("LIMIT_CHANGE")
+	assert.Equal(t, "Promena limita", title)
+	assert.NotEmpty(t, body)
+}
+
+func TestApprovalPushMessage_CardRequest(t *testing.T) {
+	title, body := approvalPushMessage("CARD_REQUEST")
+	assert.Equal(t, "Zahtev za karticu", title)
+	assert.NotEmpty(t, body)
+}
+
+func TestApprovalPushMessage_Default(t *testing.T) {
+	title, body := approvalPushMessage("UNKNOWN_ACTION")
+	assert.Equal(t, "Zahtev za odobrenje", title)
+	assert.NotEmpty(t, body)
+}

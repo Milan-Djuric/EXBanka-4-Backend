@@ -24,7 +24,9 @@ func main() {
 	}
 
 	s := grpc.NewServer()
-	pb.RegisterEmployeeServiceServer(s, &handlers.EmployeeServer{DB: database})
+	srv := &handlers.EmployeeServer{DB: database}
+	pb.RegisterEmployeeServiceServer(s, srv)
+	srv.StartCronJobs()
 	log.Println("employee-service listening on :50051")
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)

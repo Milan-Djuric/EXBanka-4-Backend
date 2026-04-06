@@ -103,9 +103,10 @@ func GetMyCards(accountClient pbaccount.AccountServiceClient, cardClient pbcard.
 // @Param    id  path  int  true  "Card ID"
 // @Success  200  {object}  map[string]interface{}
 // @Router   /api/cards/id/{id} [get]
-func GetCardById(cardClient pbcard.CardServiceClient) gin.HandlerFunc {
+func GetCardById(accountClient pbaccount.AccountServiceClient, cardClient pbcard.CardServiceClient) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if _, err := middleware.GetUserIDFromToken(c); err != nil {
+		clientID, err := middleware.GetUserIDFromToken(c)
+		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "could not extract identity from token"})
 			return
 		}
@@ -127,6 +128,25 @@ func GetCardById(cardClient pbcard.CardServiceClient) gin.HandlerFunc {
 			}
 			return
 		}
+
+		// Enforce ownership: verify the card's account belongs to the authenticated client
+		acctResp, err := accountClient.GetMyAccounts(ctx, &pbaccount.GetMyAccountsRequest{OwnerId: clientID})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to verify card ownership"})
+			return
+		}
+		owned := false
+		for _, acct := range acctResp.Accounts {
+			if acct.AccountNumber == resp.Card.AccountNumber {
+				owned = true
+				break
+			}
+		}
+		if !owned {
+			c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+			return
+		}
+
 		c.JSON(http.StatusOK, cardToJSON(resp.Card))
 	}
 }

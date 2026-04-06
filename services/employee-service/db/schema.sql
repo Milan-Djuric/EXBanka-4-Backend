@@ -49,3 +49,13 @@ VALUES (102, 'Petar', 'Petrovic', '1991-03-10', 'M', 'petar.petrovic@banka.rs', 
 ON CONFLICT (id) DO NOTHING;
 
 SELECT setval('employees_id_seq', GREATEST((SELECT MAX(id) FROM employees), 102));
+
+-- Actuary info table (issue #144)
+-- Stores limit management data for employees with AGENT or SUPERVISOR permissions.
+-- Limit and used_limit are expressed in RSD (per spec).
+CREATE TABLE IF NOT EXISTS actuary_info (
+    employee_id   BIGINT PRIMARY KEY REFERENCES employees(id) ON DELETE CASCADE,
+    limit_amount  NUMERIC NOT NULL DEFAULT 0,
+    used_limit    NUMERIC NOT NULL DEFAULT 0,
+    need_approval BOOLEAN NOT NULL DEFAULT false
+);

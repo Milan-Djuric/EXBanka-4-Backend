@@ -478,3 +478,137 @@ func TestCreateAccount_EmailError_DoesNotFail(t *testing.T) {
 	require.NoError(t, err, "email error must not fail the request")
 	assert.NotNil(t, resp)
 }
+
+// ---- UpdateAccountLimits ----
+
+func TestUpdateAccountLimits_AdminCall_DBError(t *testing.T) {
+	s, dbMock, _, _ := newServer(t)
+	dbMock.ExpectExec(`UPDATE accounts SET daily_limit`).WillReturnError(sql.ErrConnDone)
+	_, err := s.UpdateAccountLimits(context.Background(), &pb.UpdateAccountLimitsRequest{
+		AccountId: 1, OwnerId: 0, DailyLimit: 1000, MonthlyLimit: 5000,
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestUpdateAccountLimits_AdminCall_NotFound(t *testing.T) {
+	s, dbMock, _, _ := newServer(t)
+	dbMock.ExpectExec(`UPDATE accounts SET daily_limit`).WillReturnResult(sqlmock.NewResult(0, 0))
+	_, err := s.UpdateAccountLimits(context.Background(), &pb.UpdateAccountLimitsRequest{
+		AccountId: 99, OwnerId: 0, DailyLimit: 1000, MonthlyLimit: 5000,
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.NotFound, status.Code(err))
+}
+
+func TestUpdateAccountLimits_AdminCall_Happy(t *testing.T) {
+	s, dbMock, _, _ := newServer(t)
+	dbMock.ExpectExec(`UPDATE accounts SET daily_limit`).WillReturnResult(sqlmock.NewResult(1, 1))
+	resp, err := s.UpdateAccountLimits(context.Background(), &pb.UpdateAccountLimitsRequest{
+		AccountId: 1, OwnerId: 0, DailyLimit: 1000, MonthlyLimit: 5000,
+	})
+	require.NoError(t, err)
+	assert.NotNil(t, resp)
+}
+
+func TestUpdateAccountLimits_ClientCall_DBError(t *testing.T) {
+	s, dbMock, _, _ := newServer(t)
+	dbMock.ExpectExec(`UPDATE accounts SET daily_limit`).WillReturnError(sql.ErrConnDone)
+	_, err := s.UpdateAccountLimits(context.Background(), &pb.UpdateAccountLimitsRequest{
+		AccountId: 1, OwnerId: 42, DailyLimit: 500, MonthlyLimit: 2000,
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestUpdateAccountLimits_ClientCall_NotFound(t *testing.T) {
+	s, dbMock, _, _ := newServer(t)
+	dbMock.ExpectExec(`UPDATE accounts SET daily_limit`).WillReturnResult(sqlmock.NewResult(0, 0))
+	_, err := s.UpdateAccountLimits(context.Background(), &pb.UpdateAccountLimitsRequest{
+		AccountId: 99, OwnerId: 42, DailyLimit: 500, MonthlyLimit: 2000,
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.NotFound, status.Code(err))
+}
+
+func TestUpdateAccountLimits_ClientCall_Happy(t *testing.T) {
+	s, dbMock, _, _ := newServer(t)
+	dbMock.ExpectExec(`UPDATE accounts SET daily_limit`).WillReturnResult(sqlmock.NewResult(1, 1))
+	resp, err := s.UpdateAccountLimits(context.Background(), &pb.UpdateAccountLimitsRequest{
+		AccountId: 1, OwnerId: 42, DailyLimit: 500, MonthlyLimit: 2000,
+	})
+	require.NoError(t, err)
+	assert.NotNil(t, resp)
+}
+
+// ---- GetBankAccounts ----
+
+func TestGetBankAccounts_DBError(t *testing.T) {
+	s, dbMock, _, _ := newServer(t)
+	dbMock.ExpectQuery(`SELECT account_number`).WillReturnError(sql.ErrConnDone)
+	_, err := s.GetBankAccounts(context.Background(), &pb.GetBankAccountsRequest{})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestGetBankAccounts_ScanError(t *testing.T) {
+	s, dbMock, _, _ := newServer(t)
+	// Return only 1 column, but Scan expects 5 — causes scan error
+	dbMock.ExpectQuery(`SELECT account_number`).WillReturnRows(
+		sqlmock.NewRows([]string{"account_number"}).AddRow("265000000000000001"),
+	)
+	_, err := s.GetBankAccounts(context.Background(), &pb.GetBankAccountsRequest{})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestGetBankAccounts_Empty(t *testing.T) {
+	s, dbMock, _, _ := newServer(t)
+	dbMock.ExpectQuery(`SELECT account_number`).WillReturnRows(
+		sqlmock.NewRows([]string{"account_number", "account_name", "balance", "available_balance", "currency_id"}),
+	)
+	resp, err := s.GetBankAccounts(context.Background(), &pb.GetBankAccountsRequest{})
+	require.NoError(t, err)
+	assert.Empty(t, resp.Accounts)
+}
+
+func TestGetBankAccounts_Happy(t *testing.T) {
+	s, dbMock, _, exchangeMock := newServer(t)
+	dbMock.ExpectQuery(`SELECT account_number`).WillReturnRows(
+		sqlmock.NewRows([]string{"account_number", "account_name", "balance", "available_balance", "currency_id"}).
+			AddRow("265000000000000001", "EUR Bank", float64(1000000), float64(1000000), int64(2)),
+	)
+	exchangeMock.ExpectQuery(`SELECT code FROM currencies`).WillReturnRows(
+		sqlmock.NewRows([]string{"code"}).AddRow("EUR"),
+	)
+	resp, err := s.GetBankAccounts(context.Background(), &pb.GetBankAccountsRequest{})
+	require.NoError(t, err)
+	require.Len(t, resp.Accounts, 1)
+	assert.Equal(t, "EUR", resp.Accounts[0].CurrencyCode)
+}
+
+// ---- DeleteAccount ----
+
+func TestDeleteAccount_DBError(t *testing.T) {
+	s, dbMock, _, _ := newServer(t)
+	dbMock.ExpectExec(`DELETE FROM accounts`).WillReturnError(sql.ErrConnDone)
+	_, err := s.DeleteAccount(context.Background(), &pb.DeleteAccountRequest{AccountId: 1})
+	require.Error(t, err)
+	assert.Equal(t, codes.Internal, status.Code(err))
+}
+
+func TestDeleteAccount_NotFound(t *testing.T) {
+	s, dbMock, _, _ := newServer(t)
+	dbMock.ExpectExec(`DELETE FROM accounts`).WillReturnResult(sqlmock.NewResult(0, 0))
+	_, err := s.DeleteAccount(context.Background(), &pb.DeleteAccountRequest{AccountId: 99})
+	require.Error(t, err)
+	assert.Equal(t, codes.NotFound, status.Code(err))
+}
+
+func TestDeleteAccount_Happy(t *testing.T) {
+	s, dbMock, _, _ := newServer(t)
+	dbMock.ExpectExec(`DELETE FROM accounts`).WillReturnResult(sqlmock.NewResult(1, 1))
+	resp, err := s.DeleteAccount(context.Background(), &pb.DeleteAccountRequest{AccountId: 1})
+	require.NoError(t, err)
+	assert.NotNil(t, resp)
+}

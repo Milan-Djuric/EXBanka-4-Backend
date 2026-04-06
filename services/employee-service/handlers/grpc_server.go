@@ -3,12 +3,24 @@ package handlers
 import (
 	"context"
 	"database/sql"
+	"strings"
 
 	"github.com/lib/pq"
 	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/employee"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+// containsPermission returns true if perms contains the given permission (case-insensitive).
+func containsPermission(perms []string, perm string) bool {
+	upper := strings.ToUpper(perm)
+	for _, p := range perms {
+		if strings.ToUpper(p) == upper {
+			return true
+		}
+	}
+	return false
+}
 
 type EmployeeServer struct {
 	pb.UnimplementedEmployeeServiceServer
@@ -154,6 +166,45 @@ func (s *EmployeeServer) GetEmployeeById(ctx context.Context, req *pb.GetEmploye
 }
 
 func (s *EmployeeServer) UpdateEmployee(ctx context.Context, req *pb.UpdateEmployeeRequest) (*pb.UpdateEmployeeResponse, error) {
+	// --- Permission validation (#143) ---
+	hasAgent, hasSupervisor, hasAdmin := false, false, false
+	for _, p := range req.Permissions {
+		switch strings.ToUpper(p) {
+		case "AGENT":
+			hasAgent = true
+		case "SUPERVISOR":
+			hasSupervisor = true
+		case "ADMIN":
+			hasAdmin = true
+		}
+	}
+	if hasAgent && hasSupervisor {
+		return nil, status.Error(codes.InvalidArgument, "employee cannot have both AGENT and SUPERVISOR")
+	}
+	// Spec: Admin → automatically also Supervisor
+	if hasAdmin && !hasSupervisor {
+		req.Permissions = append(req.Permissions, "SUPERVISOR")
+		hasSupervisor = true
+	}
+
+	// Spec: Admin cannot edit another admin
+	var targetPerms pq.StringArray
+	err := s.DB.QueryRowContext(ctx, `SELECT permissions FROM employees WHERE id = $1`, req.Id).Scan(&targetPerms)
+	if err == sql.ErrNoRows {
+		return nil, status.Error(codes.NotFound, "employee not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+	if containsPermission(targetPerms, "ADMIN") {
+		return nil, status.Error(codes.PermissionDenied, "admins cannot be edited by other admins")
+	}
+
+	// Track old actuary roles for actuary_info sync (#144)
+	hadAgent := containsPermission(targetPerms, "AGENT")
+	hadSupervisor := containsPermission(targetPerms, "SUPERVISOR")
+
+	// --- Active check ---
 	if req.Active {
 		var pwd string
 		err := s.DB.QueryRowContext(ctx, `SELECT password FROM employees WHERE id = $1`, req.Id).Scan(&pwd)
@@ -170,7 +221,7 @@ func (s *EmployeeServer) UpdateEmployee(ctx context.Context, req *pb.UpdateEmplo
 
 	var e pb.Employee
 	var permissions pq.StringArray
-	err := s.DB.QueryRowContext(ctx, `
+	err = s.DB.QueryRowContext(ctx, `
 		UPDATE employees
 		SET first_name=$2, last_name=$3, date_of_birth=$4::date, gender=$5, email=$6,
 		    phone_number=$7, address=$8, username=$9, position=$10,
@@ -203,6 +254,23 @@ func (s *EmployeeServer) UpdateEmployee(ctx context.Context, req *pb.UpdateEmplo
 		return nil, err
 	}
 	e.Permissions = permissions
+
+	// --- Sync actuary_info (#144) ---
+	// If employee gained AGENT or SUPERVISOR for the first time → insert row
+	willHaveAgent := hasAgent
+	willHaveSupervisor := hasSupervisor
+	if (!hadAgent && willHaveAgent) || (!hadSupervisor && willHaveSupervisor) {
+		if !hadAgent && !hadSupervisor {
+			_, _ = s.DB.ExecContext(ctx,
+				`INSERT INTO actuary_info (employee_id) VALUES ($1) ON CONFLICT DO NOTHING`,
+				req.Id)
+		}
+	}
+	// If employee lost both AGENT and SUPERVISOR → delete row
+	if (hadAgent || hadSupervisor) && !willHaveAgent && !willHaveSupervisor {
+		_, _ = s.DB.ExecContext(ctx, `DELETE FROM actuary_info WHERE employee_id = $1`, req.Id)
+	}
+
 	return &pb.UpdateEmployeeResponse{Employee: &e}, nil
 }
 
@@ -302,4 +370,118 @@ func (s *EmployeeServer) CreateEmployee(ctx context.Context, req *pb.CreateEmplo
 			Jmbg:        req.Jmbg,
 		},
 	}, nil
+}
+
+// --- Actuary management handlers (issues #144–#145) ---
+
+func (s *EmployeeServer) GetActuaries(ctx context.Context, req *pb.GetActuariesRequest) (*pb.GetActuariesResponse, error) {
+	rows, err := s.DB.QueryContext(ctx, `
+		SELECT e.id, e.first_name, e.last_name, e.email, e.position,
+		       a.limit_amount, a.used_limit, a.need_approval
+		FROM employees e
+		JOIN actuary_info a ON a.employee_id = e.id
+		WHERE 'AGENT' = ANY(e.permissions)
+		  AND ($1 = '' OR e.email      ILIKE '%' || $1 || '%')
+		  AND ($2 = '' OR e.first_name ILIKE '%' || $2 || '%')
+		  AND ($3 = '' OR e.last_name  ILIKE '%' || $3 || '%')
+		  AND ($4 = '' OR e.position   ILIKE '%' || $4 || '%')
+		ORDER BY e.last_name, e.first_name`,
+		req.Email, req.FirstName, req.LastName, req.Position,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var actuaries []*pb.ActuaryInfo
+	for rows.Next() {
+		var a pb.ActuaryInfo
+		if err := rows.Scan(&a.EmployeeId, &a.FirstName, &a.LastName, &a.Email, &a.Position,
+			&a.LimitAmount, &a.UsedLimit, &a.NeedApproval); err != nil {
+			return nil, err
+		}
+		actuaries = append(actuaries, &a)
+	}
+	if actuaries == nil {
+		actuaries = []*pb.ActuaryInfo{}
+	}
+	return &pb.GetActuariesResponse{Actuaries: actuaries}, nil
+}
+
+func (s *EmployeeServer) SetAgentLimit(ctx context.Context, req *pb.SetAgentLimitRequest) (*pb.SetAgentLimitResponse, error) {
+	if req.LimitAmount < 0 {
+		return nil, status.Error(codes.InvalidArgument, "limit must be non-negative")
+	}
+	// Verify the employee is an agent
+	var perms pq.StringArray
+	err := s.DB.QueryRowContext(ctx, `SELECT permissions FROM employees WHERE id = $1`, req.EmployeeId).Scan(&perms)
+	if err == sql.ErrNoRows {
+		return nil, status.Error(codes.NotFound, "employee not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+	if !containsPermission(perms, "AGENT") {
+		return nil, status.Error(codes.InvalidArgument, "employee is not an agent")
+	}
+	res, err := s.DB.ExecContext(ctx,
+		`UPDATE actuary_info SET limit_amount = $2 WHERE employee_id = $1`,
+		req.EmployeeId, req.LimitAmount)
+	if err != nil {
+		return nil, err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return nil, status.Error(codes.NotFound, "actuary info not found")
+	}
+	return &pb.SetAgentLimitResponse{}, nil
+}
+
+func (s *EmployeeServer) ResetAgentUsedLimit(ctx context.Context, req *pb.ResetAgentUsedLimitRequest) (*pb.ResetAgentUsedLimitResponse, error) {
+	// Verify the employee is an agent
+	var perms pq.StringArray
+	err := s.DB.QueryRowContext(ctx, `SELECT permissions FROM employees WHERE id = $1`, req.EmployeeId).Scan(&perms)
+	if err == sql.ErrNoRows {
+		return nil, status.Error(codes.NotFound, "employee not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+	if !containsPermission(perms, "AGENT") {
+		return nil, status.Error(codes.InvalidArgument, "employee is not an agent")
+	}
+	res, err := s.DB.ExecContext(ctx,
+		`UPDATE actuary_info SET used_limit = 0 WHERE employee_id = $1`,
+		req.EmployeeId)
+	if err != nil {
+		return nil, err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return nil, status.Error(codes.NotFound, "actuary info not found")
+	}
+	return &pb.ResetAgentUsedLimitResponse{}, nil
+}
+
+func (s *EmployeeServer) SetNeedApproval(ctx context.Context, req *pb.SetNeedApprovalRequest) (*pb.SetNeedApprovalResponse, error) {
+	// Verify the employee is an agent
+	var perms pq.StringArray
+	err := s.DB.QueryRowContext(ctx, `SELECT permissions FROM employees WHERE id = $1`, req.EmployeeId).Scan(&perms)
+	if err == sql.ErrNoRows {
+		return nil, status.Error(codes.NotFound, "employee not found")
+	}
+	if err != nil {
+		return nil, err
+	}
+	if !containsPermission(perms, "AGENT") {
+		return nil, status.Error(codes.InvalidArgument, "employee is not an agent")
+	}
+	res, err := s.DB.ExecContext(ctx,
+		`UPDATE actuary_info SET need_approval = $2 WHERE employee_id = $1`,
+		req.EmployeeId, req.NeedApproval)
+	if err != nil {
+		return nil, err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return nil, status.Error(codes.NotFound, "actuary info not found")
+	}
+	return &pb.SetNeedApprovalResponse{}, nil
 }

@@ -19,8 +19,9 @@ import (
 const (
 	spread     = 0.02  // 2% spread for buying/selling rates
 	commission = 0.005 // 0.5% commission per conversion step
-	rateAPIURL = "https://open.er-api.com/v6/latest/RSD"
 )
+
+var rateAPIURL = "https://open.er-api.com/v6/latest/RSD"
 
 // Static fallback rates (RSD → foreign) in case the external API is unavailable
 var fallbackRates = map[string]float64{
