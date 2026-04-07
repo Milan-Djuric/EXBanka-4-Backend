@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:  #ovo u svakom jobu 
       run:
-        working-directory: services/employee-service
+        working-directory: services/employee-service #neka izmena
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
