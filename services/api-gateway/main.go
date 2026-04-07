@@ -181,7 +181,7 @@ func main() {
 	r.GET("/stock-exchanges/:id/holidays", middleware.RequireRole("EMPLOYEE"), handlers.GetHolidays(securitiesClient))
 	r.POST("/stock-exchanges/holidays", middleware.RequireRole("ADMIN"), handlers.AddHoliday(securitiesClient))
 	r.DELETE("/stock-exchanges/holidays/:polity/:date", middleware.RequireRole("ADMIN"), handlers.DeleteHoliday(securitiesClient))
-	r.GET("/stock-exchanges/:mic/is-open", middleware.RequireRole("EMPLOYEE"), handlers.IsExchangeOpen(securitiesClient))
+	r.GET("/stock-exchanges/:id/is-open", middleware.RequireRole("EMPLOYEE"), handlers.IsExchangeOpen(securitiesClient))
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	r.Run(":8083")
 }

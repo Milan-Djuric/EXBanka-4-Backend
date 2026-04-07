@@ -519,12 +519,15 @@ func SetTestMode(client pb.SecuritiesServiceClient) gin.HandlerFunc {
 // IsExchangeOpen godoc
 // @Summary      Check if an exchange is currently open
 // @Tags         securities
-// @Param        mic  path  string  true  "MIC code"
+// @Param        id  path  string  true  "Exchange ID or MIC code"
 // @Success      200  {object}  map[string]interface{}
-// @Router       /stock-exchanges/{mic}/is-open [get]
+// @Router       /stock-exchanges/{id}/is-open [get]
 func IsExchangeOpen(client pb.SecuritiesServiceClient) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		mic := c.Param("mic")
+		mic := resolveExchangeMIC(c, client, c.Param("id"))
+		if mic == "" {
+			return
+		}
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
 		defer cancel()
 
