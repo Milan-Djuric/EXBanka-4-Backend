@@ -2,7 +2,15 @@ name: Employee service images
 
 on:
   push:
+    paths:
+      - 'services/employee-service/**'
+      - 'shared/**'
+      - '.github/workflows/employee-service.yml'
   pull_request:
+    paths:
+      - 'services/employee-service/**'
+      - 'shared/**'
+      - '.github/workflows/employee-service.yml'
 
 jobs:
   docker:

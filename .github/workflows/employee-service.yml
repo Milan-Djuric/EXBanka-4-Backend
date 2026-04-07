@@ -2,6 +2,10 @@ name: Employee Service
 
 on:
   pull_request:
+    paths:
+      - 'services/employee-service/**'
+      - 'shared/**'
+      - '.github/workflows/employee-service.yml'
 
 jobs:
   build:
