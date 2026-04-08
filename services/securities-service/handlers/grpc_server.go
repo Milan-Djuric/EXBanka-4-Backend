@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lib/pq"
 	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/securities"
+	"github.com/lib/pq"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -439,9 +439,9 @@ func (s *SecuritiesServer) GetListings(ctx context.Context, req *pb.GetListingsR
 	var listings []*pb.ListingSummary
 	for rows.Next() {
 		var (
-			id             int64
-			ticker, name   string
-			lType, acronym string
+			id              int64
+			ticker, name    string
+			lType, acronym  string
 			price, ask, bid float64
 			volume          int64
 			change          float64
@@ -484,11 +484,11 @@ func (s *SecuritiesServer) GetListings(ctx context.Context, req *pb.GetListingsR
 
 func (s *SecuritiesServer) GetListingById(ctx context.Context, req *pb.GetListingByIdRequest) (*pb.GetListingByIdResponse, error) {
 	var (
-		id                          int64
+		id                           int64
 		ticker, name, lType, acronym string
-		price, ask, bid             float64
-		volume                      int64
-		change                      float64
+		price, ask, bid              float64
+		volume                       int64
+		change                       float64
 		// stock
 		outshares     sql.NullInt64
 		dividendYield sql.NullFloat64
@@ -499,11 +499,11 @@ func (s *SecuritiesServer) GetListingById(ctx context.Context, req *pb.GetListin
 		contractUnit      sql.NullString
 		futuresSettlement sql.NullTime
 		// option
-		stockListingID  sql.NullInt64
-		optionType      sql.NullString
-		strikePrice     sql.NullFloat64
-		impliedVol      sql.NullFloat64
-		openInterest    sql.NullInt64
+		stockListingID   sql.NullInt64
+		optionType       sql.NullString
+		strikePrice      sql.NullFloat64
+		impliedVol       sql.NullFloat64
+		openInterest     sql.NullInt64
 		optionSettlement sql.NullTime
 	)
 	err := s.DB.QueryRowContext(ctx, `
@@ -710,4 +710,3 @@ func listingNominalValue(lType string, price, contractSize float64) float64 {
 	}
 	return price // STOCK: contractSize = 1
 }
-

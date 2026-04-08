@@ -4,8 +4,8 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/lib/pq"
 	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/client"
+	"github.com/lib/pq"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

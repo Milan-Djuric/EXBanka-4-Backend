@@ -3,6 +3,7 @@ module github.com/RAF-SI-2025/EXBanka-4-Backend/services/email-service
 go 1.26.1
 
 require (
+	github.com/RAF-SI-2025/EXBanka-4-Backend/shared v0.0.0-20260406142200-a172fa7a2a46
 	github.com/rabbitmq/amqp091-go v1.10.0
 	github.com/stretchr/testify v1.11.1
 	google.golang.org/grpc v1.79.3
@@ -20,6 +21,7 @@ require (
 	golang.org/x/text v0.34.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
+	gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

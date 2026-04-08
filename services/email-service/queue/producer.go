@@ -6,12 +6,12 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-const QueueName                  = "email.activation"
-const ResetQueueName             = "email.passwordreset"
-const ConfirmQueueName           = "email.passwordconfirmation"
-const AccountCreatedQueueName    = "email.accountcreated"
-const CardConfirmationQueueName  = "email.cardconfirmation"
-const LoanLatePaymentQueueName   = "email.loanlate"
+const QueueName = "email.activation"
+const ResetQueueName = "email.passwordreset"
+const ConfirmQueueName = "email.passwordconfirmation"
+const AccountCreatedQueueName = "email.accountcreated"
+const CardConfirmationQueueName = "email.cardconfirmation"
+const LoanLatePaymentQueueName = "email.loanlate"
 
 type ActivationMessage struct {
 	Email          string `json:"email"`

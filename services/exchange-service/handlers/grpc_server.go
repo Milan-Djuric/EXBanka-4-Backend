@@ -56,8 +56,8 @@ func (s *ExchangeServer) ensureTodayRates(ctx context.Context) error {
 }
 
 type erAPIResponse struct {
-	Result  string             `json:"result"`
-	Rates   map[string]float64 `json:"rates"`
+	Result string             `json:"result"`
+	Rates  map[string]float64 `json:"rates"`
 }
 
 func fetchRatesFromAPI() (map[string]float64, error) {

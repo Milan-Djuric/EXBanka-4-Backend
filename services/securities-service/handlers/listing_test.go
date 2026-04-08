@@ -463,7 +463,7 @@ func TestListingChangePercent(t *testing.T) {
 		want   float64
 	}{
 		{"positive change", 200.0, 10.0, 5.263}, // 100*10/190
-		{"negative change", 95.0, -5.0, -5.0},  // 100*(-5)/100
+		{"negative change", 95.0, -5.0, -5.0},   // 100*(-5)/100
 		{"zero change", 100.0, 0.0, 0.0},
 		{"zero prev price guard", 5.0, 5.0, 0.0}, // prev = 0 → guard
 	}

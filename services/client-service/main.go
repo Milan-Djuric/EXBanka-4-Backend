@@ -5,10 +5,10 @@ import (
 	"net"
 	"os"
 
-	"google.golang.org/grpc"
 	clientdb "github.com/RAF-SI-2025/EXBanka-4-Backend/services/client-service/db"
 	"github.com/RAF-SI-2025/EXBanka-4-Backend/services/client-service/handlers"
 	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/client"
+	"google.golang.org/grpc"
 )
 
 func main() {

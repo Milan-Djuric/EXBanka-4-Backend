@@ -15,9 +15,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/loan"
 	pb_client "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/client"
 	pb_email "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/email"
+	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/loan"
 )
 
 // ── gRPC client stubs ────────────────────────────────────────────────────────

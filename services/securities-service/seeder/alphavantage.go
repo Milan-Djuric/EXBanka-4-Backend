@@ -261,11 +261,11 @@ func FetchFXDaily(fromCurrency, toCurrency, apiKey string) ([]DailyBar, error) {
 	time.Sleep(avRateLimit)
 	var resp avFXDailyResp
 	ok, err := avGet(map[string]string{
-		"function":      "FX_DAILY",
-		"from_symbol":   fromCurrency,
-		"to_symbol":     toCurrency,
-		"outputsize":    "full",
-		"apikey":        apiKey,
+		"function":    "FX_DAILY",
+		"from_symbol": fromCurrency,
+		"to_symbol":   toCurrency,
+		"outputsize":  "full",
+		"apikey":      apiKey,
 	}, &resp)
 	if err != nil {
 		return nil, err

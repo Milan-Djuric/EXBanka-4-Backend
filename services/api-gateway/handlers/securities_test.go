@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	jwt "github.com/golang-jwt/jwt/v5"
 	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/securities"
+	jwt "github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -18,23 +18,23 @@ import (
 // ---- stub securities service client ----
 
 type stubSecuritiesClient struct {
-	getExchangesFn    func(context.Context, *pb.GetStockExchangesRequest, ...grpc.CallOption) (*pb.GetStockExchangesResponse, error)
-	getByMICFn        func(context.Context, *pb.GetStockExchangeByMICRequest, ...grpc.CallOption) (*pb.GetStockExchangeByMICResponse, error)
-	getByIdFn         func(context.Context, *pb.GetStockExchangeByIdRequest, ...grpc.CallOption) (*pb.GetStockExchangeByIdResponse, error)
-	createExchangeFn  func(context.Context, *pb.CreateStockExchangeRequest, ...grpc.CallOption) (*pb.CreateStockExchangeResponse, error)
-	updateExchangeFn  func(context.Context, *pb.UpdateStockExchangeRequest, ...grpc.CallOption) (*pb.UpdateStockExchangeResponse, error)
-	deleteExchangeFn  func(context.Context, *pb.DeleteStockExchangeRequest, ...grpc.CallOption) (*pb.DeleteStockExchangeResponse, error)
-	getHoursFn        func(context.Context, *pb.GetWorkingHoursRequest, ...grpc.CallOption) (*pb.GetWorkingHoursResponse, error)
-	setHoursFn        func(context.Context, *pb.SetWorkingHoursRequest, ...grpc.CallOption) (*pb.SetWorkingHoursResponse, error)
-	getHolidaysFn     func(context.Context, *pb.GetHolidaysRequest, ...grpc.CallOption) (*pb.GetHolidaysResponse, error)
-	addHolidayFn      func(context.Context, *pb.AddHolidayRequest, ...grpc.CallOption) (*pb.AddHolidayResponse, error)
-	deleteHolidayFn   func(context.Context, *pb.DeleteHolidayRequest, ...grpc.CallOption) (*pb.DeleteHolidayResponse, error)
-	isOpenFn          func(context.Context, *pb.IsExchangeOpenRequest, ...grpc.CallOption) (*pb.IsExchangeOpenResponse, error)
-	getTestModeFn     func(context.Context, *pb.GetTestModeRequest, ...grpc.CallOption) (*pb.GetTestModeResponse, error)
-	setTestModeFn     func(context.Context, *pb.SetTestModeRequest, ...grpc.CallOption) (*pb.SetTestModeResponse, error)
-	getListingsFn     func(context.Context, *pb.GetListingsRequest, ...grpc.CallOption) (*pb.GetListingsResponse, error)
-	getListingByIdFn  func(context.Context, *pb.GetListingByIdRequest, ...grpc.CallOption) (*pb.GetListingByIdResponse, error)
-	getListingHistFn  func(context.Context, *pb.GetListingHistoryRequest, ...grpc.CallOption) (*pb.GetListingHistoryResponse, error)
+	getExchangesFn   func(context.Context, *pb.GetStockExchangesRequest, ...grpc.CallOption) (*pb.GetStockExchangesResponse, error)
+	getByMICFn       func(context.Context, *pb.GetStockExchangeByMICRequest, ...grpc.CallOption) (*pb.GetStockExchangeByMICResponse, error)
+	getByIdFn        func(context.Context, *pb.GetStockExchangeByIdRequest, ...grpc.CallOption) (*pb.GetStockExchangeByIdResponse, error)
+	createExchangeFn func(context.Context, *pb.CreateStockExchangeRequest, ...grpc.CallOption) (*pb.CreateStockExchangeResponse, error)
+	updateExchangeFn func(context.Context, *pb.UpdateStockExchangeRequest, ...grpc.CallOption) (*pb.UpdateStockExchangeResponse, error)
+	deleteExchangeFn func(context.Context, *pb.DeleteStockExchangeRequest, ...grpc.CallOption) (*pb.DeleteStockExchangeResponse, error)
+	getHoursFn       func(context.Context, *pb.GetWorkingHoursRequest, ...grpc.CallOption) (*pb.GetWorkingHoursResponse, error)
+	setHoursFn       func(context.Context, *pb.SetWorkingHoursRequest, ...grpc.CallOption) (*pb.SetWorkingHoursResponse, error)
+	getHolidaysFn    func(context.Context, *pb.GetHolidaysRequest, ...grpc.CallOption) (*pb.GetHolidaysResponse, error)
+	addHolidayFn     func(context.Context, *pb.AddHolidayRequest, ...grpc.CallOption) (*pb.AddHolidayResponse, error)
+	deleteHolidayFn  func(context.Context, *pb.DeleteHolidayRequest, ...grpc.CallOption) (*pb.DeleteHolidayResponse, error)
+	isOpenFn         func(context.Context, *pb.IsExchangeOpenRequest, ...grpc.CallOption) (*pb.IsExchangeOpenResponse, error)
+	getTestModeFn    func(context.Context, *pb.GetTestModeRequest, ...grpc.CallOption) (*pb.GetTestModeResponse, error)
+	setTestModeFn    func(context.Context, *pb.SetTestModeRequest, ...grpc.CallOption) (*pb.SetTestModeResponse, error)
+	getListingsFn    func(context.Context, *pb.GetListingsRequest, ...grpc.CallOption) (*pb.GetListingsResponse, error)
+	getListingByIdFn func(context.Context, *pb.GetListingByIdRequest, ...grpc.CallOption) (*pb.GetListingByIdResponse, error)
+	getListingHistFn func(context.Context, *pb.GetListingHistoryRequest, ...grpc.CallOption) (*pb.GetListingHistoryResponse, error)
 }
 
 func (s *stubSecuritiesClient) Ping(ctx context.Context, in *pb.PingRequest, opts ...grpc.CallOption) (*pb.PingResponse, error) {
