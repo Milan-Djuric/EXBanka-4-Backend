@@ -1713,6 +1713,940 @@ func (x *SetTestModeResponse) GetEnabled() bool {
 	return false
 }
 
+type GetListingsRequest struct {
+	state                 protoimpl.MessageState `protogen:"open.v1"`
+	Type                  string                 `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`                                                                  // STOCK, FOREX_PAIR, FUTURES_CONTRACT, OPTION — empty = all
+	ExchangeAcronymPrefix string                 `protobuf:"bytes,2,opt,name=exchange_acronym_prefix,json=exchangeAcronymPrefix,proto3" json:"exchange_acronym_prefix,omitempty"` // acronym prefix filter — empty = all exchanges
+	TickerPrefix          string                 `protobuf:"bytes,3,opt,name=ticker_prefix,json=tickerPrefix,proto3" json:"ticker_prefix,omitempty"`
+	NameSearch            string                 `protobuf:"bytes,4,opt,name=name_search,json=nameSearch,proto3" json:"name_search,omitempty"`
+	Page                  int32                  `protobuf:"varint,5,opt,name=page,proto3" json:"page,omitempty"`                           // 1-based, default 1
+	PageSize              int32                  `protobuf:"varint,6,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`   // default 10
+	SortBy                string                 `protobuf:"bytes,7,opt,name=sort_by,json=sortBy,proto3" json:"sort_by,omitempty"`          // price, volume, change_percent, maintenance_margin
+	SortOrder             string                 `protobuf:"bytes,8,opt,name=sort_order,json=sortOrder,proto3" json:"sort_order,omitempty"` // ASC, DESC
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *GetListingsRequest) Reset() {
+	*x = GetListingsRequest{}
+	mi := &file_securities_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetListingsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetListingsRequest) ProtoMessage() {}
+
+func (x *GetListingsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_securities_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetListingsRequest.ProtoReflect.Descriptor instead.
+func (*GetListingsRequest) Descriptor() ([]byte, []int) {
+	return file_securities_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *GetListingsRequest) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *GetListingsRequest) GetExchangeAcronymPrefix() string {
+	if x != nil {
+		return x.ExchangeAcronymPrefix
+	}
+	return ""
+}
+
+func (x *GetListingsRequest) GetTickerPrefix() string {
+	if x != nil {
+		return x.TickerPrefix
+	}
+	return ""
+}
+
+func (x *GetListingsRequest) GetNameSearch() string {
+	if x != nil {
+		return x.NameSearch
+	}
+	return ""
+}
+
+func (x *GetListingsRequest) GetPage() int32 {
+	if x != nil {
+		return x.Page
+	}
+	return 0
+}
+
+func (x *GetListingsRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *GetListingsRequest) GetSortBy() string {
+	if x != nil {
+		return x.SortBy
+	}
+	return ""
+}
+
+func (x *GetListingsRequest) GetSortOrder() string {
+	if x != nil {
+		return x.SortOrder
+	}
+	return ""
+}
+
+type ListingSummary struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Id                int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Ticker            string                 `protobuf:"bytes,2,opt,name=ticker,proto3" json:"ticker,omitempty"`
+	Name              string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Type              string                 `protobuf:"bytes,4,opt,name=type,proto3" json:"type,omitempty"`
+	ExchangeAcronym   string                 `protobuf:"bytes,5,opt,name=exchange_acronym,json=exchangeAcronym,proto3" json:"exchange_acronym,omitempty"`
+	Price             float64                `protobuf:"fixed64,6,opt,name=price,proto3" json:"price,omitempty"`
+	Ask               float64                `protobuf:"fixed64,7,opt,name=ask,proto3" json:"ask,omitempty"`
+	Bid               float64                `protobuf:"fixed64,8,opt,name=bid,proto3" json:"bid,omitempty"`
+	Volume            int64                  `protobuf:"varint,9,opt,name=volume,proto3" json:"volume,omitempty"`
+	ChangePercent     float64                `protobuf:"fixed64,10,opt,name=change_percent,json=changePercent,proto3" json:"change_percent,omitempty"`
+	MaintenanceMargin float64                `protobuf:"fixed64,11,opt,name=maintenance_margin,json=maintenanceMargin,proto3" json:"maintenance_margin,omitempty"`
+	InitialMarginCost float64                `protobuf:"fixed64,12,opt,name=initial_margin_cost,json=initialMarginCost,proto3" json:"initial_margin_cost,omitempty"`
+	NominalValue      float64                `protobuf:"fixed64,13,opt,name=nominal_value,json=nominalValue,proto3" json:"nominal_value,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *ListingSummary) Reset() {
+	*x = ListingSummary{}
+	mi := &file_securities_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListingSummary) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListingSummary) ProtoMessage() {}
+
+func (x *ListingSummary) ProtoReflect() protoreflect.Message {
+	mi := &file_securities_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListingSummary.ProtoReflect.Descriptor instead.
+func (*ListingSummary) Descriptor() ([]byte, []int) {
+	return file_securities_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *ListingSummary) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *ListingSummary) GetTicker() string {
+	if x != nil {
+		return x.Ticker
+	}
+	return ""
+}
+
+func (x *ListingSummary) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ListingSummary) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *ListingSummary) GetExchangeAcronym() string {
+	if x != nil {
+		return x.ExchangeAcronym
+	}
+	return ""
+}
+
+func (x *ListingSummary) GetPrice() float64 {
+	if x != nil {
+		return x.Price
+	}
+	return 0
+}
+
+func (x *ListingSummary) GetAsk() float64 {
+	if x != nil {
+		return x.Ask
+	}
+	return 0
+}
+
+func (x *ListingSummary) GetBid() float64 {
+	if x != nil {
+		return x.Bid
+	}
+	return 0
+}
+
+func (x *ListingSummary) GetVolume() int64 {
+	if x != nil {
+		return x.Volume
+	}
+	return 0
+}
+
+func (x *ListingSummary) GetChangePercent() float64 {
+	if x != nil {
+		return x.ChangePercent
+	}
+	return 0
+}
+
+func (x *ListingSummary) GetMaintenanceMargin() float64 {
+	if x != nil {
+		return x.MaintenanceMargin
+	}
+	return 0
+}
+
+func (x *ListingSummary) GetInitialMarginCost() float64 {
+	if x != nil {
+		return x.InitialMarginCost
+	}
+	return 0
+}
+
+func (x *ListingSummary) GetNominalValue() float64 {
+	if x != nil {
+		return x.NominalValue
+	}
+	return 0
+}
+
+type GetListingsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Listings      []*ListingSummary      `protobuf:"bytes,1,rep,name=listings,proto3" json:"listings,omitempty"`
+	TotalPages    int32                  `protobuf:"varint,2,opt,name=total_pages,json=totalPages,proto3" json:"total_pages,omitempty"`
+	TotalElements int64                  `protobuf:"varint,3,opt,name=total_elements,json=totalElements,proto3" json:"total_elements,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetListingsResponse) Reset() {
+	*x = GetListingsResponse{}
+	mi := &file_securities_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetListingsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetListingsResponse) ProtoMessage() {}
+
+func (x *GetListingsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_securities_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetListingsResponse.ProtoReflect.Descriptor instead.
+func (*GetListingsResponse) Descriptor() ([]byte, []int) {
+	return file_securities_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *GetListingsResponse) GetListings() []*ListingSummary {
+	if x != nil {
+		return x.Listings
+	}
+	return nil
+}
+
+func (x *GetListingsResponse) GetTotalPages() int32 {
+	if x != nil {
+		return x.TotalPages
+	}
+	return 0
+}
+
+func (x *GetListingsResponse) GetTotalElements() int64 {
+	if x != nil {
+		return x.TotalElements
+	}
+	return 0
+}
+
+type GetListingByIdRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetListingByIdRequest) Reset() {
+	*x = GetListingByIdRequest{}
+	mi := &file_securities_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetListingByIdRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetListingByIdRequest) ProtoMessage() {}
+
+func (x *GetListingByIdRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_securities_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetListingByIdRequest.ProtoReflect.Descriptor instead.
+func (*GetListingByIdRequest) Descriptor() ([]byte, []int) {
+	return file_securities_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *GetListingByIdRequest) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+type DailyPriceInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Date          string                 `protobuf:"bytes,1,opt,name=date,proto3" json:"date,omitempty"` // "YYYY-MM-DD"
+	Price         float64                `protobuf:"fixed64,2,opt,name=price,proto3" json:"price,omitempty"`
+	Ask           float64                `protobuf:"fixed64,3,opt,name=ask,proto3" json:"ask,omitempty"`
+	Bid           float64                `protobuf:"fixed64,4,opt,name=bid,proto3" json:"bid,omitempty"`
+	Change        float64                `protobuf:"fixed64,5,opt,name=change,proto3" json:"change,omitempty"`
+	Volume        int64                  `protobuf:"varint,6,opt,name=volume,proto3" json:"volume,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DailyPriceInfo) Reset() {
+	*x = DailyPriceInfo{}
+	mi := &file_securities_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DailyPriceInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DailyPriceInfo) ProtoMessage() {}
+
+func (x *DailyPriceInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_securities_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DailyPriceInfo.ProtoReflect.Descriptor instead.
+func (*DailyPriceInfo) Descriptor() ([]byte, []int) {
+	return file_securities_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *DailyPriceInfo) GetDate() string {
+	if x != nil {
+		return x.Date
+	}
+	return ""
+}
+
+func (x *DailyPriceInfo) GetPrice() float64 {
+	if x != nil {
+		return x.Price
+	}
+	return 0
+}
+
+func (x *DailyPriceInfo) GetAsk() float64 {
+	if x != nil {
+		return x.Ask
+	}
+	return 0
+}
+
+func (x *DailyPriceInfo) GetBid() float64 {
+	if x != nil {
+		return x.Bid
+	}
+	return 0
+}
+
+func (x *DailyPriceInfo) GetChange() float64 {
+	if x != nil {
+		return x.Change
+	}
+	return 0
+}
+
+func (x *DailyPriceInfo) GetVolume() int64 {
+	if x != nil {
+		return x.Volume
+	}
+	return 0
+}
+
+type StockDetail struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	OutstandingShares int64                  `protobuf:"varint,1,opt,name=outstanding_shares,json=outstandingShares,proto3" json:"outstanding_shares,omitempty"`
+	DividendYield     float64                `protobuf:"fixed64,2,opt,name=dividend_yield,json=dividendYield,proto3" json:"dividend_yield,omitempty"`
+	MarketCap         float64                `protobuf:"fixed64,3,opt,name=market_cap,json=marketCap,proto3" json:"market_cap,omitempty"` // derived: outstanding_shares × price
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *StockDetail) Reset() {
+	*x = StockDetail{}
+	mi := &file_securities_proto_msgTypes[38]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StockDetail) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StockDetail) ProtoMessage() {}
+
+func (x *StockDetail) ProtoReflect() protoreflect.Message {
+	mi := &file_securities_proto_msgTypes[38]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StockDetail.ProtoReflect.Descriptor instead.
+func (*StockDetail) Descriptor() ([]byte, []int) {
+	return file_securities_proto_rawDescGZIP(), []int{38}
+}
+
+func (x *StockDetail) GetOutstandingShares() int64 {
+	if x != nil {
+		return x.OutstandingShares
+	}
+	return 0
+}
+
+func (x *StockDetail) GetDividendYield() float64 {
+	if x != nil {
+		return x.DividendYield
+	}
+	return 0
+}
+
+func (x *StockDetail) GetMarketCap() float64 {
+	if x != nil {
+		return x.MarketCap
+	}
+	return 0
+}
+
+type ForexDetail struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BaseCurrency  string                 `protobuf:"bytes,1,opt,name=base_currency,json=baseCurrency,proto3" json:"base_currency,omitempty"`
+	QuoteCurrency string                 `protobuf:"bytes,2,opt,name=quote_currency,json=quoteCurrency,proto3" json:"quote_currency,omitempty"`
+	Liquidity     string                 `protobuf:"bytes,3,opt,name=liquidity,proto3" json:"liquidity,omitempty"`
+	NominalValue  float64                `protobuf:"fixed64,4,opt,name=nominal_value,json=nominalValue,proto3" json:"nominal_value,omitempty"` // derived: 1000 × price
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ForexDetail) Reset() {
+	*x = ForexDetail{}
+	mi := &file_securities_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ForexDetail) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ForexDetail) ProtoMessage() {}
+
+func (x *ForexDetail) ProtoReflect() protoreflect.Message {
+	mi := &file_securities_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ForexDetail.ProtoReflect.Descriptor instead.
+func (*ForexDetail) Descriptor() ([]byte, []int) {
+	return file_securities_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *ForexDetail) GetBaseCurrency() string {
+	if x != nil {
+		return x.BaseCurrency
+	}
+	return ""
+}
+
+func (x *ForexDetail) GetQuoteCurrency() string {
+	if x != nil {
+		return x.QuoteCurrency
+	}
+	return ""
+}
+
+func (x *ForexDetail) GetLiquidity() string {
+	if x != nil {
+		return x.Liquidity
+	}
+	return ""
+}
+
+func (x *ForexDetail) GetNominalValue() float64 {
+	if x != nil {
+		return x.NominalValue
+	}
+	return 0
+}
+
+type FuturesDetail struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	ContractSize   float64                `protobuf:"fixed64,1,opt,name=contract_size,json=contractSize,proto3" json:"contract_size,omitempty"`
+	ContractUnit   string                 `protobuf:"bytes,2,opt,name=contract_unit,json=contractUnit,proto3" json:"contract_unit,omitempty"`
+	SettlementDate string                 `protobuf:"bytes,3,opt,name=settlement_date,json=settlementDate,proto3" json:"settlement_date,omitempty"` // "YYYY-MM-DD"
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *FuturesDetail) Reset() {
+	*x = FuturesDetail{}
+	mi := &file_securities_proto_msgTypes[40]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FuturesDetail) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FuturesDetail) ProtoMessage() {}
+
+func (x *FuturesDetail) ProtoReflect() protoreflect.Message {
+	mi := &file_securities_proto_msgTypes[40]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FuturesDetail.ProtoReflect.Descriptor instead.
+func (*FuturesDetail) Descriptor() ([]byte, []int) {
+	return file_securities_proto_rawDescGZIP(), []int{40}
+}
+
+func (x *FuturesDetail) GetContractSize() float64 {
+	if x != nil {
+		return x.ContractSize
+	}
+	return 0
+}
+
+func (x *FuturesDetail) GetContractUnit() string {
+	if x != nil {
+		return x.ContractUnit
+	}
+	return ""
+}
+
+func (x *FuturesDetail) GetSettlementDate() string {
+	if x != nil {
+		return x.SettlementDate
+	}
+	return ""
+}
+
+type OptionDetail struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	StockListingId    int64                  `protobuf:"varint,1,opt,name=stock_listing_id,json=stockListingId,proto3" json:"stock_listing_id,omitempty"`
+	OptionType        string                 `protobuf:"bytes,2,opt,name=option_type,json=optionType,proto3" json:"option_type,omitempty"` // CALL, PUT
+	StrikePrice       float64                `protobuf:"fixed64,3,opt,name=strike_price,json=strikePrice,proto3" json:"strike_price,omitempty"`
+	ImpliedVolatility float64                `protobuf:"fixed64,4,opt,name=implied_volatility,json=impliedVolatility,proto3" json:"implied_volatility,omitempty"`
+	OpenInterest      int64                  `protobuf:"varint,5,opt,name=open_interest,json=openInterest,proto3" json:"open_interest,omitempty"`
+	SettlementDate    string                 `protobuf:"bytes,6,opt,name=settlement_date,json=settlementDate,proto3" json:"settlement_date,omitempty"` // "YYYY-MM-DD"
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *OptionDetail) Reset() {
+	*x = OptionDetail{}
+	mi := &file_securities_proto_msgTypes[41]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OptionDetail) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OptionDetail) ProtoMessage() {}
+
+func (x *OptionDetail) ProtoReflect() protoreflect.Message {
+	mi := &file_securities_proto_msgTypes[41]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OptionDetail.ProtoReflect.Descriptor instead.
+func (*OptionDetail) Descriptor() ([]byte, []int) {
+	return file_securities_proto_rawDescGZIP(), []int{41}
+}
+
+func (x *OptionDetail) GetStockListingId() int64 {
+	if x != nil {
+		return x.StockListingId
+	}
+	return 0
+}
+
+func (x *OptionDetail) GetOptionType() string {
+	if x != nil {
+		return x.OptionType
+	}
+	return ""
+}
+
+func (x *OptionDetail) GetStrikePrice() float64 {
+	if x != nil {
+		return x.StrikePrice
+	}
+	return 0
+}
+
+func (x *OptionDetail) GetImpliedVolatility() float64 {
+	if x != nil {
+		return x.ImpliedVolatility
+	}
+	return 0
+}
+
+func (x *OptionDetail) GetOpenInterest() int64 {
+	if x != nil {
+		return x.OpenInterest
+	}
+	return 0
+}
+
+func (x *OptionDetail) GetSettlementDate() string {
+	if x != nil {
+		return x.SettlementDate
+	}
+	return ""
+}
+
+type GetListingByIdResponse struct {
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	Summary      *ListingSummary        `protobuf:"bytes,1,opt,name=summary,proto3" json:"summary,omitempty"`
+	PriceHistory []*DailyPriceInfo      `protobuf:"bytes,2,rep,name=price_history,json=priceHistory,proto3" json:"price_history,omitempty"` // last 30 days, descending
+	// Types that are valid to be assigned to Detail:
+	//
+	//	*GetListingByIdResponse_Stock
+	//	*GetListingByIdResponse_Forex
+	//	*GetListingByIdResponse_Futures
+	//	*GetListingByIdResponse_Option
+	Detail        isGetListingByIdResponse_Detail `protobuf_oneof:"detail"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetListingByIdResponse) Reset() {
+	*x = GetListingByIdResponse{}
+	mi := &file_securities_proto_msgTypes[42]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetListingByIdResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetListingByIdResponse) ProtoMessage() {}
+
+func (x *GetListingByIdResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_securities_proto_msgTypes[42]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetListingByIdResponse.ProtoReflect.Descriptor instead.
+func (*GetListingByIdResponse) Descriptor() ([]byte, []int) {
+	return file_securities_proto_rawDescGZIP(), []int{42}
+}
+
+func (x *GetListingByIdResponse) GetSummary() *ListingSummary {
+	if x != nil {
+		return x.Summary
+	}
+	return nil
+}
+
+func (x *GetListingByIdResponse) GetPriceHistory() []*DailyPriceInfo {
+	if x != nil {
+		return x.PriceHistory
+	}
+	return nil
+}
+
+func (x *GetListingByIdResponse) GetDetail() isGetListingByIdResponse_Detail {
+	if x != nil {
+		return x.Detail
+	}
+	return nil
+}
+
+func (x *GetListingByIdResponse) GetStock() *StockDetail {
+	if x != nil {
+		if x, ok := x.Detail.(*GetListingByIdResponse_Stock); ok {
+			return x.Stock
+		}
+	}
+	return nil
+}
+
+func (x *GetListingByIdResponse) GetForex() *ForexDetail {
+	if x != nil {
+		if x, ok := x.Detail.(*GetListingByIdResponse_Forex); ok {
+			return x.Forex
+		}
+	}
+	return nil
+}
+
+func (x *GetListingByIdResponse) GetFutures() *FuturesDetail {
+	if x != nil {
+		if x, ok := x.Detail.(*GetListingByIdResponse_Futures); ok {
+			return x.Futures
+		}
+	}
+	return nil
+}
+
+func (x *GetListingByIdResponse) GetOption() *OptionDetail {
+	if x != nil {
+		if x, ok := x.Detail.(*GetListingByIdResponse_Option); ok {
+			return x.Option
+		}
+	}
+	return nil
+}
+
+type isGetListingByIdResponse_Detail interface {
+	isGetListingByIdResponse_Detail()
+}
+
+type GetListingByIdResponse_Stock struct {
+	Stock *StockDetail `protobuf:"bytes,3,opt,name=stock,proto3,oneof"`
+}
+
+type GetListingByIdResponse_Forex struct {
+	Forex *ForexDetail `protobuf:"bytes,4,opt,name=forex,proto3,oneof"`
+}
+
+type GetListingByIdResponse_Futures struct {
+	Futures *FuturesDetail `protobuf:"bytes,5,opt,name=futures,proto3,oneof"`
+}
+
+type GetListingByIdResponse_Option struct {
+	Option *OptionDetail `protobuf:"bytes,6,opt,name=option,proto3,oneof"`
+}
+
+func (*GetListingByIdResponse_Stock) isGetListingByIdResponse_Detail() {}
+
+func (*GetListingByIdResponse_Forex) isGetListingByIdResponse_Detail() {}
+
+func (*GetListingByIdResponse_Futures) isGetListingByIdResponse_Detail() {}
+
+func (*GetListingByIdResponse_Option) isGetListingByIdResponse_Detail() {}
+
+type GetListingHistoryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	FromDate      string                 `protobuf:"bytes,2,opt,name=from_date,json=fromDate,proto3" json:"from_date,omitempty"` // "YYYY-MM-DD"
+	ToDate        string                 `protobuf:"bytes,3,opt,name=to_date,json=toDate,proto3" json:"to_date,omitempty"`       // "YYYY-MM-DD"
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetListingHistoryRequest) Reset() {
+	*x = GetListingHistoryRequest{}
+	mi := &file_securities_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetListingHistoryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetListingHistoryRequest) ProtoMessage() {}
+
+func (x *GetListingHistoryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_securities_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetListingHistoryRequest.ProtoReflect.Descriptor instead.
+func (*GetListingHistoryRequest) Descriptor() ([]byte, []int) {
+	return file_securities_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *GetListingHistoryRequest) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *GetListingHistoryRequest) GetFromDate() string {
+	if x != nil {
+		return x.FromDate
+	}
+	return ""
+}
+
+func (x *GetListingHistoryRequest) GetToDate() string {
+	if x != nil {
+		return x.ToDate
+	}
+	return ""
+}
+
+type GetListingHistoryResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	History       []*DailyPriceInfo      `protobuf:"bytes,1,rep,name=history,proto3" json:"history,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetListingHistoryResponse) Reset() {
+	*x = GetListingHistoryResponse{}
+	mi := &file_securities_proto_msgTypes[44]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetListingHistoryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetListingHistoryResponse) ProtoMessage() {}
+
+func (x *GetListingHistoryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_securities_proto_msgTypes[44]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetListingHistoryResponse.ProtoReflect.Descriptor instead.
+func (*GetListingHistoryResponse) Descriptor() ([]byte, []int) {
+	return file_securities_proto_rawDescGZIP(), []int{44}
+}
+
+func (x *GetListingHistoryResponse) GetHistory() []*DailyPriceInfo {
+	if x != nil {
+		return x.History
+	}
+	return nil
+}
+
 var File_securities_proto protoreflect.FileDescriptor
 
 const file_securities_proto_rawDesc = "" +
@@ -1817,8 +2751,83 @@ const file_securities_proto_rawDesc = "" +
 	"\x12SetTestModeRequest\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\"/\n" +
 	"\x13SetTestModeResponse\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled2\xe5\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\"\x8f\x02\n" +
+	"\x12GetListingsRequest\x12\x12\n" +
+	"\x04type\x18\x01 \x01(\tR\x04type\x126\n" +
+	"\x17exchange_acronym_prefix\x18\x02 \x01(\tR\x15exchangeAcronymPrefix\x12#\n" +
+	"\rticker_prefix\x18\x03 \x01(\tR\ftickerPrefix\x12\x1f\n" +
+	"\vname_search\x18\x04 \x01(\tR\n" +
+	"nameSearch\x12\x12\n" +
+	"\x04page\x18\x05 \x01(\x05R\x04page\x12\x1b\n" +
+	"\tpage_size\x18\x06 \x01(\x05R\bpageSize\x12\x17\n" +
+	"\asort_by\x18\a \x01(\tR\x06sortBy\x12\x1d\n" +
 	"\n" +
+	"sort_order\x18\b \x01(\tR\tsortOrder\"\x88\x03\n" +
+	"\x0eListingSummary\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x16\n" +
+	"\x06ticker\x18\x02 \x01(\tR\x06ticker\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12\x12\n" +
+	"\x04type\x18\x04 \x01(\tR\x04type\x12)\n" +
+	"\x10exchange_acronym\x18\x05 \x01(\tR\x0fexchangeAcronym\x12\x14\n" +
+	"\x05price\x18\x06 \x01(\x01R\x05price\x12\x10\n" +
+	"\x03ask\x18\a \x01(\x01R\x03ask\x12\x10\n" +
+	"\x03bid\x18\b \x01(\x01R\x03bid\x12\x16\n" +
+	"\x06volume\x18\t \x01(\x03R\x06volume\x12%\n" +
+	"\x0echange_percent\x18\n" +
+	" \x01(\x01R\rchangePercent\x12-\n" +
+	"\x12maintenance_margin\x18\v \x01(\x01R\x11maintenanceMargin\x12.\n" +
+	"\x13initial_margin_cost\x18\f \x01(\x01R\x11initialMarginCost\x12#\n" +
+	"\rnominal_value\x18\r \x01(\x01R\fnominalValue\"\x95\x01\n" +
+	"\x13GetListingsResponse\x126\n" +
+	"\blistings\x18\x01 \x03(\v2\x1a.securities.ListingSummaryR\blistings\x12\x1f\n" +
+	"\vtotal_pages\x18\x02 \x01(\x05R\n" +
+	"totalPages\x12%\n" +
+	"\x0etotal_elements\x18\x03 \x01(\x03R\rtotalElements\"'\n" +
+	"\x15GetListingByIdRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\"\x8e\x01\n" +
+	"\x0eDailyPriceInfo\x12\x12\n" +
+	"\x04date\x18\x01 \x01(\tR\x04date\x12\x14\n" +
+	"\x05price\x18\x02 \x01(\x01R\x05price\x12\x10\n" +
+	"\x03ask\x18\x03 \x01(\x01R\x03ask\x12\x10\n" +
+	"\x03bid\x18\x04 \x01(\x01R\x03bid\x12\x16\n" +
+	"\x06change\x18\x05 \x01(\x01R\x06change\x12\x16\n" +
+	"\x06volume\x18\x06 \x01(\x03R\x06volume\"\x82\x01\n" +
+	"\vStockDetail\x12-\n" +
+	"\x12outstanding_shares\x18\x01 \x01(\x03R\x11outstandingShares\x12%\n" +
+	"\x0edividend_yield\x18\x02 \x01(\x01R\rdividendYield\x12\x1d\n" +
+	"\n" +
+	"market_cap\x18\x03 \x01(\x01R\tmarketCap\"\x9c\x01\n" +
+	"\vForexDetail\x12#\n" +
+	"\rbase_currency\x18\x01 \x01(\tR\fbaseCurrency\x12%\n" +
+	"\x0equote_currency\x18\x02 \x01(\tR\rquoteCurrency\x12\x1c\n" +
+	"\tliquidity\x18\x03 \x01(\tR\tliquidity\x12#\n" +
+	"\rnominal_value\x18\x04 \x01(\x01R\fnominalValue\"\x82\x01\n" +
+	"\rFuturesDetail\x12#\n" +
+	"\rcontract_size\x18\x01 \x01(\x01R\fcontractSize\x12#\n" +
+	"\rcontract_unit\x18\x02 \x01(\tR\fcontractUnit\x12'\n" +
+	"\x0fsettlement_date\x18\x03 \x01(\tR\x0esettlementDate\"\xf9\x01\n" +
+	"\fOptionDetail\x12(\n" +
+	"\x10stock_listing_id\x18\x01 \x01(\x03R\x0estockListingId\x12\x1f\n" +
+	"\voption_type\x18\x02 \x01(\tR\n" +
+	"optionType\x12!\n" +
+	"\fstrike_price\x18\x03 \x01(\x01R\vstrikePrice\x12-\n" +
+	"\x12implied_volatility\x18\x04 \x01(\x01R\x11impliedVolatility\x12#\n" +
+	"\ropen_interest\x18\x05 \x01(\x03R\fopenInterest\x12'\n" +
+	"\x0fsettlement_date\x18\x06 \x01(\tR\x0esettlementDate\"\xe6\x02\n" +
+	"\x16GetListingByIdResponse\x124\n" +
+	"\asummary\x18\x01 \x01(\v2\x1a.securities.ListingSummaryR\asummary\x12?\n" +
+	"\rprice_history\x18\x02 \x03(\v2\x1a.securities.DailyPriceInfoR\fpriceHistory\x12/\n" +
+	"\x05stock\x18\x03 \x01(\v2\x17.securities.StockDetailH\x00R\x05stock\x12/\n" +
+	"\x05forex\x18\x04 \x01(\v2\x17.securities.ForexDetailH\x00R\x05forex\x125\n" +
+	"\afutures\x18\x05 \x01(\v2\x19.securities.FuturesDetailH\x00R\afutures\x122\n" +
+	"\x06option\x18\x06 \x01(\v2\x18.securities.OptionDetailH\x00R\x06optionB\b\n" +
+	"\x06detail\"`\n" +
+	"\x18GetListingHistoryRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1b\n" +
+	"\tfrom_date\x18\x02 \x01(\tR\bfromDate\x12\x17\n" +
+	"\ato_date\x18\x03 \x01(\tR\x06toDate\"Q\n" +
+	"\x19GetListingHistoryResponse\x124\n" +
+	"\ahistory\x18\x01 \x03(\v2\x1a.securities.DailyPriceInfoR\ahistory2\xf0\f\n" +
 	"\x11SecuritiesService\x129\n" +
 	"\x04Ping\x12\x17.securities.PingRequest\x1a\x18.securities.PingResponse\x12`\n" +
 	"\x11GetStockExchanges\x12$.securities.GetStockExchangesRequest\x1a%.securities.GetStockExchangesResponse\x12l\n" +
@@ -1835,7 +2844,10 @@ const file_securities_proto_rawDesc = "" +
 	"\rDeleteHoliday\x12 .securities.DeleteHolidayRequest\x1a!.securities.DeleteHolidayResponse\x12W\n" +
 	"\x0eIsExchangeOpen\x12!.securities.IsExchangeOpenRequest\x1a\".securities.IsExchangeOpenResponse\x12N\n" +
 	"\vGetTestMode\x12\x1e.securities.GetTestModeRequest\x1a\x1f.securities.GetTestModeResponse\x12N\n" +
-	"\vSetTestMode\x12\x1e.securities.SetTestModeRequest\x1a\x1f.securities.SetTestModeResponseB?Z=github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/securitiesb\x06proto3"
+	"\vSetTestMode\x12\x1e.securities.SetTestModeRequest\x1a\x1f.securities.SetTestModeResponse\x12N\n" +
+	"\vGetListings\x12\x1e.securities.GetListingsRequest\x1a\x1f.securities.GetListingsResponse\x12W\n" +
+	"\x0eGetListingById\x12!.securities.GetListingByIdRequest\x1a\".securities.GetListingByIdResponse\x12`\n" +
+	"\x11GetListingHistory\x12$.securities.GetListingHistoryRequest\x1a%.securities.GetListingHistoryResponseB?Z=github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/securitiesb\x06proto3"
 
 var (
 	file_securities_proto_rawDescOnce sync.Once
@@ -1849,7 +2861,7 @@ func file_securities_proto_rawDescGZIP() []byte {
 	return file_securities_proto_rawDescData
 }
 
-var file_securities_proto_msgTypes = make([]protoimpl.MessageInfo, 33)
+var file_securities_proto_msgTypes = make([]protoimpl.MessageInfo, 45)
 var file_securities_proto_goTypes = []any{
 	(*PingRequest)(nil),                   // 0: securities.PingRequest
 	(*PingResponse)(nil),                  // 1: securities.PingResponse
@@ -1884,6 +2896,18 @@ var file_securities_proto_goTypes = []any{
 	(*GetTestModeResponse)(nil),           // 30: securities.GetTestModeResponse
 	(*SetTestModeRequest)(nil),            // 31: securities.SetTestModeRequest
 	(*SetTestModeResponse)(nil),           // 32: securities.SetTestModeResponse
+	(*GetListingsRequest)(nil),            // 33: securities.GetListingsRequest
+	(*ListingSummary)(nil),                // 34: securities.ListingSummary
+	(*GetListingsResponse)(nil),           // 35: securities.GetListingsResponse
+	(*GetListingByIdRequest)(nil),         // 36: securities.GetListingByIdRequest
+	(*DailyPriceInfo)(nil),                // 37: securities.DailyPriceInfo
+	(*StockDetail)(nil),                   // 38: securities.StockDetail
+	(*ForexDetail)(nil),                   // 39: securities.ForexDetail
+	(*FuturesDetail)(nil),                 // 40: securities.FuturesDetail
+	(*OptionDetail)(nil),                  // 41: securities.OptionDetail
+	(*GetListingByIdResponse)(nil),        // 42: securities.GetListingByIdResponse
+	(*GetListingHistoryRequest)(nil),      // 43: securities.GetListingHistoryRequest
+	(*GetListingHistoryResponse)(nil),     // 44: securities.GetListingHistoryResponse
 }
 var file_securities_proto_depIdxs = []int32{
 	2,  // 0: securities.GetStockExchangesResponse.exchanges:type_name -> securities.StockExchange
@@ -1895,41 +2919,55 @@ var file_securities_proto_depIdxs = []int32{
 	15, // 6: securities.SetWorkingHoursResponse.hours:type_name -> securities.ExchangeWorkingHours
 	20, // 7: securities.GetHolidaysResponse.holidays:type_name -> securities.ExchangeHoliday
 	20, // 8: securities.AddHolidayResponse.holiday:type_name -> securities.ExchangeHoliday
-	0,  // 9: securities.SecuritiesService.Ping:input_type -> securities.PingRequest
-	3,  // 10: securities.SecuritiesService.GetStockExchanges:input_type -> securities.GetStockExchangesRequest
-	5,  // 11: securities.SecuritiesService.GetStockExchangeByMIC:input_type -> securities.GetStockExchangeByMICRequest
-	7,  // 12: securities.SecuritiesService.GetStockExchangeById:input_type -> securities.GetStockExchangeByIdRequest
-	9,  // 13: securities.SecuritiesService.CreateStockExchange:input_type -> securities.CreateStockExchangeRequest
-	11, // 14: securities.SecuritiesService.UpdateStockExchange:input_type -> securities.UpdateStockExchangeRequest
-	13, // 15: securities.SecuritiesService.DeleteStockExchange:input_type -> securities.DeleteStockExchangeRequest
-	16, // 16: securities.SecuritiesService.GetWorkingHours:input_type -> securities.GetWorkingHoursRequest
-	18, // 17: securities.SecuritiesService.SetWorkingHours:input_type -> securities.SetWorkingHoursRequest
-	21, // 18: securities.SecuritiesService.GetHolidays:input_type -> securities.GetHolidaysRequest
-	23, // 19: securities.SecuritiesService.AddHoliday:input_type -> securities.AddHolidayRequest
-	25, // 20: securities.SecuritiesService.DeleteHoliday:input_type -> securities.DeleteHolidayRequest
-	27, // 21: securities.SecuritiesService.IsExchangeOpen:input_type -> securities.IsExchangeOpenRequest
-	29, // 22: securities.SecuritiesService.GetTestMode:input_type -> securities.GetTestModeRequest
-	31, // 23: securities.SecuritiesService.SetTestMode:input_type -> securities.SetTestModeRequest
-	1,  // 24: securities.SecuritiesService.Ping:output_type -> securities.PingResponse
-	4,  // 25: securities.SecuritiesService.GetStockExchanges:output_type -> securities.GetStockExchangesResponse
-	6,  // 26: securities.SecuritiesService.GetStockExchangeByMIC:output_type -> securities.GetStockExchangeByMICResponse
-	8,  // 27: securities.SecuritiesService.GetStockExchangeById:output_type -> securities.GetStockExchangeByIdResponse
-	10, // 28: securities.SecuritiesService.CreateStockExchange:output_type -> securities.CreateStockExchangeResponse
-	12, // 29: securities.SecuritiesService.UpdateStockExchange:output_type -> securities.UpdateStockExchangeResponse
-	14, // 30: securities.SecuritiesService.DeleteStockExchange:output_type -> securities.DeleteStockExchangeResponse
-	17, // 31: securities.SecuritiesService.GetWorkingHours:output_type -> securities.GetWorkingHoursResponse
-	19, // 32: securities.SecuritiesService.SetWorkingHours:output_type -> securities.SetWorkingHoursResponse
-	22, // 33: securities.SecuritiesService.GetHolidays:output_type -> securities.GetHolidaysResponse
-	24, // 34: securities.SecuritiesService.AddHoliday:output_type -> securities.AddHolidayResponse
-	26, // 35: securities.SecuritiesService.DeleteHoliday:output_type -> securities.DeleteHolidayResponse
-	28, // 36: securities.SecuritiesService.IsExchangeOpen:output_type -> securities.IsExchangeOpenResponse
-	30, // 37: securities.SecuritiesService.GetTestMode:output_type -> securities.GetTestModeResponse
-	32, // 38: securities.SecuritiesService.SetTestMode:output_type -> securities.SetTestModeResponse
-	24, // [24:39] is the sub-list for method output_type
-	9,  // [9:24] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	34, // 9: securities.GetListingsResponse.listings:type_name -> securities.ListingSummary
+	34, // 10: securities.GetListingByIdResponse.summary:type_name -> securities.ListingSummary
+	37, // 11: securities.GetListingByIdResponse.price_history:type_name -> securities.DailyPriceInfo
+	38, // 12: securities.GetListingByIdResponse.stock:type_name -> securities.StockDetail
+	39, // 13: securities.GetListingByIdResponse.forex:type_name -> securities.ForexDetail
+	40, // 14: securities.GetListingByIdResponse.futures:type_name -> securities.FuturesDetail
+	41, // 15: securities.GetListingByIdResponse.option:type_name -> securities.OptionDetail
+	37, // 16: securities.GetListingHistoryResponse.history:type_name -> securities.DailyPriceInfo
+	0,  // 17: securities.SecuritiesService.Ping:input_type -> securities.PingRequest
+	3,  // 18: securities.SecuritiesService.GetStockExchanges:input_type -> securities.GetStockExchangesRequest
+	5,  // 19: securities.SecuritiesService.GetStockExchangeByMIC:input_type -> securities.GetStockExchangeByMICRequest
+	7,  // 20: securities.SecuritiesService.GetStockExchangeById:input_type -> securities.GetStockExchangeByIdRequest
+	9,  // 21: securities.SecuritiesService.CreateStockExchange:input_type -> securities.CreateStockExchangeRequest
+	11, // 22: securities.SecuritiesService.UpdateStockExchange:input_type -> securities.UpdateStockExchangeRequest
+	13, // 23: securities.SecuritiesService.DeleteStockExchange:input_type -> securities.DeleteStockExchangeRequest
+	16, // 24: securities.SecuritiesService.GetWorkingHours:input_type -> securities.GetWorkingHoursRequest
+	18, // 25: securities.SecuritiesService.SetWorkingHours:input_type -> securities.SetWorkingHoursRequest
+	21, // 26: securities.SecuritiesService.GetHolidays:input_type -> securities.GetHolidaysRequest
+	23, // 27: securities.SecuritiesService.AddHoliday:input_type -> securities.AddHolidayRequest
+	25, // 28: securities.SecuritiesService.DeleteHoliday:input_type -> securities.DeleteHolidayRequest
+	27, // 29: securities.SecuritiesService.IsExchangeOpen:input_type -> securities.IsExchangeOpenRequest
+	29, // 30: securities.SecuritiesService.GetTestMode:input_type -> securities.GetTestModeRequest
+	31, // 31: securities.SecuritiesService.SetTestMode:input_type -> securities.SetTestModeRequest
+	33, // 32: securities.SecuritiesService.GetListings:input_type -> securities.GetListingsRequest
+	36, // 33: securities.SecuritiesService.GetListingById:input_type -> securities.GetListingByIdRequest
+	43, // 34: securities.SecuritiesService.GetListingHistory:input_type -> securities.GetListingHistoryRequest
+	1,  // 35: securities.SecuritiesService.Ping:output_type -> securities.PingResponse
+	4,  // 36: securities.SecuritiesService.GetStockExchanges:output_type -> securities.GetStockExchangesResponse
+	6,  // 37: securities.SecuritiesService.GetStockExchangeByMIC:output_type -> securities.GetStockExchangeByMICResponse
+	8,  // 38: securities.SecuritiesService.GetStockExchangeById:output_type -> securities.GetStockExchangeByIdResponse
+	10, // 39: securities.SecuritiesService.CreateStockExchange:output_type -> securities.CreateStockExchangeResponse
+	12, // 40: securities.SecuritiesService.UpdateStockExchange:output_type -> securities.UpdateStockExchangeResponse
+	14, // 41: securities.SecuritiesService.DeleteStockExchange:output_type -> securities.DeleteStockExchangeResponse
+	17, // 42: securities.SecuritiesService.GetWorkingHours:output_type -> securities.GetWorkingHoursResponse
+	19, // 43: securities.SecuritiesService.SetWorkingHours:output_type -> securities.SetWorkingHoursResponse
+	22, // 44: securities.SecuritiesService.GetHolidays:output_type -> securities.GetHolidaysResponse
+	24, // 45: securities.SecuritiesService.AddHoliday:output_type -> securities.AddHolidayResponse
+	26, // 46: securities.SecuritiesService.DeleteHoliday:output_type -> securities.DeleteHolidayResponse
+	28, // 47: securities.SecuritiesService.IsExchangeOpen:output_type -> securities.IsExchangeOpenResponse
+	30, // 48: securities.SecuritiesService.GetTestMode:output_type -> securities.GetTestModeResponse
+	32, // 49: securities.SecuritiesService.SetTestMode:output_type -> securities.SetTestModeResponse
+	35, // 50: securities.SecuritiesService.GetListings:output_type -> securities.GetListingsResponse
+	42, // 51: securities.SecuritiesService.GetListingById:output_type -> securities.GetListingByIdResponse
+	44, // 52: securities.SecuritiesService.GetListingHistory:output_type -> securities.GetListingHistoryResponse
+	35, // [35:53] is the sub-list for method output_type
+	17, // [17:35] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_securities_proto_init() }
@@ -1937,13 +2975,19 @@ func file_securities_proto_init() {
 	if File_securities_proto != nil {
 		return
 	}
+	file_securities_proto_msgTypes[42].OneofWrappers = []any{
+		(*GetListingByIdResponse_Stock)(nil),
+		(*GetListingByIdResponse_Forex)(nil),
+		(*GetListingByIdResponse_Futures)(nil),
+		(*GetListingByIdResponse_Option)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_securities_proto_rawDesc), len(file_securities_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   33,
+			NumMessages:   45,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

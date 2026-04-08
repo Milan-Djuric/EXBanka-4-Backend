@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
+	jwt "github.com/golang-jwt/jwt/v5"
 	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/securities"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -30,6 +32,9 @@ type stubSecuritiesClient struct {
 	isOpenFn          func(context.Context, *pb.IsExchangeOpenRequest, ...grpc.CallOption) (*pb.IsExchangeOpenResponse, error)
 	getTestModeFn     func(context.Context, *pb.GetTestModeRequest, ...grpc.CallOption) (*pb.GetTestModeResponse, error)
 	setTestModeFn     func(context.Context, *pb.SetTestModeRequest, ...grpc.CallOption) (*pb.SetTestModeResponse, error)
+	getListingsFn     func(context.Context, *pb.GetListingsRequest, ...grpc.CallOption) (*pb.GetListingsResponse, error)
+	getListingByIdFn  func(context.Context, *pb.GetListingByIdRequest, ...grpc.CallOption) (*pb.GetListingByIdResponse, error)
+	getListingHistFn  func(context.Context, *pb.GetListingHistoryRequest, ...grpc.CallOption) (*pb.GetListingHistoryResponse, error)
 }
 
 func (s *stubSecuritiesClient) Ping(ctx context.Context, in *pb.PingRequest, opts ...grpc.CallOption) (*pb.PingResponse, error) {
@@ -116,6 +121,24 @@ func (s *stubSecuritiesClient) GetTestMode(ctx context.Context, in *pb.GetTestMo
 func (s *stubSecuritiesClient) SetTestMode(ctx context.Context, in *pb.SetTestModeRequest, opts ...grpc.CallOption) (*pb.SetTestModeResponse, error) {
 	if s.setTestModeFn != nil {
 		return s.setTestModeFn(ctx, in, opts...)
+	}
+	return nil, fmt.Errorf("not implemented")
+}
+func (s *stubSecuritiesClient) GetListings(ctx context.Context, in *pb.GetListingsRequest, opts ...grpc.CallOption) (*pb.GetListingsResponse, error) {
+	if s.getListingsFn != nil {
+		return s.getListingsFn(ctx, in, opts...)
+	}
+	return nil, fmt.Errorf("not implemented")
+}
+func (s *stubSecuritiesClient) GetListingById(ctx context.Context, in *pb.GetListingByIdRequest, opts ...grpc.CallOption) (*pb.GetListingByIdResponse, error) {
+	if s.getListingByIdFn != nil {
+		return s.getListingByIdFn(ctx, in, opts...)
+	}
+	return nil, fmt.Errorf("not implemented")
+}
+func (s *stubSecuritiesClient) GetListingHistory(ctx context.Context, in *pb.GetListingHistoryRequest, opts ...grpc.CallOption) (*pb.GetListingHistoryResponse, error) {
+	if s.getListingHistFn != nil {
+		return s.getListingHistFn(ctx, in, opts...)
 	}
 	return nil, fmt.Errorf("not implemented")
 }
@@ -390,4 +413,211 @@ func TestGetWorkingHours_NotFound(t *testing.T) {
 	}
 	w := serveHandler(GetWorkingHours(client), "GET", "/stock-exchanges/:id/hours", "/stock-exchanges/XXXX/hours", "")
 	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+// ── GetSecurities ─────────────────────────────────────────────────────────────
+
+// makeAgentToken produces a Bearer token with AGENT permission (employee).
+func makeAgentToken() string {
+	claims := jwt.MapClaims{
+		"user_id": float64(10),
+		"dozvole": []interface{}{"AGENT"},
+		"exp":     time.Now().Add(time.Hour).Unix(),
+		"type":    "access",
+	}
+	tok, _ := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(""))
+	return "Bearer " + tok
+}
+
+func sampleListingSummary() *pb.ListingSummary {
+	return &pb.ListingSummary{
+		Id: 1, Ticker: "AAPL", Name: "Apple Inc", Type: "STOCK",
+		ExchangeAcronym: "NASDAQ", Price: 150.0, Ask: 151.0, Bid: 149.0,
+		Volume: 500000, ChangePercent: 1.5, MaintenanceMargin: 75.0,
+		InitialMarginCost: 82.5, NominalValue: 150.0,
+	}
+}
+
+func TestGetSecurities_NoToken(t *testing.T) {
+	client := &stubSecuritiesClient{}
+	w := serveHandlerFull(GetSecurities(client), "GET", "/securities", "/securities", "", "")
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
+func TestGetSecurities_EmployeeHappyPath(t *testing.T) {
+	client := &stubSecuritiesClient{
+		getListingsFn: func(ctx context.Context, in *pb.GetListingsRequest, opts ...grpc.CallOption) (*pb.GetListingsResponse, error) {
+			return &pb.GetListingsResponse{
+				Listings:      []*pb.ListingSummary{sampleListingSummary()},
+				TotalPages:    1,
+				TotalElements: 1,
+			}, nil
+		},
+	}
+	w := serveHandlerFull(GetSecurities(client), "GET", "/securities", "/securities?type=STOCK", "", makeAgentToken())
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "AAPL")
+	assert.Contains(t, w.Body.String(), `"totalElements":1`)
+}
+
+func TestGetSecurities_ClientSeesStockAndFutures(t *testing.T) {
+	client := &stubSecuritiesClient{
+		getListingsFn: func(ctx context.Context, in *pb.GetListingsRequest, opts ...grpc.CallOption) (*pb.GetListingsResponse, error) {
+			// Returns mixed types — gateway must filter out FOREX/OPTION for clients
+			return &pb.GetListingsResponse{
+				Listings: []*pb.ListingSummary{
+					{Id: 1, Ticker: "AAPL", Type: "STOCK"},
+					{Id: 2, Ticker: "EUR/USD", Type: "FOREX_PAIR"},
+					{Id: 3, Ticker: "CLJ25", Type: "FUTURES_CONTRACT"},
+					{Id: 4, Ticker: "AAPLC", Type: "OPTION"},
+				},
+				TotalPages: 1, TotalElements: 4,
+			}, nil
+		},
+	}
+	w := serveHandlerFull(GetSecurities(client), "GET", "/securities", "/securities", "", makeClientToken())
+	assert.Equal(t, http.StatusOK, w.Code)
+	body := w.Body.String()
+	assert.Contains(t, body, "AAPL")
+	assert.Contains(t, body, "CLJ25")
+	assert.NotContains(t, body, "EUR/USD")
+	assert.NotContains(t, body, "AAPLC")
+}
+
+func TestGetSecurities_ClientRequestsForexReturnsEmpty(t *testing.T) {
+	client := &stubSecuritiesClient{}
+	w := serveHandlerFull(GetSecurities(client), "GET", "/securities", "/securities?type=FOREX_PAIR", "", makeClientToken())
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), `"totalElements":0`)
+}
+
+func TestGetSecurities_ClientRequestsOptionReturnsEmpty(t *testing.T) {
+	client := &stubSecuritiesClient{}
+	w := serveHandlerFull(GetSecurities(client), "GET", "/securities", "/securities?type=OPTION", "", makeClientToken())
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), `"totalElements":0`)
+}
+
+func TestGetSecurities_GRPCError(t *testing.T) {
+	client := &stubSecuritiesClient{
+		getListingsFn: func(ctx context.Context, in *pb.GetListingsRequest, opts ...grpc.CallOption) (*pb.GetListingsResponse, error) {
+			return nil, status.Error(codes.Internal, "db error")
+		},
+	}
+	w := serveHandlerFull(GetSecurities(client), "GET", "/securities", "/securities", "", makeAgentToken())
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+// ── GetSecurityById ───────────────────────────────────────────────────────────
+
+func TestGetSecurityById_NoToken(t *testing.T) {
+	client := &stubSecuritiesClient{}
+	w := serveHandlerFull(GetSecurityById(client), "GET", "/securities/:id", "/securities/1", "", "")
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
+func TestGetSecurityById_InvalidId(t *testing.T) {
+	client := &stubSecuritiesClient{}
+	w := serveHandlerFull(GetSecurityById(client), "GET", "/securities/:id", "/securities/abc", "", makeAgentToken())
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestGetSecurityById_StockHappyPath(t *testing.T) {
+	client := &stubSecuritiesClient{
+		getListingByIdFn: func(ctx context.Context, in *pb.GetListingByIdRequest, opts ...grpc.CallOption) (*pb.GetListingByIdResponse, error) {
+			return &pb.GetListingByIdResponse{
+				Summary: sampleListingSummary(),
+				PriceHistory: []*pb.DailyPriceInfo{
+					{Date: "2025-01-01", Price: 148.0, Ask: 149.0, Bid: 147.0, Change: 2.0, Volume: 400000},
+				},
+				Detail: &pb.GetListingByIdResponse_Stock{
+					Stock: &pb.StockDetail{OutstandingShares: 1000000, DividendYield: 0.02, MarketCap: 150_000_000},
+				},
+			}, nil
+		},
+	}
+	w := serveHandlerFull(GetSecurityById(client), "GET", "/securities/:id", "/securities/1", "", makeAgentToken())
+	assert.Equal(t, http.StatusOK, w.Code)
+	body := w.Body.String()
+	assert.Contains(t, body, "AAPL")
+	assert.Contains(t, body, "priceHistory")
+	assert.Contains(t, body, "outstandingShares")
+}
+
+func TestGetSecurityById_NotFound(t *testing.T) {
+	client := &stubSecuritiesClient{
+		getListingByIdFn: func(ctx context.Context, in *pb.GetListingByIdRequest, opts ...grpc.CallOption) (*pb.GetListingByIdResponse, error) {
+			return nil, status.Error(codes.NotFound, "not found")
+		},
+	}
+	w := serveHandlerFull(GetSecurityById(client), "GET", "/securities/:id", "/securities/999", "", makeAgentToken())
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestGetSecurityById_GRPCError(t *testing.T) {
+	client := &stubSecuritiesClient{
+		getListingByIdFn: func(ctx context.Context, in *pb.GetListingByIdRequest, opts ...grpc.CallOption) (*pb.GetListingByIdResponse, error) {
+			return nil, status.Error(codes.Internal, "db error")
+		},
+	}
+	w := serveHandlerFull(GetSecurityById(client), "GET", "/securities/:id", "/securities/1", "", makeAgentToken())
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+// ── GetSecurityHistory ────────────────────────────────────────────────────────
+
+func TestGetSecurityHistory_NoToken(t *testing.T) {
+	client := &stubSecuritiesClient{}
+	w := serveHandlerFull(GetSecurityHistory(client), "GET", "/securities/:id/history", "/securities/1/history", "", "")
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
+func TestGetSecurityHistory_InvalidId(t *testing.T) {
+	client := &stubSecuritiesClient{}
+	w := serveHandlerFull(GetSecurityHistory(client), "GET", "/securities/:id/history", "/securities/abc/history", "", makeAgentToken())
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestGetSecurityHistory_HappyPath(t *testing.T) {
+	client := &stubSecuritiesClient{
+		getListingHistFn: func(ctx context.Context, in *pb.GetListingHistoryRequest, opts ...grpc.CallOption) (*pb.GetListingHistoryResponse, error) {
+			assert.Equal(t, int64(1), in.Id)
+			assert.Equal(t, "2025-01-01", in.FromDate)
+			assert.Equal(t, "2025-01-31", in.ToDate)
+			return &pb.GetListingHistoryResponse{
+				History: []*pb.DailyPriceInfo{
+					{Date: "2025-01-01", Price: 148.0, Ask: 149.0, Bid: 147.0, Change: 2.0, Volume: 400000},
+					{Date: "2025-01-02", Price: 150.0, Ask: 151.0, Bid: 149.0, Change: 2.0, Volume: 500000},
+				},
+			}, nil
+		},
+	}
+	w := serveHandlerFull(GetSecurityHistory(client), "GET", "/securities/:id/history",
+		"/securities/1/history?from=2025-01-01&to=2025-01-31", "", makeAgentToken())
+	assert.Equal(t, http.StatusOK, w.Code)
+	body := w.Body.String()
+	assert.Contains(t, body, "2025-01-01")
+	assert.Contains(t, body, "2025-01-02")
+}
+
+func TestGetSecurityHistory_NotFound(t *testing.T) {
+	client := &stubSecuritiesClient{
+		getListingHistFn: func(ctx context.Context, in *pb.GetListingHistoryRequest, opts ...grpc.CallOption) (*pb.GetListingHistoryResponse, error) {
+			return nil, status.Error(codes.NotFound, "not found")
+		},
+	}
+	w := serveHandlerFull(GetSecurityHistory(client), "GET", "/securities/:id/history",
+		"/securities/999/history?from=2025-01-01&to=2025-01-31", "", makeAgentToken())
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestGetSecurityHistory_GRPCError(t *testing.T) {
+	client := &stubSecuritiesClient{
+		getListingHistFn: func(ctx context.Context, in *pb.GetListingHistoryRequest, opts ...grpc.CallOption) (*pb.GetListingHistoryResponse, error) {
+			return nil, status.Error(codes.Internal, "db error")
+		},
+	}
+	w := serveHandlerFull(GetSecurityHistory(client), "GET", "/securities/:id/history",
+		"/securities/1/history?from=2025-01-01&to=2025-01-31", "", makeAgentToken())
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }

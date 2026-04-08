@@ -75,8 +75,12 @@ func GetCallerRoleFromToken(c *gin.Context) string {
 }
 
 // RequireRole returns a Gin middleware that validates the JWT and checks that
-// the caller has the given role (or ADMIN, which bypasses all role checks).
-func RequireRole(role string) gin.HandlerFunc {
+// the caller has at least one of the given roles (or ADMIN, which bypasses all role checks).
+func RequireRole(roles ...string) gin.HandlerFunc {
+	required := make([]string, len(roles))
+	for i, r := range roles {
+		required[i] = strings.ToUpper(r)
+	}
 	return func(c *gin.Context) {
 		header := c.GetHeader("Authorization")
 		if !strings.HasPrefix(header, "Bearer ") {
@@ -107,13 +111,18 @@ func RequireRole(role string) gin.HandlerFunc {
 			return
 		}
 
-		required := strings.ToUpper(role)
 		dozvole, _ := claims["dozvole"].([]interface{})
 		for _, d := range dozvole {
 			s := strings.ToUpper(fmt.Sprintf("%v", d))
-			if s == "ADMIN" || s == required {
+			if s == "ADMIN" {
 				c.Next()
 				return
+			}
+			for _, r := range required {
+				if s == r {
+					c.Next()
+					return
+				}
 			}
 		}
 

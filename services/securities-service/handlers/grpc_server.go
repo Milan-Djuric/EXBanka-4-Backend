@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/lib/pq"
@@ -365,5 +366,348 @@ func nullableString(s string) interface{} {
 		return nil
 	}
 	return s
+}
+
+// ── Listings ──────────────────────────────────────────────────────────────────
+
+const listingBaseFrom = `
+	FROM listing l
+	JOIN stock_exchanges se ON l.exchange_id = se.id
+	LEFT JOIN listing_stock ls ON l.id = ls.listing_id
+	LEFT JOIN listing_futures_contract lfc ON l.id = lfc.listing_id
+	LEFT JOIN listing_option lo ON l.id = lo.listing_id
+	LEFT JOIN listing stock_ul ON lo.stock_listing_id = stock_ul.id`
+
+const listingBaseWhere = `
+	WHERE ($1 = '' OR l.type = $1::listing_type)
+	  AND ($2 = '' OR se.acronym ILIKE $2||'%')
+	  AND ($3 = '' OR l.ticker ILIKE $3||'%')
+	  AND ($4 = '' OR l.name   ILIKE '%'||$4||'%')`
+
+func (s *SecuritiesServer) GetListings(ctx context.Context, req *pb.GetListingsRequest) (*pb.GetListingsResponse, error) {
+	page, pageSize := req.Page, req.PageSize
+	if page <= 0 {
+		page = 1
+	}
+	if pageSize <= 0 {
+		pageSize = 20
+	}
+	offset := (page - 1) * pageSize
+
+	// Whitelisted ORDER BY — safe for fmt.Sprintf because values come from a switch
+	col := "l.id"
+	switch req.SortBy {
+	case "price":
+		col = "l.price"
+	case "volume":
+		col = "l.volume"
+	case "change_percent", "change":
+		col = "l.change"
+	}
+	ord := "ASC"
+	if req.SortOrder == "DESC" {
+		ord = "DESC"
+	}
+
+	var total int64
+	if err := s.DB.QueryRowContext(ctx,
+		`SELECT COUNT(*) `+listingBaseFrom+listingBaseWhere,
+		req.Type, req.ExchangeAcronymPrefix, req.TickerPrefix, req.NameSearch,
+	).Scan(&total); err != nil {
+		return nil, status.Errorf(codes.Internal, "count failed: %v", err)
+	}
+	totalPages := int32((total + int64(pageSize) - 1) / int64(pageSize))
+
+	query := fmt.Sprintf(`
+		SELECT l.id, l.ticker, l.name, l.type::text, se.acronym,
+		       l.price, l.ask, l.bid, l.volume, l.change,
+		       COALESCE(ls.outstanding_shares, 0),
+		       COALESCE(lfc.contract_size, 1),
+		       lo.stock_listing_id,
+		       COALESCE(stock_ul.price, 0)
+		%s%s
+		ORDER BY %s %s
+		LIMIT $5 OFFSET $6`, listingBaseFrom, listingBaseWhere, col, ord)
+
+	rows, err := s.DB.QueryContext(ctx, query,
+		req.Type, req.ExchangeAcronymPrefix, req.TickerPrefix, req.NameSearch, pageSize, offset)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "query failed: %v", err)
+	}
+	defer rows.Close()
+
+	var listings []*pb.ListingSummary
+	for rows.Next() {
+		var (
+			id             int64
+			ticker, name   string
+			lType, acronym string
+			price, ask, bid float64
+			volume          int64
+			change          float64
+			outshares       int64
+			contractSize    float64
+			stockListingID  sql.NullInt64
+			stockPrice      float64
+		)
+		if err := rows.Scan(
+			&id, &ticker, &name, &lType, &acronym,
+			&price, &ask, &bid, &volume, &change,
+			&outshares, &contractSize, &stockListingID, &stockPrice,
+		); err != nil {
+			return nil, status.Errorf(codes.Internal, "scan failed: %v", err)
+		}
+		mm := computeMaintenanceMargin(lType, price, outshares, contractSize, stockPrice)
+		cp := listingChangePercent(price, change)
+		listings = append(listings, &pb.ListingSummary{
+			Id:                id,
+			Ticker:            ticker,
+			Name:              name,
+			Type:              lType,
+			ExchangeAcronym:   acronym,
+			Price:             price,
+			Ask:               ask,
+			Bid:               bid,
+			Volume:            volume,
+			ChangePercent:     cp,
+			MaintenanceMargin: mm,
+			InitialMarginCost: mm * 1.1,
+			NominalValue:      listingNominalValue(lType, price, contractSize),
+		})
+	}
+	return &pb.GetListingsResponse{
+		Listings:      listings,
+		TotalPages:    totalPages,
+		TotalElements: total,
+	}, nil
+}
+
+func (s *SecuritiesServer) GetListingById(ctx context.Context, req *pb.GetListingByIdRequest) (*pb.GetListingByIdResponse, error) {
+	var (
+		id                          int64
+		ticker, name, lType, acronym string
+		price, ask, bid             float64
+		volume                      int64
+		change                      float64
+		// stock
+		outshares     sql.NullInt64
+		dividendYield sql.NullFloat64
+		// forex
+		baseCurrency, quoteCurrency, liquidity sql.NullString
+		// futures
+		contractSize      sql.NullFloat64
+		contractUnit      sql.NullString
+		futuresSettlement sql.NullTime
+		// option
+		stockListingID  sql.NullInt64
+		optionType      sql.NullString
+		strikePrice     sql.NullFloat64
+		impliedVol      sql.NullFloat64
+		openInterest    sql.NullInt64
+		optionSettlement sql.NullTime
+	)
+	err := s.DB.QueryRowContext(ctx, `
+		SELECT l.id, l.ticker, l.name, l.type::text, se.acronym,
+		       l.price, l.ask, l.bid, l.volume, l.change,
+		       ls.outstanding_shares, ls.dividend_yield,
+		       lfp.base_currency, lfp.quote_currency, lfp.liquidity::text,
+		       lfc.contract_size, lfc.contract_unit, lfc.settlement_date,
+		       lo.stock_listing_id, lo.option_type::text, lo.strike_price,
+		       lo.implied_volatility, lo.open_interest, lo.settlement_date
+		FROM listing l
+		JOIN stock_exchanges se ON l.exchange_id = se.id
+		LEFT JOIN listing_stock ls ON l.id = ls.listing_id
+		LEFT JOIN listing_forex_pair lfp ON l.id = lfp.listing_id
+		LEFT JOIN listing_futures_contract lfc ON l.id = lfc.listing_id
+		LEFT JOIN listing_option lo ON l.id = lo.listing_id
+		WHERE l.id = $1`, req.Id).Scan(
+		&id, &ticker, &name, &lType, &acronym,
+		&price, &ask, &bid, &volume, &change,
+		&outshares, &dividendYield,
+		&baseCurrency, &quoteCurrency, &liquidity,
+		&contractSize, &contractUnit, &futuresSettlement,
+		&stockListingID, &optionType, &strikePrice,
+		&impliedVol, &openInterest, &optionSettlement,
+	)
+	if err == sql.ErrNoRows {
+		return nil, status.Errorf(codes.NotFound, "listing with ID %d not found", req.Id)
+	}
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "query failed: %v", err)
+	}
+
+	// Fetch underlying stock price for options
+	var stockPrice float64
+	if stockListingID.Valid {
+		_ = s.DB.QueryRowContext(ctx, `SELECT price FROM listing WHERE id = $1`, stockListingID.Int64).Scan(&stockPrice)
+	}
+
+	csVal := 1.0
+	if contractSize.Valid {
+		csVal = contractSize.Float64
+	}
+	mm := computeMaintenanceMargin(lType, price, outshares.Int64, csVal, stockPrice)
+	cp := listingChangePercent(price, change)
+
+	summary := &pb.ListingSummary{
+		Id:                id,
+		Ticker:            ticker,
+		Name:              name,
+		Type:              lType,
+		ExchangeAcronym:   acronym,
+		Price:             price,
+		Ask:               ask,
+		Bid:               bid,
+		Volume:            volume,
+		ChangePercent:     cp,
+		MaintenanceMargin: mm,
+		InitialMarginCost: mm * 1.1,
+		NominalValue:      listingNominalValue(lType, price, csVal),
+	}
+
+	// Fetch last 30 days price history (descending)
+	histRows, err := s.DB.QueryContext(ctx, `
+		SELECT date, price, ask, bid, change, volume
+		FROM listing_daily_price_info
+		WHERE listing_id = $1
+		ORDER BY date DESC
+		LIMIT 30`, id)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "history query failed: %v", err)
+	}
+	defer histRows.Close()
+
+	var history []*pb.DailyPriceInfo
+	for histRows.Next() {
+		var d time.Time
+		p := &pb.DailyPriceInfo{}
+		if err := histRows.Scan(&d, &p.Price, &p.Ask, &p.Bid, &p.Change, &p.Volume); err != nil {
+			return nil, status.Errorf(codes.Internal, "history scan failed: %v", err)
+		}
+		p.Date = d.Format("2006-01-02")
+		history = append(history, p)
+	}
+
+	resp := &pb.GetListingByIdResponse{Summary: summary, PriceHistory: history}
+
+	switch lType {
+	case "STOCK":
+		resp.Detail = &pb.GetListingByIdResponse_Stock{
+			Stock: &pb.StockDetail{
+				OutstandingShares: outshares.Int64,
+				DividendYield:     dividendYield.Float64,
+				MarketCap:         float64(outshares.Int64) * price,
+			},
+		}
+	case "FOREX_PAIR":
+		resp.Detail = &pb.GetListingByIdResponse_Forex{
+			Forex: &pb.ForexDetail{
+				BaseCurrency:  baseCurrency.String,
+				QuoteCurrency: quoteCurrency.String,
+				Liquidity:     liquidity.String,
+				NominalValue:  1000 * price,
+			},
+		}
+	case "FUTURES_CONTRACT":
+		sd := ""
+		if futuresSettlement.Valid {
+			sd = futuresSettlement.Time.Format("2006-01-02")
+		}
+		resp.Detail = &pb.GetListingByIdResponse_Futures{
+			Futures: &pb.FuturesDetail{
+				ContractSize:   csVal,
+				ContractUnit:   contractUnit.String,
+				SettlementDate: sd,
+			},
+		}
+	case "OPTION":
+		sd := ""
+		if optionSettlement.Valid {
+			sd = optionSettlement.Time.Format("2006-01-02")
+		}
+		resp.Detail = &pb.GetListingByIdResponse_Option{
+			Option: &pb.OptionDetail{
+				StockListingId:    stockListingID.Int64,
+				OptionType:        optionType.String,
+				StrikePrice:       strikePrice.Float64,
+				ImpliedVolatility: impliedVol.Float64,
+				OpenInterest:      openInterest.Int64,
+				SettlementDate:    sd,
+			},
+		}
+	}
+
+	return resp, nil
+}
+
+func (s *SecuritiesServer) GetListingHistory(ctx context.Context, req *pb.GetListingHistoryRequest) (*pb.GetListingHistoryResponse, error) {
+	var exists bool
+	if err := s.DB.QueryRowContext(ctx,
+		`SELECT EXISTS(SELECT 1 FROM listing WHERE id = $1)`, req.Id,
+	).Scan(&exists); err != nil {
+		return nil, status.Errorf(codes.Internal, "query failed: %v", err)
+	}
+	if !exists {
+		return nil, status.Errorf(codes.NotFound, "listing with ID %d not found", req.Id)
+	}
+
+	rows, err := s.DB.QueryContext(ctx, `
+		SELECT date, price, ask, bid, change, volume
+		FROM listing_daily_price_info
+		WHERE listing_id = $1
+		  AND date BETWEEN $2::date AND $3::date
+		ORDER BY date ASC`, req.Id, req.FromDate, req.ToDate)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "query failed: %v", err)
+	}
+	defer rows.Close()
+
+	var history []*pb.DailyPriceInfo
+	for rows.Next() {
+		var d time.Time
+		p := &pb.DailyPriceInfo{}
+		if err := rows.Scan(&d, &p.Price, &p.Ask, &p.Bid, &p.Change, &p.Volume); err != nil {
+			return nil, status.Errorf(codes.Internal, "scan failed: %v", err)
+		}
+		p.Date = d.Format("2006-01-02")
+		history = append(history, p)
+	}
+	return &pb.GetListingHistoryResponse{History: history}, nil
+}
+
+// ── Derived field helpers ──────────────────────────────────────────────────────
+
+func computeMaintenanceMargin(lType string, price float64, outshares int64, contractSize, stockPrice float64) float64 {
+	switch lType {
+	case "STOCK":
+		return 0.5 * price
+	case "FOREX_PAIR":
+		return 1000 * price * 0.10
+	case "FUTURES_CONTRACT":
+		return contractSize * price * 0.10
+	case "OPTION":
+		return 100 * 0.5 * stockPrice
+	}
+	return 0
+}
+
+func listingChangePercent(price, change float64) float64 {
+	prev := price - change
+	if prev == 0 {
+		return 0
+	}
+	return (100 * change) / prev
+}
+
+func listingNominalValue(lType string, price, contractSize float64) float64 {
+	switch lType {
+	case "FOREX_PAIR":
+		return 1000 * price
+	case "FUTURES_CONTRACT":
+		return contractSize * price
+	case "OPTION":
+		return 100 * price
+	}
+	return price // STOCK: contractSize = 1
 }
 

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/RAF-SI-2025/EXBanka-4-Backend/services/api-gateway/middleware"
 	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/securities"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -519,12 +520,15 @@ func SetTestMode(client pb.SecuritiesServiceClient) gin.HandlerFunc {
 // IsExchangeOpen godoc
 // @Summary      Check if an exchange is currently open
 // @Tags         securities
-// @Param        mic  path  string  true  "MIC code"
+// @Param        id  path  string  true  "Exchange ID or MIC code"
 // @Success      200  {object}  map[string]interface{}
-// @Router       /stock-exchanges/{mic}/is-open [get]
+// @Router       /stock-exchanges/{id}/is-open [get]
 func IsExchangeOpen(client pb.SecuritiesServiceClient) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		mic := c.Param("mic")
+		mic := resolveExchangeMIC(c, client, c.Param("id"))
+		if mic == "" {
+			return
+		}
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
 		defer cancel()
 
@@ -544,4 +548,243 @@ func IsExchangeOpen(client pb.SecuritiesServiceClient) gin.HandlerFunc {
 			"currentTimeLocal": resp.CurrentTimeLocal,
 		})
 	}
+}
+
+// ── Listings ──────────────────────────────────────────────────────────────────
+
+// clientAllowedTypes is the set of listing types visible to CLIENT-role callers.
+var clientAllowedTypes = map[string]bool{"STOCK": true, "FUTURES_CONTRACT": true}
+
+// GetSecurities godoc
+// @Summary      List securities listings with optional filtering and pagination
+// @Tags         securities
+// @Produce      json
+// @Param        type       query  string  false  "STOCK | FOREX_PAIR | FUTURES_CONTRACT | OPTION"
+// @Param        exchange   query  string  false  "Exchange acronym prefix"
+// @Param        ticker     query  string  false  "Ticker prefix"
+// @Param        name       query  string  false  "Name substring"
+// @Param        page       query  int     false  "Page (0-based, default 0)"
+// @Param        pageSize   query  int     false  "Page size (default 20)"
+// @Param        sortBy     query  string  false  "price | volume | change_percent | maintenance_margin"
+// @Param        sortOrder  query  string  false  "ASC | DESC"
+// @Success      200  {object}  map[string]interface{}
+// @Router       /securities [get]
+func GetSecurities(client pb.SecuritiesServiceClient) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if _, err := middleware.GetUserIDFromToken(c); err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		}
+
+		isClient := middleware.GetCallerRoleFromToken(c) == "CLIENT"
+		typeParam := c.Query("type")
+
+		// Clients may only see STOCK and FUTURES_CONTRACT
+		if isClient && typeParam != "" && !clientAllowedTypes[typeParam] {
+			c.JSON(http.StatusOK, gin.H{"listings": []interface{}{}, "totalPages": 0, "totalElements": int64(0)})
+			return
+		}
+
+		page, _ := strconv.Atoi(c.DefaultQuery("page", "0"))
+		pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "20"))
+
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+		defer cancel()
+
+		resp, err := client.GetListings(ctx, &pb.GetListingsRequest{
+			Type:                  typeParam,
+			ExchangeAcronymPrefix: c.Query("exchange"),
+			TickerPrefix:          c.Query("ticker"),
+			NameSearch:            c.Query("name"),
+			Page:                  int32(page + 1), // HTTP is 0-based; gRPC is 1-based
+			PageSize:              int32(pageSize),
+			SortBy:                c.Query("sortBy"),
+			SortOrder:             c.Query("sortOrder"),
+		})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch securities"})
+			return
+		}
+
+		listings := resp.Listings
+		if isClient {
+			filtered := listings[:0]
+			for _, l := range listings {
+				if clientAllowedTypes[l.Type] {
+					filtered = append(filtered, l)
+				}
+			}
+			listings = filtered
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"listings":      listingSummariesToJSON(listings),
+			"totalPages":    resp.TotalPages,
+			"totalElements": resp.TotalElements,
+		})
+	}
+}
+
+// GetSecurityById godoc
+// @Summary      Get full listing detail by ID
+// @Tags         securities
+// @Produce      json
+// @Param        id  path  int  true  "Listing ID"
+// @Success      200  {object}  map[string]interface{}
+// @Router       /securities/{id} [get]
+func GetSecurityById(client pb.SecuritiesServiceClient) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if _, err := middleware.GetUserIDFromToken(c); err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		}
+
+		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid listing id"})
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+		defer cancel()
+
+		resp, err := client.GetListingById(ctx, &pb.GetListingByIdRequest{Id: id})
+		if err != nil {
+			if status.Code(err) == codes.NotFound {
+				c.JSON(http.StatusNotFound, gin.H{"error": status.Convert(err).Message()})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch listing"})
+			return
+		}
+
+		body := gin.H{
+			"summary":      listingSummaryToJSON(resp.Summary),
+			"priceHistory": dailyPriceHistoryToJSON(resp.PriceHistory),
+		}
+		switch d := resp.Detail.(type) {
+		case *pb.GetListingByIdResponse_Stock:
+			body["detail"] = gin.H{
+				"type":              "STOCK",
+				"outstandingShares": d.Stock.OutstandingShares,
+				"dividendYield":     d.Stock.DividendYield,
+				"marketCap":         d.Stock.MarketCap,
+			}
+		case *pb.GetListingByIdResponse_Forex:
+			body["detail"] = gin.H{
+				"type":          "FOREX_PAIR",
+				"baseCurrency":  d.Forex.BaseCurrency,
+				"quoteCurrency": d.Forex.QuoteCurrency,
+				"liquidity":     d.Forex.Liquidity,
+				"nominalValue":  d.Forex.NominalValue,
+			}
+		case *pb.GetListingByIdResponse_Futures:
+			body["detail"] = gin.H{
+				"type":           "FUTURES_CONTRACT",
+				"contractSize":   d.Futures.ContractSize,
+				"contractUnit":   d.Futures.ContractUnit,
+				"settlementDate": d.Futures.SettlementDate,
+			}
+		case *pb.GetListingByIdResponse_Option:
+			body["detail"] = gin.H{
+				"type":              "OPTION",
+				"stockListingId":    d.Option.StockListingId,
+				"optionType":        d.Option.OptionType,
+				"strikePrice":       d.Option.StrikePrice,
+				"impliedVolatility": d.Option.ImpliedVolatility,
+				"openInterest":      d.Option.OpenInterest,
+				"settlementDate":    d.Option.SettlementDate,
+			}
+		}
+		c.JSON(http.StatusOK, body)
+	}
+}
+
+// GetSecurityHistory godoc
+// @Summary      Get daily price history for a listing
+// @Tags         securities
+// @Produce      json
+// @Param        id    path   int     true  "Listing ID"
+// @Param        from  query  string  true  "Start date (YYYY-MM-DD)"
+// @Param        to    query  string  true  "End date (YYYY-MM-DD)"
+// @Success      200  {array}  map[string]interface{}
+// @Router       /securities/{id}/history [get]
+func GetSecurityHistory(client pb.SecuritiesServiceClient) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if _, err := middleware.GetUserIDFromToken(c); err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		}
+
+		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid listing id"})
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+		defer cancel()
+
+		resp, err := client.GetListingHistory(ctx, &pb.GetListingHistoryRequest{
+			Id:       id,
+			FromDate: c.Query("from"),
+			ToDate:   c.Query("to"),
+		})
+		if err != nil {
+			if status.Code(err) == codes.NotFound {
+				c.JSON(http.StatusNotFound, gin.H{"error": status.Convert(err).Message()})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch price history"})
+			return
+		}
+
+		c.JSON(http.StatusOK, dailyPriceHistoryToJSON(resp.History))
+	}
+}
+
+// ── JSON serialisation helpers ────────────────────────────────────────────────
+
+func listingSummaryToJSON(l *pb.ListingSummary) gin.H {
+	if l == nil {
+		return nil
+	}
+	return gin.H{
+		"id":               l.Id,
+		"ticker":           l.Ticker,
+		"name":             l.Name,
+		"type":             l.Type,
+		"exchangeAcronym":  l.ExchangeAcronym,
+		"price":            l.Price,
+		"ask":              l.Ask,
+		"bid":              l.Bid,
+		"volume":           l.Volume,
+		"changePercent":    l.ChangePercent,
+		"maintenanceMargin": l.MaintenanceMargin,
+		"initialMarginCost": l.InitialMarginCost,
+		"nominalValue":     l.NominalValue,
+	}
+}
+
+func listingSummariesToJSON(listings []*pb.ListingSummary) []gin.H {
+	result := make([]gin.H, 0, len(listings))
+	for _, l := range listings {
+		result = append(result, listingSummaryToJSON(l))
+	}
+	return result
+}
+
+func dailyPriceHistoryToJSON(history []*pb.DailyPriceInfo) []gin.H {
+	result := make([]gin.H, 0, len(history))
+	for _, p := range history {
+		result = append(result, gin.H{
+			"date":   p.Date,
+			"price":  p.Price,
+			"ask":    p.Ask,
+			"bid":    p.Bid,
+			"change": p.Change,
+			"volume": p.Volume,
+		})
+	}
+	return result
 }

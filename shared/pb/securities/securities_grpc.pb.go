@@ -34,6 +34,9 @@ const (
 	SecuritiesService_IsExchangeOpen_FullMethodName        = "/securities.SecuritiesService/IsExchangeOpen"
 	SecuritiesService_GetTestMode_FullMethodName           = "/securities.SecuritiesService/GetTestMode"
 	SecuritiesService_SetTestMode_FullMethodName           = "/securities.SecuritiesService/SetTestMode"
+	SecuritiesService_GetListings_FullMethodName           = "/securities.SecuritiesService/GetListings"
+	SecuritiesService_GetListingById_FullMethodName        = "/securities.SecuritiesService/GetListingById"
+	SecuritiesService_GetListingHistory_FullMethodName     = "/securities.SecuritiesService/GetListingHistory"
 )
 
 // SecuritiesServiceClient is the client API for SecuritiesService service.
@@ -60,6 +63,10 @@ type SecuritiesServiceClient interface {
 	// Test Mode
 	GetTestMode(ctx context.Context, in *GetTestModeRequest, opts ...grpc.CallOption) (*GetTestModeResponse, error)
 	SetTestMode(ctx context.Context, in *SetTestModeRequest, opts ...grpc.CallOption) (*SetTestModeResponse, error)
+	// Listings
+	GetListings(ctx context.Context, in *GetListingsRequest, opts ...grpc.CallOption) (*GetListingsResponse, error)
+	GetListingById(ctx context.Context, in *GetListingByIdRequest, opts ...grpc.CallOption) (*GetListingByIdResponse, error)
+	GetListingHistory(ctx context.Context, in *GetListingHistoryRequest, opts ...grpc.CallOption) (*GetListingHistoryResponse, error)
 }
 
 type securitiesServiceClient struct {
@@ -220,6 +227,36 @@ func (c *securitiesServiceClient) SetTestMode(ctx context.Context, in *SetTestMo
 	return out, nil
 }
 
+func (c *securitiesServiceClient) GetListings(ctx context.Context, in *GetListingsRequest, opts ...grpc.CallOption) (*GetListingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetListingsResponse)
+	err := c.cc.Invoke(ctx, SecuritiesService_GetListings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *securitiesServiceClient) GetListingById(ctx context.Context, in *GetListingByIdRequest, opts ...grpc.CallOption) (*GetListingByIdResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetListingByIdResponse)
+	err := c.cc.Invoke(ctx, SecuritiesService_GetListingById_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *securitiesServiceClient) GetListingHistory(ctx context.Context, in *GetListingHistoryRequest, opts ...grpc.CallOption) (*GetListingHistoryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetListingHistoryResponse)
+	err := c.cc.Invoke(ctx, SecuritiesService_GetListingHistory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SecuritiesServiceServer is the server API for SecuritiesService service.
 // All implementations must embed UnimplementedSecuritiesServiceServer
 // for forward compatibility.
@@ -244,6 +281,10 @@ type SecuritiesServiceServer interface {
 	// Test Mode
 	GetTestMode(context.Context, *GetTestModeRequest) (*GetTestModeResponse, error)
 	SetTestMode(context.Context, *SetTestModeRequest) (*SetTestModeResponse, error)
+	// Listings
+	GetListings(context.Context, *GetListingsRequest) (*GetListingsResponse, error)
+	GetListingById(context.Context, *GetListingByIdRequest) (*GetListingByIdResponse, error)
+	GetListingHistory(context.Context, *GetListingHistoryRequest) (*GetListingHistoryResponse, error)
 	mustEmbedUnimplementedSecuritiesServiceServer()
 }
 
@@ -298,6 +339,15 @@ func (UnimplementedSecuritiesServiceServer) GetTestMode(context.Context, *GetTes
 }
 func (UnimplementedSecuritiesServiceServer) SetTestMode(context.Context, *SetTestModeRequest) (*SetTestModeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetTestMode not implemented")
+}
+func (UnimplementedSecuritiesServiceServer) GetListings(context.Context, *GetListingsRequest) (*GetListingsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetListings not implemented")
+}
+func (UnimplementedSecuritiesServiceServer) GetListingById(context.Context, *GetListingByIdRequest) (*GetListingByIdResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetListingById not implemented")
+}
+func (UnimplementedSecuritiesServiceServer) GetListingHistory(context.Context, *GetListingHistoryRequest) (*GetListingHistoryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetListingHistory not implemented")
 }
 func (UnimplementedSecuritiesServiceServer) mustEmbedUnimplementedSecuritiesServiceServer() {}
 func (UnimplementedSecuritiesServiceServer) testEmbeddedByValue()                           {}
@@ -590,6 +640,60 @@ func _SecuritiesService_SetTestMode_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SecuritiesService_GetListings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetListingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SecuritiesServiceServer).GetListings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SecuritiesService_GetListings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SecuritiesServiceServer).GetListings(ctx, req.(*GetListingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SecuritiesService_GetListingById_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetListingByIdRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SecuritiesServiceServer).GetListingById(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SecuritiesService_GetListingById_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SecuritiesServiceServer).GetListingById(ctx, req.(*GetListingByIdRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SecuritiesService_GetListingHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetListingHistoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SecuritiesServiceServer).GetListingHistory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SecuritiesService_GetListingHistory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SecuritiesServiceServer).GetListingHistory(ctx, req.(*GetListingHistoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SecuritiesService_ServiceDesc is the grpc.ServiceDesc for SecuritiesService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -656,6 +760,18 @@ var SecuritiesService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetTestMode",
 			Handler:    _SecuritiesService_SetTestMode_Handler,
+		},
+		{
+			MethodName: "GetListings",
+			Handler:    _SecuritiesService_GetListings_Handler,
+		},
+		{
+			MethodName: "GetListingById",
+			Handler:    _SecuritiesService_GetListingById_Handler,
+		},
+		{
+			MethodName: "GetListingHistory",
+			Handler:    _SecuritiesService_GetListingHistory_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
