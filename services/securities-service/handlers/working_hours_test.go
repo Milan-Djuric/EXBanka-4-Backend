@@ -7,16 +7,16 @@ import (
 	"time"
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
-	"github.com/lib/pq"
 	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/securities"
+	"github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-var hoursCols    = []string{"id", "polity", "segment", "open_time", "close_time"}
-var holidayCols  = []string{"id", "polity", "holiday_date", "description"}
+var hoursCols = []string{"id", "polity", "segment", "open_time", "close_time"}
+var holidayCols = []string{"id", "polity", "holiday_date", "description"}
 
 // ── GetWorkingHours ───────────────────────────────────────────────────────────
 

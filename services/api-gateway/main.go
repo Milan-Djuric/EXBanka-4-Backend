@@ -5,12 +5,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/gin-contrib/cors"
-	"github.com/gin-gonic/gin"
+	_ "github.com/RAF-SI-2025/EXBanka-4-Backend/services/api-gateway/docs"
 	gwgrpc "github.com/RAF-SI-2025/EXBanka-4-Backend/services/api-gateway/grpc"
 	"github.com/RAF-SI-2025/EXBanka-4-Backend/services/api-gateway/handlers"
 	"github.com/RAF-SI-2025/EXBanka-4-Backend/services/api-gateway/middleware"
-	_ "github.com/RAF-SI-2025/EXBanka-4-Backend/services/api-gateway/docs"
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )

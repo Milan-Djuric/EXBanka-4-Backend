@@ -47,7 +47,7 @@ func newServer(t *testing.T) (*AccountServer, sqlmock.Sqlmock, sqlmock.Sqlmock, 
 	exchangeDB, exchangeMock, err := sqlmock.New()
 	require.NoError(t, err)
 	s := &AccountServer{DB: db, ClientDB: clientDB, ExchangeDB: exchangeDB, EmailClient: &mockEmailClient{}}
-	t.Cleanup(func() { db.Close(); clientDB.Close(); exchangeDB.Close() })
+	t.Cleanup(func() { _ = db.Close(); _ = clientDB.Close(); _ = exchangeDB.Close() })
 	return s, dbMock, clientMock, exchangeMock
 }
 

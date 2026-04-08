@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/RAF-SI-2025/EXBanka-4-Backend/services/api-gateway/middleware"
 	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/securities"
+	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -750,19 +750,19 @@ func listingSummaryToJSON(l *pb.ListingSummary) gin.H {
 		return nil
 	}
 	return gin.H{
-		"id":               l.Id,
-		"ticker":           l.Ticker,
-		"name":             l.Name,
-		"type":             l.Type,
-		"exchangeAcronym":  l.ExchangeAcronym,
-		"price":            l.Price,
-		"ask":              l.Ask,
-		"bid":              l.Bid,
-		"volume":           l.Volume,
-		"changePercent":    l.ChangePercent,
+		"id":                l.Id,
+		"ticker":            l.Ticker,
+		"name":              l.Name,
+		"type":              l.Type,
+		"exchangeAcronym":   l.ExchangeAcronym,
+		"price":             l.Price,
+		"ask":               l.Ask,
+		"bid":               l.Bid,
+		"volume":            l.Volume,
+		"changePercent":     l.ChangePercent,
 		"maintenanceMargin": l.MaintenanceMargin,
 		"initialMarginCost": l.InitialMarginCost,
-		"nominalValue":     l.NominalValue,
+		"nominalValue":      l.NominalValue,
 	}
 }
 

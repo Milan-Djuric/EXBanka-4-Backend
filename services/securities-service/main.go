@@ -28,7 +28,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to connect to securities_db: %v", err)
 	}
-	defer securitiesDB.Close()
+	defer func() {
+		if err := securitiesDB.Close(); err != nil {
+			log.Printf("securities_db close: %v", err)
+		}
+	}()
 
 	lis, err := net.Listen("tcp", grpcPort)
 	if err != nil {

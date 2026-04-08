@@ -35,7 +35,7 @@ func avGet(params map[string]string, dst interface{}) (ok bool, err error) {
 	if err != nil {
 		return false, fmt.Errorf("av: request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusTooManyRequests {
 		log.Printf("alphavantage: rate limit hit (429), skipping")
@@ -261,11 +261,11 @@ func FetchFXDaily(fromCurrency, toCurrency, apiKey string) ([]DailyBar, error) {
 	time.Sleep(avRateLimit)
 	var resp avFXDailyResp
 	ok, err := avGet(map[string]string{
-		"function":      "FX_DAILY",
-		"from_symbol":   fromCurrency,
-		"to_symbol":     toCurrency,
-		"outputsize":    "full",
-		"apikey":        apiKey,
+		"function":    "FX_DAILY",
+		"from_symbol": fromCurrency,
+		"to_symbol":   toCurrency,
+		"outputsize":  "full",
+		"apikey":      apiKey,
 	}, &resp)
 	if err != nil {
 		return nil, err

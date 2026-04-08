@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lib/pq"
 	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/securities"
+	"github.com/lib/pq"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -49,7 +49,7 @@ func (s *SecuritiesServer) GetStockExchanges(ctx context.Context, req *pb.GetSto
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "query failed: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var exchanges []*pb.StockExchange
 	for rows.Next() {
@@ -162,7 +162,7 @@ func (s *SecuritiesServer) GetWorkingHours(ctx context.Context, req *pb.GetWorki
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "query failed: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var hours []*pb.ExchangeWorkingHours
 	for rows.Next() {
@@ -202,7 +202,7 @@ func (s *SecuritiesServer) GetHolidays(ctx context.Context, req *pb.GetHolidaysR
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "query failed: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var holidays []*pb.ExchangeHoliday
 	for rows.Next() {
@@ -328,7 +328,7 @@ func (s *SecuritiesServer) IsExchangeOpen(ctx context.Context, req *pb.IsExchang
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "query failed: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	// 6. Check which segment (if any) the current time falls in
 	for rows.Next() {
@@ -434,14 +434,14 @@ func (s *SecuritiesServer) GetListings(ctx context.Context, req *pb.GetListingsR
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "query failed: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var listings []*pb.ListingSummary
 	for rows.Next() {
 		var (
-			id             int64
-			ticker, name   string
-			lType, acronym string
+			id              int64
+			ticker, name    string
+			lType, acronym  string
 			price, ask, bid float64
 			volume          int64
 			change          float64
@@ -484,11 +484,11 @@ func (s *SecuritiesServer) GetListings(ctx context.Context, req *pb.GetListingsR
 
 func (s *SecuritiesServer) GetListingById(ctx context.Context, req *pb.GetListingByIdRequest) (*pb.GetListingByIdResponse, error) {
 	var (
-		id                          int64
+		id                           int64
 		ticker, name, lType, acronym string
-		price, ask, bid             float64
-		volume                      int64
-		change                      float64
+		price, ask, bid              float64
+		volume                       int64
+		change                       float64
 		// stock
 		outshares     sql.NullInt64
 		dividendYield sql.NullFloat64
@@ -499,11 +499,11 @@ func (s *SecuritiesServer) GetListingById(ctx context.Context, req *pb.GetListin
 		contractUnit      sql.NullString
 		futuresSettlement sql.NullTime
 		// option
-		stockListingID  sql.NullInt64
-		optionType      sql.NullString
-		strikePrice     sql.NullFloat64
-		impliedVol      sql.NullFloat64
-		openInterest    sql.NullInt64
+		stockListingID   sql.NullInt64
+		optionType       sql.NullString
+		strikePrice      sql.NullFloat64
+		impliedVol       sql.NullFloat64
+		openInterest     sql.NullInt64
 		optionSettlement sql.NullTime
 	)
 	err := s.DB.QueryRowContext(ctx, `
@@ -575,7 +575,7 @@ func (s *SecuritiesServer) GetListingById(ctx context.Context, req *pb.GetListin
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "history query failed: %v", err)
 	}
-	defer histRows.Close()
+	defer func() { _ = histRows.Close() }()
 
 	var history []*pb.DailyPriceInfo
 	for histRows.Next() {
@@ -660,7 +660,7 @@ func (s *SecuritiesServer) GetListingHistory(ctx context.Context, req *pb.GetLis
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "query failed: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var history []*pb.DailyPriceInfo
 	for rows.Next() {
@@ -710,4 +710,3 @@ func listingNominalValue(lType string, price, contractSize float64) float64 {
 	}
 	return price // STOCK: contractSize = 1
 }
-

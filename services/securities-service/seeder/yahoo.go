@@ -55,7 +55,7 @@ func FetchOptions(ticker string, stockListingID int64) ([]OptionRow, error) {
 		log.Printf("yahoo options: request failed for %s: %v — falling back to generated options", ticker, err)
 		return nil, nil
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		log.Printf("yahoo options: status %d for %s — falling back", resp.StatusCode, ticker)

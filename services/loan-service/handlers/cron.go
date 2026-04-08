@@ -256,14 +256,14 @@ func (s *LoanServer) updateVariableRates() {
 	defer rows.Close()
 
 	type varLoan struct {
-		id             int64
-		loanType       string
-		amount         float64
-		nominalRate    float64
-		effectiveRate  float64
-		remainingDebt  float64
+		id              int64
+		loanType        string
+		amount          float64
+		nominalRate     float64
+		effectiveRate   float64
+		remainingDebt   float64
 		repaymentPeriod int
-		agreedDate     time.Time
+		agreedDate      time.Time
 	}
 
 	var loans []varLoan

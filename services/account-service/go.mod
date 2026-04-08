@@ -4,6 +4,7 @@ go 1.26.1
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
+	github.com/RAF-SI-2025/EXBanka-4-Backend/shared v0.0.0-20260406142200-a172fa7a2a46
 	github.com/lib/pq v1.11.2
 	github.com/stretchr/testify v1.11.1
 	google.golang.org/grpc v1.79.3

@@ -8,10 +8,10 @@ import (
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	"github.com/golang-jwt/jwt/v5"
-	"golang.org/x/crypto/bcrypt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -210,15 +210,15 @@ func TestValidatePassword(t *testing.T) {
 		wantNil  bool
 		wantCode codes.Code
 	}{
-		{"valid",                    "Abcdef12",                           true,  codes.OK},
-		{"valid 32 chars",           "Abcdefgh12345678Abcdefgh12345678",   true,  codes.OK},
-		{"valid exactly 8",          "Abcde12!",                           true,  codes.OK},
-		{"too short",                "Ab1",                                false, codes.InvalidArgument},
-		{"too long 33 chars",        "Abcdefgh123456789012345678901234x",  false, codes.InvalidArgument},
-		{"only one digit",           "Abcdefg1",                           false, codes.InvalidArgument},
-		{"no digits",                "Abcdefgh",                           false, codes.InvalidArgument},
-		{"no uppercase",             "abcdef12",                           false, codes.InvalidArgument},
-		{"no lowercase",             "ABCDEF12",                           false, codes.InvalidArgument},
+		{"valid", "Abcdef12", true, codes.OK},
+		{"valid 32 chars", "Abcdefgh12345678Abcdefgh12345678", true, codes.OK},
+		{"valid exactly 8", "Abcde12!", true, codes.OK},
+		{"too short", "Ab1", false, codes.InvalidArgument},
+		{"too long 33 chars", "Abcdefgh123456789012345678901234x", false, codes.InvalidArgument},
+		{"only one digit", "Abcdefg1", false, codes.InvalidArgument},
+		{"no digits", "Abcdefgh", false, codes.InvalidArgument},
+		{"no uppercase", "abcdef12", false, codes.InvalidArgument},
+		{"no lowercase", "ABCDEF12", false, codes.InvalidArgument},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1800,7 +1800,6 @@ func TestGetClientApprovals_QueryError(t *testing.T) {
 	require.Error(t, err)
 	assert.Equal(t, codes.Internal, status.Code(err))
 }
-
 
 // ---- approvalPushMessage ----
 

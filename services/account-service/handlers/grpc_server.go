@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/RAF-SI-2025/EXBanka-4-Backend/services/account-service/utils"
 	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/account"
 	pb_email "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/email"
-	"github.com/RAF-SI-2025/EXBanka-4-Backend/services/account-service/utils"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -31,7 +31,7 @@ func (s *AccountServer) GetMyAccounts(ctx context.Context, req *pb.GetMyAccounts
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to query accounts: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	type row struct {
 		id               int64
@@ -175,7 +175,7 @@ func (s *AccountServer) GetAllAccounts(ctx context.Context, _ *pb.GetAllAccounts
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to query accounts: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	type row struct {
 		id               int64
@@ -406,7 +406,7 @@ func (s *AccountServer) GetBankAccounts(ctx context.Context, _ *pb.GetBankAccoun
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to query bank accounts: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var accounts []*pb.BankAccountItem
 	for rows.Next() {
