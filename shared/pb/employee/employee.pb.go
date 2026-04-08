@@ -1717,6 +1717,78 @@ func (*SetNeedApprovalResponse) Descriptor() ([]byte, []int) {
 	return file_employee_proto_rawDescGZIP(), []int{27}
 }
 
+type ResetAllActuaryUsedLimitsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResetAllActuaryUsedLimitsRequest) Reset() {
+	*x = ResetAllActuaryUsedLimitsRequest{}
+	mi := &file_employee_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResetAllActuaryUsedLimitsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResetAllActuaryUsedLimitsRequest) ProtoMessage() {}
+
+func (x *ResetAllActuaryUsedLimitsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_employee_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResetAllActuaryUsedLimitsRequest.ProtoReflect.Descriptor instead.
+func (*ResetAllActuaryUsedLimitsRequest) Descriptor() ([]byte, []int) {
+	return file_employee_proto_rawDescGZIP(), []int{28}
+}
+
+type ResetAllActuaryUsedLimitsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResetAllActuaryUsedLimitsResponse) Reset() {
+	*x = ResetAllActuaryUsedLimitsResponse{}
+	mi := &file_employee_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResetAllActuaryUsedLimitsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResetAllActuaryUsedLimitsResponse) ProtoMessage() {}
+
+func (x *ResetAllActuaryUsedLimitsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_employee_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResetAllActuaryUsedLimitsResponse.ProtoReflect.Descriptor instead.
+func (*ResetAllActuaryUsedLimitsResponse) Descriptor() ([]byte, []int) {
+	return file_employee_proto_rawDescGZIP(), []int{29}
+}
+
 var File_employee_proto protoreflect.FileDescriptor
 
 const file_employee_proto_rawDesc = "" +
@@ -1860,7 +1932,10 @@ const file_employee_proto_rawDesc = "" +
 	"\vemployee_id\x18\x01 \x01(\x03R\n" +
 	"employeeId\x12#\n" +
 	"\rneed_approval\x18\x02 \x01(\bR\fneedApproval\"\x19\n" +
-	"\x17SetNeedApprovalResponse2\x9e\t\n" +
+	"\x17SetNeedApprovalResponse\"\"\n" +
+	" ResetAllActuaryUsedLimitsRequest\"#\n" +
+	"!ResetAllActuaryUsedLimitsResponse2\x94\n" +
+	"\n" +
 	"\x0fEmployeeService\x12V\n" +
 	"\x0fGetAllEmployees\x12 .employee.GetAllEmployeesRequest\x1a!.employee.GetAllEmployeesResponse\x12V\n" +
 	"\x0fSearchEmployees\x12 .employee.SearchEmployeesRequest\x1a!.employee.SearchEmployeesResponse\x12k\n" +
@@ -1874,7 +1949,8 @@ const file_employee_proto_rawDesc = "" +
 	"\fGetActuaries\x12\x1d.employee.GetActuariesRequest\x1a\x1e.employee.GetActuariesResponse\x12P\n" +
 	"\rSetAgentLimit\x12\x1e.employee.SetAgentLimitRequest\x1a\x1f.employee.SetAgentLimitResponse\x12b\n" +
 	"\x13ResetAgentUsedLimit\x12$.employee.ResetAgentUsedLimitRequest\x1a%.employee.ResetAgentUsedLimitResponse\x12V\n" +
-	"\x0fSetNeedApproval\x12 .employee.SetNeedApprovalRequest\x1a!.employee.SetNeedApprovalResponseB=Z;github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/employeeb\x06proto3"
+	"\x0fSetNeedApproval\x12 .employee.SetNeedApprovalRequest\x1a!.employee.SetNeedApprovalResponse\x12t\n" +
+	"\x19ResetAllActuaryUsedLimits\x12*.employee.ResetAllActuaryUsedLimitsRequest\x1a+.employee.ResetAllActuaryUsedLimitsResponseB=Z;github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/employeeb\x06proto3"
 
 var (
 	file_employee_proto_rawDescOnce sync.Once
@@ -1888,36 +1964,38 @@ func file_employee_proto_rawDescGZIP() []byte {
 	return file_employee_proto_rawDescData
 }
 
-var file_employee_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
+var file_employee_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
 var file_employee_proto_goTypes = []any{
-	(*Employee)(nil),                       // 0: employee.Employee
-	(*GetAllEmployeesRequest)(nil),         // 1: employee.GetAllEmployeesRequest
-	(*GetAllEmployeesResponse)(nil),        // 2: employee.GetAllEmployeesResponse
-	(*SearchEmployeesRequest)(nil),         // 3: employee.SearchEmployeesRequest
-	(*SearchEmployeesResponse)(nil),        // 4: employee.SearchEmployeesResponse
-	(*GetEmployeeCredentialsRequest)(nil),  // 5: employee.GetEmployeeCredentialsRequest
-	(*GetEmployeeCredentialsResponse)(nil), // 6: employee.GetEmployeeCredentialsResponse
-	(*CreateEmployeeRequest)(nil),          // 7: employee.CreateEmployeeRequest
-	(*CreateEmployeeResponse)(nil),         // 8: employee.CreateEmployeeResponse
-	(*GetEmployeeByIdRequest)(nil),         // 9: employee.GetEmployeeByIdRequest
-	(*GetEmployeeByIdResponse)(nil),        // 10: employee.GetEmployeeByIdResponse
-	(*UpdateEmployeeRequest)(nil),          // 11: employee.UpdateEmployeeRequest
-	(*UpdateEmployeeResponse)(nil),         // 12: employee.UpdateEmployeeResponse
-	(*ActivateEmployeeRequest)(nil),        // 13: employee.ActivateEmployeeRequest
-	(*ActivateEmployeeResponse)(nil),       // 14: employee.ActivateEmployeeResponse
-	(*GetEmployeeByEmailRequest)(nil),      // 15: employee.GetEmployeeByEmailRequest
-	(*GetEmployeeByEmailResponse)(nil),     // 16: employee.GetEmployeeByEmailResponse
-	(*UpdatePasswordRequest)(nil),          // 17: employee.UpdatePasswordRequest
-	(*UpdatePasswordResponse)(nil),         // 18: employee.UpdatePasswordResponse
-	(*ActuaryInfo)(nil),                    // 19: employee.ActuaryInfo
-	(*GetActuariesRequest)(nil),            // 20: employee.GetActuariesRequest
-	(*GetActuariesResponse)(nil),           // 21: employee.GetActuariesResponse
-	(*SetAgentLimitRequest)(nil),           // 22: employee.SetAgentLimitRequest
-	(*SetAgentLimitResponse)(nil),          // 23: employee.SetAgentLimitResponse
-	(*ResetAgentUsedLimitRequest)(nil),     // 24: employee.ResetAgentUsedLimitRequest
-	(*ResetAgentUsedLimitResponse)(nil),    // 25: employee.ResetAgentUsedLimitResponse
-	(*SetNeedApprovalRequest)(nil),         // 26: employee.SetNeedApprovalRequest
-	(*SetNeedApprovalResponse)(nil),        // 27: employee.SetNeedApprovalResponse
+	(*Employee)(nil),                          // 0: employee.Employee
+	(*GetAllEmployeesRequest)(nil),            // 1: employee.GetAllEmployeesRequest
+	(*GetAllEmployeesResponse)(nil),           // 2: employee.GetAllEmployeesResponse
+	(*SearchEmployeesRequest)(nil),            // 3: employee.SearchEmployeesRequest
+	(*SearchEmployeesResponse)(nil),           // 4: employee.SearchEmployeesResponse
+	(*GetEmployeeCredentialsRequest)(nil),     // 5: employee.GetEmployeeCredentialsRequest
+	(*GetEmployeeCredentialsResponse)(nil),    // 6: employee.GetEmployeeCredentialsResponse
+	(*CreateEmployeeRequest)(nil),             // 7: employee.CreateEmployeeRequest
+	(*CreateEmployeeResponse)(nil),            // 8: employee.CreateEmployeeResponse
+	(*GetEmployeeByIdRequest)(nil),            // 9: employee.GetEmployeeByIdRequest
+	(*GetEmployeeByIdResponse)(nil),           // 10: employee.GetEmployeeByIdResponse
+	(*UpdateEmployeeRequest)(nil),             // 11: employee.UpdateEmployeeRequest
+	(*UpdateEmployeeResponse)(nil),            // 12: employee.UpdateEmployeeResponse
+	(*ActivateEmployeeRequest)(nil),           // 13: employee.ActivateEmployeeRequest
+	(*ActivateEmployeeResponse)(nil),          // 14: employee.ActivateEmployeeResponse
+	(*GetEmployeeByEmailRequest)(nil),         // 15: employee.GetEmployeeByEmailRequest
+	(*GetEmployeeByEmailResponse)(nil),        // 16: employee.GetEmployeeByEmailResponse
+	(*UpdatePasswordRequest)(nil),             // 17: employee.UpdatePasswordRequest
+	(*UpdatePasswordResponse)(nil),            // 18: employee.UpdatePasswordResponse
+	(*ActuaryInfo)(nil),                       // 19: employee.ActuaryInfo
+	(*GetActuariesRequest)(nil),               // 20: employee.GetActuariesRequest
+	(*GetActuariesResponse)(nil),              // 21: employee.GetActuariesResponse
+	(*SetAgentLimitRequest)(nil),              // 22: employee.SetAgentLimitRequest
+	(*SetAgentLimitResponse)(nil),             // 23: employee.SetAgentLimitResponse
+	(*ResetAgentUsedLimitRequest)(nil),        // 24: employee.ResetAgentUsedLimitRequest
+	(*ResetAgentUsedLimitResponse)(nil),       // 25: employee.ResetAgentUsedLimitResponse
+	(*SetNeedApprovalRequest)(nil),            // 26: employee.SetNeedApprovalRequest
+	(*SetNeedApprovalResponse)(nil),           // 27: employee.SetNeedApprovalResponse
+	(*ResetAllActuaryUsedLimitsRequest)(nil),  // 28: employee.ResetAllActuaryUsedLimitsRequest
+	(*ResetAllActuaryUsedLimitsResponse)(nil), // 29: employee.ResetAllActuaryUsedLimitsResponse
 }
 var file_employee_proto_depIdxs = []int32{
 	0,  // 0: employee.GetAllEmployeesResponse.employees:type_name -> employee.Employee
@@ -1939,21 +2017,23 @@ var file_employee_proto_depIdxs = []int32{
 	22, // 16: employee.EmployeeService.SetAgentLimit:input_type -> employee.SetAgentLimitRequest
 	24, // 17: employee.EmployeeService.ResetAgentUsedLimit:input_type -> employee.ResetAgentUsedLimitRequest
 	26, // 18: employee.EmployeeService.SetNeedApproval:input_type -> employee.SetNeedApprovalRequest
-	2,  // 19: employee.EmployeeService.GetAllEmployees:output_type -> employee.GetAllEmployeesResponse
-	4,  // 20: employee.EmployeeService.SearchEmployees:output_type -> employee.SearchEmployeesResponse
-	6,  // 21: employee.EmployeeService.GetEmployeeCredentials:output_type -> employee.GetEmployeeCredentialsResponse
-	8,  // 22: employee.EmployeeService.CreateEmployee:output_type -> employee.CreateEmployeeResponse
-	10, // 23: employee.EmployeeService.GetEmployeeById:output_type -> employee.GetEmployeeByIdResponse
-	12, // 24: employee.EmployeeService.UpdateEmployee:output_type -> employee.UpdateEmployeeResponse
-	14, // 25: employee.EmployeeService.ActivateEmployee:output_type -> employee.ActivateEmployeeResponse
-	16, // 26: employee.EmployeeService.GetEmployeeByEmail:output_type -> employee.GetEmployeeByEmailResponse
-	18, // 27: employee.EmployeeService.UpdatePassword:output_type -> employee.UpdatePasswordResponse
-	21, // 28: employee.EmployeeService.GetActuaries:output_type -> employee.GetActuariesResponse
-	23, // 29: employee.EmployeeService.SetAgentLimit:output_type -> employee.SetAgentLimitResponse
-	25, // 30: employee.EmployeeService.ResetAgentUsedLimit:output_type -> employee.ResetAgentUsedLimitResponse
-	27, // 31: employee.EmployeeService.SetNeedApproval:output_type -> employee.SetNeedApprovalResponse
-	19, // [19:32] is the sub-list for method output_type
-	6,  // [6:19] is the sub-list for method input_type
+	28, // 19: employee.EmployeeService.ResetAllActuaryUsedLimits:input_type -> employee.ResetAllActuaryUsedLimitsRequest
+	2,  // 20: employee.EmployeeService.GetAllEmployees:output_type -> employee.GetAllEmployeesResponse
+	4,  // 21: employee.EmployeeService.SearchEmployees:output_type -> employee.SearchEmployeesResponse
+	6,  // 22: employee.EmployeeService.GetEmployeeCredentials:output_type -> employee.GetEmployeeCredentialsResponse
+	8,  // 23: employee.EmployeeService.CreateEmployee:output_type -> employee.CreateEmployeeResponse
+	10, // 24: employee.EmployeeService.GetEmployeeById:output_type -> employee.GetEmployeeByIdResponse
+	12, // 25: employee.EmployeeService.UpdateEmployee:output_type -> employee.UpdateEmployeeResponse
+	14, // 26: employee.EmployeeService.ActivateEmployee:output_type -> employee.ActivateEmployeeResponse
+	16, // 27: employee.EmployeeService.GetEmployeeByEmail:output_type -> employee.GetEmployeeByEmailResponse
+	18, // 28: employee.EmployeeService.UpdatePassword:output_type -> employee.UpdatePasswordResponse
+	21, // 29: employee.EmployeeService.GetActuaries:output_type -> employee.GetActuariesResponse
+	23, // 30: employee.EmployeeService.SetAgentLimit:output_type -> employee.SetAgentLimitResponse
+	25, // 31: employee.EmployeeService.ResetAgentUsedLimit:output_type -> employee.ResetAgentUsedLimitResponse
+	27, // 32: employee.EmployeeService.SetNeedApproval:output_type -> employee.SetNeedApprovalResponse
+	29, // 33: employee.EmployeeService.ResetAllActuaryUsedLimits:output_type -> employee.ResetAllActuaryUsedLimitsResponse
+	20, // [20:34] is the sub-list for method output_type
+	6,  // [6:20] is the sub-list for method input_type
 	6,  // [6:6] is the sub-list for extension type_name
 	6,  // [6:6] is the sub-list for extension extendee
 	0,  // [0:6] is the sub-list for field type_name
@@ -1970,7 +2050,7 @@ func file_employee_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_employee_proto_rawDesc), len(file_employee_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   28,
+			NumMessages:   30,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

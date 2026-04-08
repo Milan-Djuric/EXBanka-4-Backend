@@ -165,6 +165,9 @@ message SetNeedApprovalRequest {
 }
 message SetNeedApprovalResponse {}
 
+message ResetAllActuaryUsedLimitsRequest {}
+message ResetAllActuaryUsedLimitsResponse {}
+
 service EmployeeService {
   rpc GetAllEmployees(GetAllEmployeesRequest) returns (GetAllEmployeesResponse);
   rpc SearchEmployees(SearchEmployeesRequest) returns (SearchEmployeesResponse);
@@ -179,4 +182,5 @@ service EmployeeService {
   rpc SetAgentLimit(SetAgentLimitRequest) returns (SetAgentLimitResponse);
   rpc ResetAgentUsedLimit(ResetAgentUsedLimitRequest) returns (ResetAgentUsedLimitResponse);
   rpc SetNeedApproval(SetNeedApprovalRequest) returns (SetNeedApprovalResponse);
+  rpc ResetAllActuaryUsedLimits(ResetAllActuaryUsedLimitsRequest) returns (ResetAllActuaryUsedLimitsResponse);
 }

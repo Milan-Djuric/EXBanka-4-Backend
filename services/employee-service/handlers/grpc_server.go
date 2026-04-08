@@ -485,3 +485,11 @@ func (s *EmployeeServer) SetNeedApproval(ctx context.Context, req *pb.SetNeedApp
 	}
 	return &pb.SetNeedApprovalResponse{}, nil
 }
+
+func (s *EmployeeServer) ResetAllActuaryUsedLimits(ctx context.Context, _ *pb.ResetAllActuaryUsedLimitsRequest) (*pb.ResetAllActuaryUsedLimitsResponse, error) {
+	_, err := s.DB.ExecContext(ctx, `UPDATE actuary_info SET used_limit = 0`)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "reset all actuary used limits: %v", err)
+	}
+	return &pb.ResetAllActuaryUsedLimitsResponse{}, nil
+}
