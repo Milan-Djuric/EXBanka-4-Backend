@@ -71,7 +71,7 @@ func (s *ClientServer) GetAllClients(ctx context.Context, req *pb.GetAllClientsR
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var clients []*pb.Client
 	for rows.Next() {

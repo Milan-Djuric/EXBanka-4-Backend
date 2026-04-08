@@ -31,7 +31,9 @@ func Consume(ch *amqp.Channel, cfg SMTPConfig, tmpl *template.Template) {
 		var msg ActivationMessage
 		if err := json.Unmarshal(d.Body, &msg); err != nil {
 			log.Printf("failed to decode message: %v", err)
-			d.Ack(false)
+			if err := d.Ack(false); err != nil {
+				log.Printf("failed to ack message: %v", err)
+			}
 			continue
 		}
 
@@ -41,7 +43,9 @@ func Consume(ch *amqp.Channel, cfg SMTPConfig, tmpl *template.Template) {
 			log.Printf("activation email sent to %s", msg.Email)
 		}
 
-		d.Ack(false)
+		if err := d.Ack(false); err != nil {
+			log.Printf("failed to ack message: %v", err)
+		}
 	}
 }
 
@@ -80,7 +84,9 @@ func ConsumePasswordReset(ch *amqp.Channel, cfg SMTPConfig, tmpl *template.Templ
 		var msg PasswordResetMessage
 		if err := json.Unmarshal(d.Body, &msg); err != nil {
 			log.Printf("failed to decode password reset message: %v", err)
-			d.Ack(false)
+			if err := d.Ack(false); err != nil {
+				log.Printf("failed to ack message: %v", err)
+			}
 			continue
 		}
 

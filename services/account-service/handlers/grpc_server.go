@@ -31,7 +31,7 @@ func (s *AccountServer) GetMyAccounts(ctx context.Context, req *pb.GetMyAccounts
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to query accounts: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	type row struct {
 		id               int64
@@ -175,7 +175,7 @@ func (s *AccountServer) GetAllAccounts(ctx context.Context, _ *pb.GetAllAccounts
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to query accounts: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	type row struct {
 		id               int64
@@ -406,7 +406,7 @@ func (s *AccountServer) GetBankAccounts(ctx context.Context, _ *pb.GetBankAccoun
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to query bank accounts: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var accounts []*pb.BankAccountItem
 	for rows.Next() {
