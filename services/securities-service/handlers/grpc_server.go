@@ -49,7 +49,7 @@ func (s *SecuritiesServer) GetStockExchanges(ctx context.Context, req *pb.GetSto
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "query failed: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var exchanges []*pb.StockExchange
 	for rows.Next() {
@@ -162,7 +162,7 @@ func (s *SecuritiesServer) GetWorkingHours(ctx context.Context, req *pb.GetWorki
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "query failed: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var hours []*pb.ExchangeWorkingHours
 	for rows.Next() {
@@ -202,7 +202,7 @@ func (s *SecuritiesServer) GetHolidays(ctx context.Context, req *pb.GetHolidaysR
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "query failed: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var holidays []*pb.ExchangeHoliday
 	for rows.Next() {
@@ -328,7 +328,7 @@ func (s *SecuritiesServer) IsExchangeOpen(ctx context.Context, req *pb.IsExchang
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "query failed: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	// 6. Check which segment (if any) the current time falls in
 	for rows.Next() {
@@ -434,7 +434,7 @@ func (s *SecuritiesServer) GetListings(ctx context.Context, req *pb.GetListingsR
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "query failed: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var listings []*pb.ListingSummary
 	for rows.Next() {
@@ -660,7 +660,7 @@ func (s *SecuritiesServer) GetListingHistory(ctx context.Context, req *pb.GetLis
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "query failed: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var history []*pb.DailyPriceInfo
 	for rows.Next() {
