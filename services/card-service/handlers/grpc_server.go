@@ -157,7 +157,7 @@ func (s *CardServer) GetCardsByAccount(ctx context.Context, req *pb.GetCardsByAc
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to query cards: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var cards []*pb.CardResponse
 	for rows.Next() {
