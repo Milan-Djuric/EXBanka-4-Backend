@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package order;
+
+option go_package = "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/order";
+
+// ── Ping (health check) ───────────────────────────────────────────────────────
+
+message PingRequest {}
+message PingResponse { string message = 1; }
+
+// ── Order ─────────────────────────────────────────────────────────────────────
+
+message Order {
+  int64  id                 = 1;
+  int64  user_id            = 2;
+  int64  asset_id           = 3;
+  string order_type         = 4; // MARKET, LIMIT, STOP, STOP_LIMIT
+  int32  quantity           = 5;
+  int32  contract_size      = 6;
+  double price_per_unit     = 7;
+  double limit_value        = 8;
+  double stop_value         = 9;
+  string direction          = 10; // BUY, SELL
+  string status             = 11; // PENDING, APPROVED, DECLINED
+  int64  approved_by        = 12;
+  bool   is_done            = 13;
+  string last_modification  = 14; // RFC3339
+  int32  remaining_portions = 15;
+  bool   after_hours        = 16;
+  bool   is_aon             = 17;
+  bool   is_margin          = 18;
+  int64  account_id         = 19;
+}
+
+// ── Service ───────────────────────────────────────────────────────────────────
+
+service OrderService {
+  rpc Ping (PingRequest) returns (PingResponse);
+}
