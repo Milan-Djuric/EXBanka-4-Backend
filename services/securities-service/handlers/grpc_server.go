@@ -575,7 +575,7 @@ func (s *SecuritiesServer) GetListingById(ctx context.Context, req *pb.GetListin
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "history query failed: %v", err)
 	}
-	defer histRows.Close()
+	defer func() { _ = histRows.Close() }()
 
 	var history []*pb.DailyPriceInfo
 	for histRows.Next() {

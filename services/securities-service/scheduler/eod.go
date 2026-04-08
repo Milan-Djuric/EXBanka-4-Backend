@@ -55,7 +55,11 @@ func runEOD(db *sql.DB, employeeServiceAddr string) {
 		log.Printf("eod: dial employee-service: %v", err)
 		return
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			log.Printf("eod: conn close: %v", err)
+		}
+	}()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()

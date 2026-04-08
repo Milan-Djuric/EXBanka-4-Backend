@@ -20,7 +20,7 @@ func newServer(t *testing.T) (*SecuritiesServer, sqlmock.Sqlmock) {
 	t.Helper()
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() { _ = db.Close() })
 	return &SecuritiesServer{DB: db}, mock
 }
 

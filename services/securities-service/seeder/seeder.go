@@ -122,7 +122,11 @@ func Seed(db *sql.DB, alpacaKey, avKey string, exchangeCSV, futureDataCSV []byte
 	if err != nil {
 		log.Printf("seeder: query stocks for options: %v", err)
 	} else {
-		defer rows.Close()
+		defer func() {
+			if err := rows.Close(); err != nil {
+				log.Printf("seeder: rows close: %v", err)
+			}
+		}()
 		for rows.Next() {
 			var id int64
 			var ticker string

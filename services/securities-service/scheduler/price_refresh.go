@@ -37,7 +37,11 @@ func refreshStocks(db *sql.DB, avKey string) {
 		log.Printf("price_refresh: query stocks: %v", err)
 		return
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("price_refresh: rows close: %v", err)
+		}
+	}()
 
 	type stockRow struct {
 		id     int64
@@ -80,7 +84,11 @@ func refreshForex(db *sql.DB, avKey string) {
 		log.Printf("price_refresh: query forex: %v", err)
 		return
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("price_refresh: rows close: %v", err)
+		}
+	}()
 
 	type fxRow struct {
 		id   int64

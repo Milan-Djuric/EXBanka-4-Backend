@@ -35,7 +35,7 @@ func avGet(params map[string]string, dst interface{}) (ok bool, err error) {
 	if err != nil {
 		return false, fmt.Errorf("av: request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusTooManyRequests {
 		log.Printf("alphavantage: rate limit hit (429), skipping")

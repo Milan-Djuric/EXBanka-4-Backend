@@ -36,7 +36,7 @@ func FetchTickers(apiKey string) ([]alpacaAsset, error) {
 	if err != nil {
 		return nil, fmt.Errorf("alpaca: request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("alpaca: unexpected status %d", resp.StatusCode)
