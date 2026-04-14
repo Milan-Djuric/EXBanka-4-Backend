@@ -100,6 +100,46 @@ func (m *mockEmployeeClient) UpdatePassword(ctx context.Context, in *pb_emp.Upda
 	return args.Get(0).(*pb_emp.UpdatePasswordResponse), args.Error(1)
 }
 
+func (m *mockEmployeeClient) GetActuaries(ctx context.Context, in *pb_emp.GetActuariesRequest, opts ...grpc.CallOption) (*pb_emp.GetActuariesResponse, error) {
+	args := m.Called(ctx, in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pb_emp.GetActuariesResponse), args.Error(1)
+}
+
+func (m *mockEmployeeClient) SetAgentLimit(ctx context.Context, in *pb_emp.SetAgentLimitRequest, opts ...grpc.CallOption) (*pb_emp.SetAgentLimitResponse, error) {
+	args := m.Called(ctx, in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pb_emp.SetAgentLimitResponse), args.Error(1)
+}
+
+func (m *mockEmployeeClient) ResetAgentUsedLimit(ctx context.Context, in *pb_emp.ResetAgentUsedLimitRequest, opts ...grpc.CallOption) (*pb_emp.ResetAgentUsedLimitResponse, error) {
+	args := m.Called(ctx, in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pb_emp.ResetAgentUsedLimitResponse), args.Error(1)
+}
+
+func (m *mockEmployeeClient) SetNeedApproval(ctx context.Context, in *pb_emp.SetNeedApprovalRequest, opts ...grpc.CallOption) (*pb_emp.SetNeedApprovalResponse, error) {
+	args := m.Called(ctx, in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pb_emp.SetNeedApprovalResponse), args.Error(1)
+}
+
+func (m *mockEmployeeClient) ResetAllActuaryUsedLimits(ctx context.Context, in *pb_emp.ResetAllActuaryUsedLimitsRequest, opts ...grpc.CallOption) (*pb_emp.ResetAllActuaryUsedLimitsResponse, error) {
+	args := m.Called(ctx, in)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*pb_emp.ResetAllActuaryUsedLimitsResponse), args.Error(1)
+}
+
 type mockEmailClient struct {
 	mock.Mock
 }
