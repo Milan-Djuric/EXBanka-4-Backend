@@ -17,7 +17,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to connect to payment_db: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	accountDB, err := pmdb.Connect(os.Getenv("ACCOUNT_DB_URL"))
 	if err != nil {
