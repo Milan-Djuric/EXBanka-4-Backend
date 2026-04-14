@@ -1,7 +1,7 @@
 name: API Gateway
 
 on:
-  pull_request:
+  pull_request:  #neka izmena, treba srediti lint greske..
     paths:
       - 'services/api-gateway/**'
       - 'shared/**'
