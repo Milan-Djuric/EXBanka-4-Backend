@@ -112,7 +112,7 @@ func (s *LoanServer) queryInstallments(ctx context.Context, loanID int64) ([]*pb
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to query installments: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var installments []*pb.Installment
 	for rows.Next() {
@@ -390,7 +390,7 @@ func (s *LoanServer) GetAllLoanApplications(ctx context.Context, req *pb.GetAllL
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to query applications: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	loans, err := scanLoanDetails(rows)
 	if err != nil {
@@ -427,7 +427,7 @@ func (s *LoanServer) GetAllLoans(ctx context.Context, req *pb.GetAllLoansRequest
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to query loans: %v", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	loans, err := scanLoanDetails(rows)
 	if err != nil {
