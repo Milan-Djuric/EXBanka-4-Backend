@@ -1,4 +1,4 @@
-name: Employee Service
+name: Shared
 
 on:
   pull_request:
