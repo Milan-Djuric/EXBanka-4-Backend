@@ -154,18 +154,6 @@ func (s *stubCardClient) ConfirmCardRequest(ctx context.Context, in *cardpb.Conf
 	return nil, fmt.Errorf("not implemented")
 }
 
-// ---- helper ----
-
-func sampleAccountDetails() *accountpb.AccountDetails {
-	return &accountpb.AccountDetails{
-		AccountName:   "Tekući račun",
-		AccountNumber: "265000191399797801",
-		CurrencyCode:  "RSD",
-		AccountType:   "CURRENT",
-		Status:        "ACTIVE",
-	}
-}
-
 // ---- GetMyAccounts ----
 
 func TestGetMyAccounts_NoToken(t *testing.T) {

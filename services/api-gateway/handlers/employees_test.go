@@ -27,20 +27,20 @@ func init() {
 // ---- stub employee client ----
 
 type stubEmpClient struct {
-	getAllFn          func(context.Context, *pb.GetAllEmployeesRequest, ...grpc.CallOption) (*pb.GetAllEmployeesResponse, error)
-	searchFn          func(context.Context, *pb.SearchEmployeesRequest, ...grpc.CallOption) (*pb.SearchEmployeesResponse, error)
-	credentialsFn     func(context.Context, *pb.GetEmployeeCredentialsRequest, ...grpc.CallOption) (*pb.GetEmployeeCredentialsResponse, error)
-	createFn          func(context.Context, *pb.CreateEmployeeRequest, ...grpc.CallOption) (*pb.CreateEmployeeResponse, error)
-	getByIdFn         func(context.Context, *pb.GetEmployeeByIdRequest, ...grpc.CallOption) (*pb.GetEmployeeByIdResponse, error)
-	updateFn          func(context.Context, *pb.UpdateEmployeeRequest, ...grpc.CallOption) (*pb.UpdateEmployeeResponse, error)
-	activateFn        func(context.Context, *pb.ActivateEmployeeRequest, ...grpc.CallOption) (*pb.ActivateEmployeeResponse, error)
-	getByEmailFn      func(context.Context, *pb.GetEmployeeByEmailRequest, ...grpc.CallOption) (*pb.GetEmployeeByEmailResponse, error)
-	updatePasswordFn  func(context.Context, *pb.UpdatePasswordRequest, ...grpc.CallOption) (*pb.UpdatePasswordResponse, error)
-	getActuariesFn    func(context.Context, *pb.GetActuariesRequest, ...grpc.CallOption) (*pb.GetActuariesResponse, error)
-	setAgentLimitFn   func(context.Context, *pb.SetAgentLimitRequest, ...grpc.CallOption) (*pb.SetAgentLimitResponse, error)
-	resetUsedLimitFn  func(context.Context, *pb.ResetAgentUsedLimitRequest, ...grpc.CallOption) (*pb.ResetAgentUsedLimitResponse, error)
-	setNeedApprovalFn              func(context.Context, *pb.SetNeedApprovalRequest, ...grpc.CallOption) (*pb.SetNeedApprovalResponse, error)
-	resetAllActuaryUsedLimitsFn    func(context.Context, *pb.ResetAllActuaryUsedLimitsRequest, ...grpc.CallOption) (*pb.ResetAllActuaryUsedLimitsResponse, error)
+	getAllFn                    func(context.Context, *pb.GetAllEmployeesRequest, ...grpc.CallOption) (*pb.GetAllEmployeesResponse, error)
+	searchFn                    func(context.Context, *pb.SearchEmployeesRequest, ...grpc.CallOption) (*pb.SearchEmployeesResponse, error)
+	credentialsFn               func(context.Context, *pb.GetEmployeeCredentialsRequest, ...grpc.CallOption) (*pb.GetEmployeeCredentialsResponse, error)
+	createFn                    func(context.Context, *pb.CreateEmployeeRequest, ...grpc.CallOption) (*pb.CreateEmployeeResponse, error)
+	getByIdFn                   func(context.Context, *pb.GetEmployeeByIdRequest, ...grpc.CallOption) (*pb.GetEmployeeByIdResponse, error)
+	updateFn                    func(context.Context, *pb.UpdateEmployeeRequest, ...grpc.CallOption) (*pb.UpdateEmployeeResponse, error)
+	activateFn                  func(context.Context, *pb.ActivateEmployeeRequest, ...grpc.CallOption) (*pb.ActivateEmployeeResponse, error)
+	getByEmailFn                func(context.Context, *pb.GetEmployeeByEmailRequest, ...grpc.CallOption) (*pb.GetEmployeeByEmailResponse, error)
+	updatePasswordFn            func(context.Context, *pb.UpdatePasswordRequest, ...grpc.CallOption) (*pb.UpdatePasswordResponse, error)
+	getActuariesFn              func(context.Context, *pb.GetActuariesRequest, ...grpc.CallOption) (*pb.GetActuariesResponse, error)
+	setAgentLimitFn             func(context.Context, *pb.SetAgentLimitRequest, ...grpc.CallOption) (*pb.SetAgentLimitResponse, error)
+	resetUsedLimitFn            func(context.Context, *pb.ResetAgentUsedLimitRequest, ...grpc.CallOption) (*pb.ResetAgentUsedLimitResponse, error)
+	setNeedApprovalFn           func(context.Context, *pb.SetNeedApprovalRequest, ...grpc.CallOption) (*pb.SetNeedApprovalResponse, error)
+	resetAllActuaryUsedLimitsFn func(context.Context, *pb.ResetAllActuaryUsedLimitsRequest, ...grpc.CallOption) (*pb.ResetAllActuaryUsedLimitsResponse, error)
 }
 
 func (s *stubEmpClient) GetAllEmployees(ctx context.Context, in *pb.GetAllEmployeesRequest, opts ...grpc.CallOption) (*pb.GetAllEmployeesResponse, error) {

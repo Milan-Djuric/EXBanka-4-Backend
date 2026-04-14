@@ -28,67 +28,67 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to connect to client-service: %v", err)
 	}
-	defer clientConn.Close()
+	defer func() { _ = clientConn.Close() }()
 
 	employeeClient, empConn, err := gwgrpc.NewEmployeeClient(os.Getenv("EMPLOYEE_SERVICE_ADDR"))
 	if err != nil {
 		log.Fatalf("failed to connect to employee-service: %v", err)
 	}
-	defer empConn.Close()
+	defer func() { _ = empConn.Close() }()
 
 	paymentClient, pmConn, err := gwgrpc.NewPaymentClient(os.Getenv("PAYMENT_SERVICE_ADDR"))
 	if err != nil {
 		log.Fatalf("failed to connect to payment-service: %v", err)
 	}
-	defer pmConn.Close()
+	defer func() { _ = pmConn.Close() }()
 
 	accountClient, accConn, err := gwgrpc.NewAccountClient(os.Getenv("ACCOUNT_SERVICE_ADDR"))
 	if err != nil {
 		log.Fatalf("failed to connect to account-service: %v", err)
 	}
-	defer accConn.Close()
+	defer func() { _ = accConn.Close() }()
 
 	authClient, authConn, err := gwgrpc.NewAuthClient(os.Getenv("AUTH_SERVICE_ADDR"))
 	if err != nil {
 		log.Fatalf("failed to connect to auth-service: %v", err)
 	}
-	defer authConn.Close()
+	defer func() { _ = authConn.Close() }()
 
 	emailClient, emailConn, err := gwgrpc.NewEmailClient(os.Getenv("EMAIL_SERVICE_ADDR"))
 	if err != nil {
 		log.Fatalf("failed to connect to email-service: %v", err)
 	}
-	defer emailConn.Close()
+	defer func() { _ = emailConn.Close() }()
 
 	loanClient, loanConn, err := gwgrpc.NewLoanClient(os.Getenv("LOAN_SERVICE_ADDR"))
 	if err != nil {
 		log.Fatalf("failed to connect to loan-service: %v", err)
 	}
-	defer loanConn.Close()
+	defer func() { _ = loanConn.Close() }()
 
 	cardClient, cardConn, err := gwgrpc.NewCardClient(os.Getenv("CARD_SERVICE_ADDR"))
 	if err != nil {
 		log.Fatalf("failed to connect to card-service: %v", err)
 	}
-	defer cardConn.Close()
+	defer func() { _ = cardConn.Close() }()
 
 	exchangeClient, exchangeConn, err := gwgrpc.NewExchangeClient(os.Getenv("EXCHANGE_SERVICE_ADDR"))
 	if err != nil {
 		log.Fatalf("failed to connect to exchange-service: %v", err)
 	}
-	defer exchangeConn.Close()
+	defer func() { _ = exchangeConn.Close() }()
 
 	securitiesClient, securitiesConn, err := gwgrpc.NewSecuritiesClient(os.Getenv("SECURITIES_SERVICE_ADDR"))
 	if err != nil {
 		log.Fatalf("failed to connect to securities-service: %v", err)
 	}
-	defer securitiesConn.Close()
+	defer func() { _ = securitiesConn.Close() }()
 
 	orderClient, orderConn, err := gwgrpc.NewOrderClient(os.Getenv("ORDER_SERVICE_ADDR"))
 	if err != nil {
 		log.Fatalf("failed to connect to order-service: %v", err)
 	}
-	defer orderConn.Close()
+	defer func() { _ = orderConn.Close() }()
 
 	r := gin.Default()
 
@@ -199,5 +199,7 @@ func main() {
 	r.DELETE("/orders/:id/portions", handlers.CancelOrderPortions(orderClient))
 	r.DELETE("/orders/:id", handlers.CancelOrder(orderClient))
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	r.Run(":8083")
+	if err := r.Run(":8083"); err != nil {
+		log.Fatalf("server error: %v", err)
+	}
 }
