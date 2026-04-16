@@ -475,10 +475,14 @@ func TestApproveLoan_NotPending(t *testing.T) {
 }
 
 func TestApproveLoan_DisburseError(t *testing.T) {
-	s, loanMock, accountMock := newLoanServer(t)
+	s, loanMock, accountMock, exchangeMock := newLoanServerWithExchange(t)
 	loanMock.ExpectQuery("SELECT status, currency").
 		WillReturnRows(sqlmock.NewRows([]string{"status", "currency", "loan_type", "interest_rate_type", "account_number", "amount", "effective_rate", "repayment_period", "agreed_date"}).
 			AddRow("PENDING", "RSD", "CASH", "FIXED", "ACC001", float64(100000), float64(6.5), int(12), time.Now()))
+	exchangeMock.ExpectQuery("SELECT id FROM currencies").
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(1)))
+	accountMock.ExpectQuery("SELECT account_number FROM accounts").
+		WillReturnRows(sqlmock.NewRows([]string{"account_number"}).AddRow("BANK001"))
 	accountMock.ExpectExec("UPDATE accounts SET balance").WillReturnError(sql.ErrConnDone)
 
 	_, err := s.ApproveLoan(context.Background(), &pb.ApproveLoanRequest{LoanId: 1})
@@ -487,13 +491,18 @@ func TestApproveLoan_DisburseError(t *testing.T) {
 }
 
 func TestApproveLoan_HappyPath(t *testing.T) {
-	s, loanMock, accountMock := newLoanServer(t)
+	s, loanMock, accountMock, exchangeMock := newLoanServerWithExchange(t)
 	agreedDate := time.Now()
 	// 1 month repayment period for minimal mock setup
 	loanMock.ExpectQuery("SELECT status, currency").
 		WillReturnRows(sqlmock.NewRows([]string{"status", "currency", "loan_type", "interest_rate_type", "account_number", "amount", "effective_rate", "repayment_period", "agreed_date"}).
 			AddRow("PENDING", "RSD", "CASH", "FIXED", "ACC001", float64(100000), float64(6.5), int(1), agreedDate))
-	accountMock.ExpectExec("UPDATE accounts SET balance").WillReturnResult(sqlmock.NewResult(1, 1))
+	exchangeMock.ExpectQuery("SELECT id FROM currencies").
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(1)))
+	accountMock.ExpectQuery("SELECT account_number FROM accounts").
+		WillReturnRows(sqlmock.NewRows([]string{"account_number"}).AddRow("BANK001"))
+	accountMock.ExpectExec("UPDATE accounts SET balance").WillReturnResult(sqlmock.NewResult(1, 1)) // debit bank
+	accountMock.ExpectExec("UPDATE accounts SET balance").WillReturnResult(sqlmock.NewResult(1, 1)) // credit client
 	loanMock.ExpectBegin()
 	loanMock.ExpectExec("INSERT INTO loan_installments").WillReturnResult(sqlmock.NewResult(1, 1))
 	loanMock.ExpectExec("UPDATE loans SET status = 'APPROVED'").WillReturnResult(sqlmock.NewResult(1, 1))
@@ -529,12 +538,17 @@ func TestApproveLoan_DBError(t *testing.T) {
 // ---- ApproveLoan: installment INSERT error ----
 
 func TestApproveLoan_InstallmentInsertError(t *testing.T) {
-	s, loanMock, accountMock := newLoanServer(t)
+	s, loanMock, accountMock, exchangeMock := newLoanServerWithExchange(t)
 	agreedDate := time.Now()
 	loanMock.ExpectQuery("SELECT status, currency").
 		WillReturnRows(sqlmock.NewRows([]string{"status", "currency", "loan_type", "interest_rate_type", "account_number", "amount", "effective_rate", "repayment_period", "agreed_date"}).
 			AddRow("PENDING", "RSD", "CASH", "FIXED", "ACC001", float64(100000), float64(6.5), int(2), agreedDate))
-	accountMock.ExpectExec("UPDATE accounts SET balance").WillReturnResult(sqlmock.NewResult(1, 1))
+	exchangeMock.ExpectQuery("SELECT id FROM currencies").
+		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(int64(1)))
+	accountMock.ExpectQuery("SELECT account_number FROM accounts").
+		WillReturnRows(sqlmock.NewRows([]string{"account_number"}).AddRow("BANK001"))
+	accountMock.ExpectExec("UPDATE accounts SET balance").WillReturnResult(sqlmock.NewResult(1, 1)) // debit bank
+	accountMock.ExpectExec("UPDATE accounts SET balance").WillReturnResult(sqlmock.NewResult(1, 1)) // credit client
 	loanMock.ExpectBegin()
 	loanMock.ExpectExec("INSERT INTO loan_installments").WillReturnError(sql.ErrConnDone)
 
