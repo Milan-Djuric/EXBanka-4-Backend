@@ -1,7 +1,7 @@
 name: Payment Service
 
 on:
-  pull_request:   #neka izmena
+  pull_request:   #neka izmena opet
     paths:
       - 'services/payment-service/**'
       - 'shared/**'

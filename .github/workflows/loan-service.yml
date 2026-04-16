@@ -1,7 +1,7 @@
 name: Loan Service
 
 on:
-  pull_request:  #neka izmena, treba srediti lint greske..
+  pull_request:  #neka izmena opet
     paths:
       - 'services/loan-service/**'
       - 'shared/**'
