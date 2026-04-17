@@ -90,6 +90,12 @@ func main() {
 	}
 	defer func() { _ = orderConn.Close() }()
 
+	portfolioClient, portfolioConn, err := gwgrpc.NewPortfolioClient(os.Getenv("PORTFOLIO_SERVICE_ADDR"))
+	if err != nil {
+		log.Fatalf("failed to connect to portfolio-service: %v", err)
+	}
+	defer func() { _ = portfolioConn.Close() }()
+
 	r := gin.Default()
 
 	r.Use(cors.New(cors.Config{
@@ -198,6 +204,8 @@ func main() {
 	r.PUT("/orders/:id/decline", middleware.RequireRole("SUPERVISOR"), handlers.DeclineOrder(orderClient))
 	r.DELETE("/orders/:id/portions", middleware.RequireRole("AGENT", "SUPERVISOR"), handlers.CancelOrderPortions(orderClient))
 	r.DELETE("/orders/:id", middleware.RequireRole("AGENT", "SUPERVISOR"), handlers.CancelOrder(orderClient))
+	r.GET("/portfolio", handlers.GetPortfolio(portfolioClient))
+	r.GET("/portfolio/profit", handlers.GetProfit(portfolioClient))
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	if err := r.Run(":8083"); err != nil {
 		log.Fatalf("server error: %v", err)

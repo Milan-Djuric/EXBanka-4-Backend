@@ -36,6 +36,10 @@ message PortfolioEntry {
   bool   is_public      = 6;
   int32  public_amount  = 7;
   int64  account_id     = 8;
+  string ticker         = 9;   // populated by portfolio-service from securities
+  string asset_type     = 10;  // e.g. STOCK, FOREX, FUTURE, OPTION
+  double price          = 11;  // current market price
+  double profit         = 12;  // (price - buy_price) * amount
 }
 message GetPortfolioResponse {
   repeated PortfolioEntry entries = 1;

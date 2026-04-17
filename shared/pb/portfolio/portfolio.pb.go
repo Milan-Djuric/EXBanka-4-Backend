@@ -205,6 +205,10 @@ type PortfolioEntry struct {
 	IsPublic      bool                   `protobuf:"varint,6,opt,name=is_public,json=isPublic,proto3" json:"is_public,omitempty"`
 	PublicAmount  int32                  `protobuf:"varint,7,opt,name=public_amount,json=publicAmount,proto3" json:"public_amount,omitempty"`
 	AccountId     int64                  `protobuf:"varint,8,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	Ticker        string                 `protobuf:"bytes,9,opt,name=ticker,proto3" json:"ticker,omitempty"`                         // populated by portfolio-service from securities
+	AssetType     string                 `protobuf:"bytes,10,opt,name=asset_type,json=assetType,proto3" json:"asset_type,omitempty"` // e.g. STOCK, FOREX, FUTURE, OPTION
+	Price         float64                `protobuf:"fixed64,11,opt,name=price,proto3" json:"price,omitempty"`                        // current market price
+	Profit        float64                `protobuf:"fixed64,12,opt,name=profit,proto3" json:"profit,omitempty"`                      // (price - buy_price) * amount
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -291,6 +295,34 @@ func (x *PortfolioEntry) GetPublicAmount() int32 {
 func (x *PortfolioEntry) GetAccountId() int64 {
 	if x != nil {
 		return x.AccountId
+	}
+	return 0
+}
+
+func (x *PortfolioEntry) GetTicker() string {
+	if x != nil {
+		return x.Ticker
+	}
+	return ""
+}
+
+func (x *PortfolioEntry) GetAssetType() string {
+	if x != nil {
+		return x.AssetType
+	}
+	return ""
+}
+
+func (x *PortfolioEntry) GetPrice() float64 {
+	if x != nil {
+		return x.Price
+	}
+	return 0
+}
+
+func (x *PortfolioEntry) GetProfit() float64 {
+	if x != nil {
+		return x.Profit
 	}
 	return 0
 }
@@ -542,7 +574,7 @@ const file_portfolio_proto_rawDesc = "" +
 	"account_id\x18\a \x01(\x03R\taccountId\"\x17\n" +
 	"\x15UpdateHoldingResponse\".\n" +
 	"\x13GetPortfolioRequest\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\x03R\x06userId\"\xfa\x01\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\"\xdf\x02\n" +
 	"\x0ePortfolioEntry\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1d\n" +
 	"\n" +
@@ -553,7 +585,13 @@ const file_portfolio_proto_rawDesc = "" +
 	"\tis_public\x18\x06 \x01(\bR\bisPublic\x12#\n" +
 	"\rpublic_amount\x18\a \x01(\x05R\fpublicAmount\x12\x1d\n" +
 	"\n" +
-	"account_id\x18\b \x01(\x03R\taccountId\"K\n" +
+	"account_id\x18\b \x01(\x03R\taccountId\x12\x16\n" +
+	"\x06ticker\x18\t \x01(\tR\x06ticker\x12\x1d\n" +
+	"\n" +
+	"asset_type\x18\n" +
+	" \x01(\tR\tassetType\x12\x14\n" +
+	"\x05price\x18\v \x01(\x01R\x05price\x12\x16\n" +
+	"\x06profit\x18\f \x01(\x01R\x06profit\"K\n" +
 	"\x14GetPortfolioResponse\x123\n" +
 	"\aentries\x18\x01 \x03(\v2\x19.portfolio.PortfolioEntryR\aentries\"+\n" +
 	"\x10GetProfitRequest\x12\x17\n" +

@@ -3,6 +3,7 @@ module github.com/RAF-SI-2025/EXBanka-4-Backend/services/api-gateway
 go 1.26.1
 
 require (
+	github.com/RAF-SI-2025/EXBanka-4-Backend/shared v0.0.0-00010101000000-000000000000
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.12.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
@@ -62,3 +63,5 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/RAF-SI-2025/EXBanka-4-Backend/shared => ../../shared

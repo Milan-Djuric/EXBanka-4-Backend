@@ -163,7 +163,7 @@ LOAN_PID=$!
 go run "$REPO_ROOT/services/securities-service/" &
 SEC_PID=$!
 
-go run "$REPO_ROOT/services/portfolio-service/" &
+SECURITIES_SERVICE_ADDR=localhost:50060 go run "$REPO_ROOT/services/portfolio-service/" &
 PORTFOLIO_PID=$!
 
 echo ""

@@ -6,13 +6,21 @@ import (
 
 	"github.com/RAF-SI-2025/EXBanka-4-Backend/services/portfolio-service/repository"
 	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/portfolio"
+	pb_sec "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/securities"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
+// SecurityPriceFetcher is the subset of SecuritiesServiceClient we need.
+type SecurityPriceFetcher interface {
+	GetListingById(ctx context.Context, in *pb_sec.GetListingByIdRequest, opts ...grpc.CallOption) (*pb_sec.GetListingByIdResponse, error)
+}
+
 type PortfolioServer struct {
 	pb.UnimplementedPortfolioServiceServer
-	DB *sql.DB
+	DB               *sql.DB
+	SecuritiesClient SecurityPriceFetcher
 }
 
 func (s *PortfolioServer) UpdateHolding(ctx context.Context, req *pb.UpdateHoldingRequest) (*pb.UpdateHoldingResponse, error) {
@@ -38,7 +46,7 @@ func (s *PortfolioServer) GetPortfolio(ctx context.Context, req *pb.GetPortfolio
 
 	pbEntries := make([]*pb.PortfolioEntry, 0, len(entries))
 	for _, e := range entries {
-		pbEntries = append(pbEntries, &pb.PortfolioEntry{
+		entry := &pb.PortfolioEntry{
 			Id:           e.ID,
 			ListingId:    e.ListingID,
 			Amount:       e.Amount,
@@ -47,13 +55,40 @@ func (s *PortfolioServer) GetPortfolio(ctx context.Context, req *pb.GetPortfolio
 			IsPublic:     e.IsPublic,
 			PublicAmount: e.PublicAmount,
 			AccountId:    e.AccountID,
-		})
+		}
+
+		if s.SecuritiesClient != nil {
+			resp, secErr := s.SecuritiesClient.GetListingById(ctx, &pb_sec.GetListingByIdRequest{Id: e.ListingID})
+			if secErr == nil && resp.Summary != nil {
+				entry.Ticker = resp.Summary.Ticker
+				entry.AssetType = resp.Summary.Type
+				entry.Price = resp.Summary.Price
+				entry.Profit = (resp.Summary.Price - e.BuyPrice) * float64(e.Amount)
+			}
+		}
+
+		pbEntries = append(pbEntries, entry)
 	}
 	return &pb.GetPortfolioResponse{Entries: pbEntries}, nil
 }
 
-func (s *PortfolioServer) GetProfit(_ context.Context, _ *pb.GetProfitRequest) (*pb.GetProfitResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "implemented in issue #156")
+func (s *PortfolioServer) GetProfit(ctx context.Context, req *pb.GetProfitRequest) (*pb.GetProfitResponse, error) {
+	entries, err := repository.GetHoldings(ctx, s.DB, req.UserId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "get holdings: %v", err)
+	}
+
+	var totalProfit float64
+	if s.SecuritiesClient != nil {
+		for _, e := range entries {
+			resp, secErr := s.SecuritiesClient.GetListingById(ctx, &pb_sec.GetListingByIdRequest{Id: e.ListingID})
+			if secErr == nil && resp.Summary != nil {
+				totalProfit += (resp.Summary.Price - e.BuyPrice) * float64(e.Amount)
+			}
+		}
+	}
+
+	return &pb.GetProfitResponse{TotalProfit: totalProfit}, nil
 }
 
 func (s *PortfolioServer) SetPublicAmount(_ context.Context, _ *pb.SetPublicAmountRequest) (*pb.SetPublicAmountResponse, error) {
