@@ -151,6 +151,12 @@ message ListingSummary {
   double maintenance_margin  = 11;
   double initial_margin_cost = 12;
   double nominal_value       = 13;
+
+  // Option-specific fields (populated only when type = OPTION)
+  string option_type     = 14; // "CALL" or "PUT"
+  double strike_price    = 15;
+  string settlement_date = 16; // "YYYY-MM-DD"
+  int64  open_interest   = 17;
 }
 
 message GetListingsResponse {

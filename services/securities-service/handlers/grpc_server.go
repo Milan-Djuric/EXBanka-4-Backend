@@ -424,7 +424,8 @@ func (s *SecuritiesServer) GetListings(ctx context.Context, req *pb.GetListingsR
 		       COALESCE(ls.outstanding_shares, 0),
 		       COALESCE(lfc.contract_size, 1),
 		       lo.stock_listing_id,
-		       COALESCE(stock_ul.price, 0)
+		       COALESCE(stock_ul.price, 0),
+		       lo.option_type::text, lo.strike_price, lo.settlement_date, lo.open_interest
 		%s%s
 		ORDER BY %s %s
 		LIMIT $5 OFFSET $6`, listingBaseFrom, listingBaseWhere, col, ord)
@@ -449,17 +450,22 @@ func (s *SecuritiesServer) GetListings(ctx context.Context, req *pb.GetListingsR
 			contractSize    float64
 			stockListingID  sql.NullInt64
 			stockPrice      float64
+			optionType      sql.NullString
+			strikePrice     sql.NullFloat64
+			settlementDate  sql.NullTime
+			openInterest    sql.NullInt64
 		)
 		if err := rows.Scan(
 			&id, &ticker, &name, &lType, &acronym,
 			&price, &ask, &bid, &volume, &change,
 			&outshares, &contractSize, &stockListingID, &stockPrice,
+			&optionType, &strikePrice, &settlementDate, &openInterest,
 		); err != nil {
 			return nil, status.Errorf(codes.Internal, "scan failed: %v", err)
 		}
 		mm := computeMaintenanceMargin(lType, price, outshares, contractSize, stockPrice)
 		cp := listingChangePercent(price, change)
-		listings = append(listings, &pb.ListingSummary{
+		summary := &pb.ListingSummary{
 			Id:                id,
 			Ticker:            ticker,
 			Name:              name,
@@ -473,7 +479,16 @@ func (s *SecuritiesServer) GetListings(ctx context.Context, req *pb.GetListingsR
 			MaintenanceMargin: mm,
 			InitialMarginCost: mm * 1.1,
 			NominalValue:      listingNominalValue(lType, price, contractSize),
-		})
+		}
+		if optionType.Valid {
+			summary.OptionType = optionType.String
+			summary.StrikePrice = strikePrice.Float64
+			summary.OpenInterest = openInterest.Int64
+			if settlementDate.Valid {
+				summary.SettlementDate = settlementDate.Time.Format("2006-01-02")
+			}
+		}
+		listings = append(listings, summary)
 	}
 	return &pb.GetListingsResponse{
 		Listings:      listings,

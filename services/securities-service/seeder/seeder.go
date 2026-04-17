@@ -2,7 +2,9 @@ package seeder
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
+	"math"
 	"time"
 )
 
@@ -67,7 +69,14 @@ func Seed(db *sql.DB, alpacaKey, alpacaSecret, avKey string, exchangeCSV, future
 		return
 	}
 	if count > 0 {
-		log.Printf("seeder: %d listings already present, skipping", count)
+		// Listings exist — check if options are also present.
+		var optCount int
+		if err := db.QueryRow(`SELECT COUNT(*) FROM listing WHERE type = 'OPTION'`).Scan(&optCount); err == nil && optCount == 0 {
+			log.Println("seeder: listings present but no options — seeding options only")
+			seedOptionsForAllStocks(db)
+		} else {
+			log.Printf("seeder: %d listings already present, skipping", count)
+		}
 		return
 	}
 
@@ -133,26 +142,7 @@ func Seed(db *sql.DB, alpacaKey, alpacaSecret, avKey string, exchangeCSV, future
 	}
 
 	// ── 5. Options ────────────────────────────────────────────────────────────────
-	// Fetch all stock listing IDs + their prices and generate/fetch options for each.
-	rows, err := db.Query(`SELECT l.id, l.ticker, l.price FROM listing l JOIN listing_stock ls ON ls.listing_id = l.id`)
-	if err != nil {
-		log.Printf("seeder: query stocks for options: %v", err)
-	} else {
-		defer func() {
-			if err := rows.Close(); err != nil {
-				log.Printf("seeder: rows close: %v", err)
-			}
-		}()
-		for rows.Next() {
-			var id int64
-			var ticker string
-			var price float64
-			if err := rows.Scan(&id, &ticker, &price); err != nil {
-				continue
-			}
-			seedOptions(db, id, ticker, price)
-		}
-	}
+	seedOptionsForAllStocks(db)
 
 	log.Println("seeder: data import complete")
 }
@@ -304,6 +294,29 @@ func seedFuture(db *sql.DB, f FutureRow, exchangeID int64, settlement time.Time)
 	}
 }
 
+// seedOptionsForAllStocks fetches all stock listings and seeds options for each.
+func seedOptionsForAllStocks(db *sql.DB) {
+	rows, err := db.Query(`SELECT l.id, l.ticker, l.price FROM listing l JOIN listing_stock ls ON ls.listing_id = l.id`)
+	if err != nil {
+		log.Printf("seeder: query stocks for options: %v", err)
+		return
+	}
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("seeder: rows close: %v", err)
+		}
+	}()
+	for rows.Next() {
+		var id int64
+		var ticker string
+		var price float64
+		if err := rows.Scan(&id, &ticker, &price); err != nil {
+			continue
+		}
+		seedOptions(db, id, ticker, price)
+	}
+}
+
 // seedOptions generates or fetches options for a stock and inserts them.
 func seedOptions(db *sql.DB, stockListingID int64, ticker string, price float64) {
 	opts, err := FetchOptions(ticker, stockListingID)
@@ -379,8 +392,14 @@ func sanitizeTicker(name string) string {
 	return string(b)
 }
 
-// buildOptionTicker creates a unique ticker for an option, e.g. AAPL_C_150_20240119.
+// buildOptionTicker creates a unique ticker in OCC format, e.g. MSFT220404C00180000.
+// Format: <underlying><YYMMDD><C/P><strike in cents, 8 digits zero-padded>
 func buildOptionTicker(underlying string, opt OptionRow) string {
-	return underlying + "_" + opt.OptionType[:1] + "_" +
-		opt.SettlementDate.Format("20060102")
+	strikeInCents := int64(math.Round(opt.StrikePrice * 100))
+	return fmt.Sprintf("%s%s%s%08d",
+		underlying,
+		opt.SettlementDate.Format("060102"),
+		opt.OptionType[:1],
+		strikeInCents,
+	)
 }

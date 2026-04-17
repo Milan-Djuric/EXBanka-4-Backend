@@ -763,6 +763,10 @@ func listingSummaryToJSON(l *pb.ListingSummary) gin.H {
 		"maintenanceMargin": l.MaintenanceMargin,
 		"initialMarginCost": l.InitialMarginCost,
 		"nominalValue":      l.NominalValue,
+		"optionType":        l.OptionType,
+		"strikePrice":       l.StrikePrice,
+		"settlementDate":    l.SettlementDate,
+		"openInterest":      l.OpenInterest,
 	}
 }
 
