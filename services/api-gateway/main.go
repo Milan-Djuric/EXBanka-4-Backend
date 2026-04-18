@@ -199,7 +199,7 @@ func main() {
 	r.GET("/stock-exchanges/:id/is-open", middleware.RequireRole("AGENT", "SUPERVISOR"), handlers.IsExchangeOpen(securitiesClient))
 	r.POST("/orders", middleware.RequireRole("AGENT", "SUPERVISOR"), handlers.CreateOrder(orderClient))
 	r.POST("/client/orders", handlers.CreateOrder(orderClient))
-	r.GET("/orders", middleware.RequireRole("SUPERVISOR"), handlers.ListOrders(orderClient, securitiesClient))
+	r.GET("/orders", middleware.RequireRole("SUPERVISOR"), handlers.ListOrders(orderClient, employeeClient, securitiesClient))
 	r.GET("/orders/:id", middleware.RequireRole("AGENT", "SUPERVISOR"), handlers.GetOrderById(orderClient))
 	r.PUT("/orders/:id/approve", middleware.RequireRole("SUPERVISOR"), handlers.ApproveOrder(orderClient))
 	r.PUT("/orders/:id/decline", middleware.RequireRole("SUPERVISOR"), handlers.DeclineOrder(orderClient))

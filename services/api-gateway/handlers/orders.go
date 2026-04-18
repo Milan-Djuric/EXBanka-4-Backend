@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/RAF-SI-2025/EXBanka-4-Backend/services/api-gateway/middleware"
+	pb_emp "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/employee"
 	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/order"
 	pb_sec "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/securities"
 	"github.com/gin-gonic/gin"
@@ -17,6 +19,7 @@ import (
 type orderResponse struct {
 	Id                int64   `json:"id"`
 	UserId            int64   `json:"user_id"`
+	AgentName         string  `json:"agent_name"`
 	AssetId           int64   `json:"asset_id"`
 	AssetTicker       string  `json:"asset_ticker"`
 	OrderType         string  `json:"order_type"`
@@ -105,7 +108,7 @@ func CreateOrder(orderClient pb.OrderServiceClient) gin.HandlerFunc {
 }
 
 // ListOrders handles GET /orders
-func ListOrders(orderClient pb.OrderServiceClient, securitiesClient pb_sec.SecuritiesServiceClient) gin.HandlerFunc {
+func ListOrders(orderClient pb.OrderServiceClient, employeeClient pb_emp.EmployeeServiceClient, securitiesClient pb_sec.SecuritiesServiceClient) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		statusFilter := c.DefaultQuery("status", "ALL")
 		agentID, _ := strconv.ParseInt(c.Query("agentId"), 10, 64)
@@ -120,6 +123,23 @@ func ListOrders(orderClient pb.OrderServiceClient, securitiesClient pb_sec.Secur
 		if err != nil {
 			orderError(c, err)
 			return
+		}
+
+		// Collect unique user IDs to look up agent names
+		seen := make(map[int64]bool)
+		for _, o := range resp.Orders {
+			if o.UserId != 0 {
+				seen[o.UserId] = true
+			}
+		}
+		names := make(map[int64]string, len(seen))
+		for uid := range seen {
+			empCtx, empCancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+			empResp, empErr := employeeClient.GetEmployeeById(empCtx, &pb_emp.GetEmployeeByIdRequest{Id: uid})
+			empCancel()
+			if empErr == nil && empResp.Employee != nil {
+				names[uid] = fmt.Sprintf("%s %s", empResp.Employee.FirstName, empResp.Employee.LastName)
+			}
 		}
 
 		// Collect unique asset IDs to look up tickers
@@ -144,6 +164,7 @@ func ListOrders(orderClient pb.OrderServiceClient, securitiesClient pb_sec.Secur
 			enriched = append(enriched, orderResponse{
 				Id:                o.Id,
 				UserId:            o.UserId,
+				AgentName:         names[o.UserId],
 				AssetId:           o.AssetId,
 				AssetTicker:       tickers[o.AssetId],
 				OrderType:         o.OrderType,
