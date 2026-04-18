@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"strings"
 	"time"
 )
 
@@ -63,6 +64,39 @@ var forexPairs = []struct {
 func Seed(db *sql.DB, alpacaKey, alpacaSecret, avKey string, exchangeCSV, futureDataCSV []byte) {
 	log.Println("seeder: checking if seed is needed")
 
+	// Always parse and seed exchanges + working hours — both are idempotent.
+	exchanges, err := ParseExchanges(exchangeCSV)
+	if err != nil {
+		log.Printf("seeder: parse exchanges: %v", err)
+		return
+	}
+	log.Printf("seeder: upserting %d exchanges and working hours", len(exchanges))
+	for _, ex := range exchanges {
+		_, err := db.Exec(`
+			INSERT INTO stock_exchanges (name, acronym, mic_code, polity, currency, timezone)
+			VALUES ($1, $2, $3, $4, $5, $6)
+			ON CONFLICT (mic_code) DO NOTHING`,
+			ex.Name, ex.Acronym, ex.MICCode, ex.Country, ex.Currency, ex.Timezone,
+		)
+		if err != nil {
+			log.Printf("seeder: insert exchange %s: %v", ex.MICCode, err)
+		}
+
+		// Seed regular working hours per polity (first occurrence wins; others are skipped).
+		openTime := strings.TrimSpace(ex.OpenTime)
+		closeTime := strings.TrimSpace(ex.CloseTime)
+		if openTime != "" && closeTime != "" {
+			_, err = db.Exec(`
+				INSERT INTO exchange_working_hours (polity, segment, open_time, close_time)
+				VALUES ($1, 'regular', $2, $3)
+				ON CONFLICT (polity, segment) DO NOTHING`,
+				ex.Country, openTime, closeTime)
+			if err != nil {
+				log.Printf("seeder: insert working hours %s: %v", ex.MICCode, err)
+			}
+		}
+	}
+
 	var count int
 	if err := db.QueryRow(`SELECT COUNT(*) FROM listing`).Scan(&count); err != nil {
 		log.Printf("seeder: count check failed: %v", err)
@@ -81,25 +115,6 @@ func Seed(db *sql.DB, alpacaKey, alpacaSecret, avKey string, exchangeCSV, future
 	}
 
 	log.Println("seeder: starting full data import")
-
-	// ── 1. Exchanges ─────────────────────────────────────────────────────────────
-	exchanges, err := ParseExchanges(exchangeCSV)
-	if err != nil {
-		log.Printf("seeder: parse exchanges: %v", err)
-		return
-	}
-	log.Printf("seeder: inserting %d exchanges", len(exchanges))
-	for _, ex := range exchanges {
-		_, err := db.Exec(`
-			INSERT INTO stock_exchanges (name, acronym, mic_code, polity, currency, timezone)
-			VALUES ($1, $2, $3, $4, $5, $6)
-			ON CONFLICT (mic_code) DO NOTHING`,
-			ex.Name, ex.Acronym, ex.MICCode, ex.Country, ex.Currency, ex.Timezone,
-		)
-		if err != nil {
-			log.Printf("seeder: insert exchange %s: %v", ex.MICCode, err)
-		}
-	}
 
 	// Get a default exchange ID (NYSE) to associate listings that don't have a better match.
 	var defaultExchangeID int64

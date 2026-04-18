@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"time"
+	_ "time/tzdata"
 
 	secdb "github.com/RAF-SI-2025/EXBanka-4-Backend/services/securities-service/db"
 	"github.com/RAF-SI-2025/EXBanka-4-Backend/services/securities-service/handlers"
