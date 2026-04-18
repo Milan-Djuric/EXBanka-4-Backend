@@ -8,10 +8,34 @@ import (
 
 	"github.com/RAF-SI-2025/EXBanka-4-Backend/services/api-gateway/middleware"
 	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/order"
+	pb_sec "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/securities"
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+type orderResponse struct {
+	Id                int64   `json:"id"`
+	UserId            int64   `json:"user_id"`
+	AssetId           int64   `json:"asset_id"`
+	AssetTicker       string  `json:"asset_ticker"`
+	OrderType         string  `json:"order_type"`
+	Quantity          int32   `json:"quantity"`
+	ContractSize      int32   `json:"contract_size"`
+	PricePerUnit      float64 `json:"price_per_unit"`
+	LimitValue        float64 `json:"limit_value"`
+	StopValue         float64 `json:"stop_value"`
+	Direction         string  `json:"direction"`
+	Status            string  `json:"status"`
+	ApprovedBy        int64   `json:"approved_by"`
+	IsDone            bool    `json:"is_done"`
+	LastModification  string  `json:"last_modification"`
+	RemainingPortions int32   `json:"remaining_portions"`
+	AfterHours        bool    `json:"after_hours"`
+	IsAon             bool    `json:"is_aon"`
+	IsMargin          bool    `json:"is_margin"`
+	AccountId         int64   `json:"account_id"`
+}
 
 func orderError(c *gin.Context, err error) {
 	switch status.Code(err) {
@@ -81,7 +105,7 @@ func CreateOrder(orderClient pb.OrderServiceClient) gin.HandlerFunc {
 }
 
 // ListOrders handles GET /orders
-func ListOrders(orderClient pb.OrderServiceClient) gin.HandlerFunc {
+func ListOrders(orderClient pb.OrderServiceClient, securitiesClient pb_sec.SecuritiesServiceClient) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		statusFilter := c.DefaultQuery("status", "ALL")
 		agentID, _ := strconv.ParseInt(c.Query("agentId"), 10, 64)
@@ -98,7 +122,50 @@ func ListOrders(orderClient pb.OrderServiceClient) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"orders": resp.Orders})
+		// Collect unique asset IDs to look up tickers
+		seenAssets := make(map[int64]bool)
+		for _, o := range resp.Orders {
+			if o.AssetId != 0 {
+				seenAssets[o.AssetId] = true
+			}
+		}
+		tickers := make(map[int64]string, len(seenAssets))
+		for aid := range seenAssets {
+			secCtx, secCancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+			secResp, secErr := securitiesClient.GetListingById(secCtx, &pb_sec.GetListingByIdRequest{Id: aid})
+			secCancel()
+			if secErr == nil && secResp.Summary != nil {
+				tickers[aid] = secResp.Summary.Ticker
+			}
+		}
+
+		enriched := make([]orderResponse, 0, len(resp.Orders))
+		for _, o := range resp.Orders {
+			enriched = append(enriched, orderResponse{
+				Id:                o.Id,
+				UserId:            o.UserId,
+				AssetId:           o.AssetId,
+				AssetTicker:       tickers[o.AssetId],
+				OrderType:         o.OrderType,
+				Quantity:          o.Quantity,
+				ContractSize:      o.ContractSize,
+				PricePerUnit:      o.PricePerUnit,
+				LimitValue:        o.LimitValue,
+				StopValue:         o.StopValue,
+				Direction:         o.Direction,
+				Status:            o.Status,
+				ApprovedBy:        o.ApprovedBy,
+				IsDone:            o.IsDone,
+				LastModification:  o.LastModification,
+				RemainingPortions: o.RemainingPortions,
+				AfterHours:        o.AfterHours,
+				IsAon:             o.IsAon,
+				IsMargin:          o.IsMargin,
+				AccountId:         o.AccountId,
+			})
+		}
+
+		c.JSON(http.StatusOK, gin.H{"orders": enriched})
 	}
 }
 
