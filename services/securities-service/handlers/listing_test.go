@@ -19,6 +19,7 @@ var listingSummaryCols = []string{
 	"id", "ticker", "name", "type", "acronym",
 	"price", "ask", "bid", "volume", "change",
 	"outstanding_shares", "contract_size", "stock_listing_id", "stock_price",
+	"option_type", "strike_price", "settlement_date", "open_interest",
 }
 
 var listingDetailCols = []string{
@@ -60,7 +61,8 @@ func TestGetListings_StockDerivedFields(t *testing.T) {
 			// nominalValue(STOCK) = 200
 			AddRow(1, "AAPL", "Apple Inc", "STOCK", "NASDAQ",
 				200.0, 202.0, 198.0, int64(1000000), 10.0,
-				int64(5000000), 1.0, nil, 0.0))
+				int64(5000000), 1.0, nil, 0.0,
+				nil, nil, nil, nil))
 
 	resp, err := s.GetListings(context.Background(), &pb.GetListingsRequest{Page: 1, PageSize: 10})
 	require.NoError(t, err)
@@ -88,7 +90,8 @@ func TestGetListings_ForexDerivedFields(t *testing.T) {
 			// nominalValue(FOREX_PAIR) = 1000 * 1.1 = 1100
 			AddRow(2, "EUR/USD", "Euro / US Dollar", "FOREX_PAIR", "FOREX",
 				1.1, 1.101, 1.099, int64(0), 0.0,
-				int64(0), 1.0, nil, 0.0))
+				int64(0), 1.0, nil, 0.0,
+				nil, nil, nil, nil))
 
 	resp, err := s.GetListings(context.Background(), &pb.GetListingsRequest{})
 	require.NoError(t, err)
@@ -107,7 +110,8 @@ func TestGetListings_FuturesDerivedFields(t *testing.T) {
 			// contractSize=1000, price=80 → maintenanceMargin = 1000*80*0.10 = 8000
 			AddRow(3, "CLJ25", "Crude Oil Jul 2025", "FUTURES_CONTRACT", "NYMEX",
 				80.0, 80.5, 79.5, int64(50000), 0.0,
-				int64(0), 1000.0, nil, 0.0))
+				int64(0), 1000.0, nil, 0.0,
+				nil, nil, nil, nil))
 
 	resp, err := s.GetListings(context.Background(), &pb.GetListingsRequest{})
 	require.NoError(t, err)
@@ -126,7 +130,8 @@ func TestGetListings_OptionDerivedFields(t *testing.T) {
 			// stock_listing_id=1, stockPrice=200 → maintenanceMargin = 100*0.5*200 = 10000
 			AddRow(4, "AAPL240101C00150000", "AAPL Call", "OPTION", "CBOE",
 				5.0, 5.1, 4.9, int64(200), 0.0,
-				int64(0), 1.0, int64(1), 200.0))
+				int64(0), 1.0, int64(1), 200.0,
+				nil, nil, nil, nil))
 
 	resp, err := s.GetListings(context.Background(), &pb.GetListingsRequest{})
 	require.NoError(t, err)

@@ -199,3 +199,48 @@ func TestCommissionMarketExactCap(t *testing.T) {
 	c := CalculateCommission("MARKET", 50.0)
 	assert.Equal(t, 7.0, math.Round(c*1000)/1000)
 }
+
+func TestCommissionUnknownType(t *testing.T) {
+	assert.Equal(t, 0.0, CalculateCommission("UNKNOWN", 100.0))
+}
+
+func TestCalculatePriceUnknownType(t *testing.T) {
+	price, ok := CalculatePrice("UNKNOWN", "BUY", 100.0, 99.0, 0, 0)
+	assert.False(t, ok)
+	assert.Equal(t, 0.0, price)
+}
+
+func TestStopSellDoesNotActivate(t *testing.T) {
+	// bid=101 ≥ stop=100 → does not trigger
+	_, ok := CalculatePrice("STOP", "SELL", 103.0, 101.0, 0, 100.0)
+	assert.False(t, ok)
+}
+
+func TestStopLimitSellActivates(t *testing.T) {
+	// bid=99, stop=100 → bid < stop → executes
+	price, ok := CalculatePrice("STOP_LIMIT", "SELL", 101.0, 99.0, 98.0, 100.0)
+	assert.True(t, ok)
+	assert.Equal(t, 99.0, price)
+}
+
+func TestStopLimitSellDoesNotActivate(t *testing.T) {
+	// bid=101 ≥ stop=100 → not triggered
+	_, ok := CalculatePrice("STOP_LIMIT", "SELL", 103.0, 101.0, 98.0, 100.0)
+	assert.False(t, ok)
+}
+
+func TestIsAfterHours_InvalidTimezone(t *testing.T) {
+	now := time.Now()
+	assert.False(t, IsAfterHours("16:00", "Invalid/Zone", now))
+}
+
+func TestIsAfterHours_InvalidTimeFormat(t *testing.T) {
+	loc, _ := time.LoadLocation("America/New_York")
+	now := time.Date(2026, 4, 8, 15, 0, 0, 0, loc)
+	assert.False(t, IsAfterHours("bad-time", "America/New_York", now))
+}
+
+func TestFillIntervalZeroRemaining(t *testing.T) {
+	d := FillInterval(1_000_000, 0, false)
+	assert.Equal(t, 5*time.Second, d)
+}
