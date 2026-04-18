@@ -3,6 +3,7 @@ module github.com/RAF-SI-2025/EXBanka-4-Backend/services/order-service
 go 1.26.1
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/RAF-SI-2025/EXBanka-4-Backend/shared v0.0.0-00010101000000-000000000000
 	github.com/lib/pq v1.11.2
 	github.com/stretchr/testify v1.11.1
