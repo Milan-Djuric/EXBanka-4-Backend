@@ -94,6 +94,7 @@ func main() {
 		SecuritiesClient: securitiesClient,
 		LoanClient:       loanClient,
 		EmployeeClient:   employeeClient,
+		PortfolioClient:  portfolioClient,
 	}
 	pb.RegisterOrderServiceServer(srv, orderServer)
 

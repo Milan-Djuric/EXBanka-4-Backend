@@ -26,8 +26,9 @@ func ApproveOrder(ctx context.Context, orderDB, employeeDB *sql.DB, orderID, sup
 		return err
 	}
 
-	// Deduct from agent's used limit if placed by an actuary
-	if order.UserType == "EMPLOYEE" && employeeDB != nil {
+	// Deduct from agent's used limit if placed by an actuary on a BUY order.
+	// SELL orders do not count against the limit.
+	if order.UserType == "EMPLOYEE" && order.Direction == "BUY" && employeeDB != nil {
 		isActuary := repository.IsActuary(ctx, employeeDB, order.UserID)
 		if isActuary {
 			orderTotal := float64(order.ContractSize) * order.PricePerUnit * float64(order.Quantity)

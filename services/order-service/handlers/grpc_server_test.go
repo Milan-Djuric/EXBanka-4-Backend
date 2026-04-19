@@ -10,6 +10,7 @@ import (
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	"github.com/RAF-SI-2025/EXBanka-4-Backend/services/order-service/handlers"
 	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/order"
+	pb_portfolio "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/portfolio"
 	pb_sec "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/securities"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,7 +34,7 @@ func newOrderServer(t *testing.T) (*handlers.OrderServer, sqlmock.Sqlmock, sqlmo
 	return srv, dbMock, empMock
 }
 
-func newOrderServerWithSecDB(t *testing.T) (*handlers.OrderServer, sqlmock.Sqlmock, sqlmock.Sqlmock, sqlmock.Sqlmock) {
+func newOrderServerWithSecDB(t *testing.T) (*handlers.OrderServer, sqlmock.Sqlmock, sqlmock.Sqlmock, sqlmock.Sqlmock, sqlmock.Sqlmock) {
 	t.Helper()
 	db, dbMock, err := sqlmock.New()
 	require.NoError(t, err)
@@ -41,9 +42,11 @@ func newOrderServerWithSecDB(t *testing.T) (*handlers.OrderServer, sqlmock.Sqlmo
 	require.NoError(t, err)
 	secDB, secMock, err := sqlmock.New()
 	require.NoError(t, err)
-	srv := &handlers.OrderServer{DB: db, EmployeeDB: employeeDB, SecuritiesDB: secDB}
-	t.Cleanup(func() { _ = db.Close(); _ = employeeDB.Close(); _ = secDB.Close() })
-	return srv, dbMock, empMock, secMock
+	accountDB, accMock, err := sqlmock.New()
+	require.NoError(t, err)
+	srv := &handlers.OrderServer{DB: db, EmployeeDB: employeeDB, SecuritiesDB: secDB, AccountDB: accountDB, PortfolioClient: &mockPortfolioClient{}}
+	t.Cleanup(func() { _ = db.Close(); _ = employeeDB.Close(); _ = secDB.Close(); _ = accountDB.Close() })
+	return srv, dbMock, empMock, secMock, accMock
 }
 
 // orderCols is the ordered list of columns returned by all order SELECT queries.
@@ -70,9 +73,9 @@ func addOrderRow(rows *sqlmock.Rows, id, userID int64, userType string, assetID 
 
 // mockSecClient is a configurable mock for pb_sec.SecuritiesServiceClient.
 type mockSecClient struct {
-	getListingById    func(ctx context.Context, in *pb_sec.GetListingByIdRequest, opts ...grpc.CallOption) (*pb_sec.GetListingByIdResponse, error)
-	getWorkingHours   func(ctx context.Context, in *pb_sec.GetWorkingHoursRequest, opts ...grpc.CallOption) (*pb_sec.GetWorkingHoursResponse, error)
-	getExchangeByMIC  func(ctx context.Context, in *pb_sec.GetStockExchangeByMICRequest, opts ...grpc.CallOption) (*pb_sec.GetStockExchangeByMICResponse, error)
+	getListingById   func(ctx context.Context, in *pb_sec.GetListingByIdRequest, opts ...grpc.CallOption) (*pb_sec.GetListingByIdResponse, error)
+	getWorkingHours  func(ctx context.Context, in *pb_sec.GetWorkingHoursRequest, opts ...grpc.CallOption) (*pb_sec.GetWorkingHoursResponse, error)
+	getExchangeByMIC func(ctx context.Context, in *pb_sec.GetStockExchangeByMICRequest, opts ...grpc.CallOption) (*pb_sec.GetStockExchangeByMICResponse, error)
 }
 
 func (m *mockSecClient) Ping(ctx context.Context, in *pb_sec.PingRequest, opts ...grpc.CallOption) (*pb_sec.PingResponse, error) {
@@ -136,6 +139,27 @@ func (m *mockSecClient) GetListingById(ctx context.Context, in *pb_sec.GetListin
 	return nil, fmt.Errorf("not mocked")
 }
 func (m *mockSecClient) GetListingHistory(ctx context.Context, in *pb_sec.GetListingHistoryRequest, opts ...grpc.CallOption) (*pb_sec.GetListingHistoryResponse, error) {
+	return nil, fmt.Errorf("not mocked")
+}
+
+// mockPortfolioClient is a configurable mock for pb_portfolio.PortfolioServiceClient.
+type mockPortfolioClient struct {
+	getPortfolio func(ctx context.Context, in *pb_portfolio.GetPortfolioRequest, opts ...grpc.CallOption) (*pb_portfolio.GetPortfolioResponse, error)
+}
+
+func (m *mockPortfolioClient) UpdateHolding(ctx context.Context, in *pb_portfolio.UpdateHoldingRequest, opts ...grpc.CallOption) (*pb_portfolio.UpdateHoldingResponse, error) {
+	return nil, fmt.Errorf("not mocked")
+}
+func (m *mockPortfolioClient) GetPortfolio(ctx context.Context, in *pb_portfolio.GetPortfolioRequest, opts ...grpc.CallOption) (*pb_portfolio.GetPortfolioResponse, error) {
+	if m.getPortfolio != nil {
+		return m.getPortfolio(ctx, in, opts...)
+	}
+	return nil, fmt.Errorf("not mocked")
+}
+func (m *mockPortfolioClient) GetProfit(ctx context.Context, in *pb_portfolio.GetProfitRequest, opts ...grpc.CallOption) (*pb_portfolio.GetProfitResponse, error) {
+	return nil, fmt.Errorf("not mocked")
+}
+func (m *mockPortfolioClient) SetPublicAmount(ctx context.Context, in *pb_portfolio.SetPublicAmountRequest, opts ...grpc.CallOption) (*pb_portfolio.SetPublicAmountResponse, error) {
 	return nil, fmt.Errorf("not mocked")
 }
 
@@ -469,7 +493,7 @@ func TestCreateOrder_SecuritiesClientError(t *testing.T) {
 }
 
 func TestCreateOrder_InsertError(t *testing.T) {
-	srv, dbMock, _, secMock := newOrderServerWithSecDB(t)
+	srv, dbMock, _, secMock, accMock := newOrderServerWithSecDB(t)
 	srv.SecuritiesClient = &mockSecClient{
 		getListingById: func(ctx context.Context, in *pb_sec.GetListingByIdRequest, opts ...grpc.CallOption) (*pb_sec.GetListingByIdResponse, error) {
 			return &pb_sec.GetListingByIdResponse{
@@ -477,6 +501,10 @@ func TestCreateOrder_InsertError(t *testing.T) {
 			}, nil
 		},
 	}
+	// CLIENT BUY → balance check passes
+	accMock.ExpectQuery("SELECT available_balance FROM accounts").WillReturnRows(
+		sqlmock.NewRows([]string{"available_balance"}).AddRow(float64(999999)),
+	)
 	// After-hours check: mic_code lookup fails → afterHours=false (non-fatal)
 	secMock.ExpectQuery("SELECT mic_code FROM stock_exchanges").WillReturnError(sql.ErrNoRows)
 	// INSERT fails
@@ -490,7 +518,7 @@ func TestCreateOrder_InsertError(t *testing.T) {
 }
 
 func TestCreateOrder_Happy_Client_Market(t *testing.T) {
-	srv, dbMock, _, secMock := newOrderServerWithSecDB(t)
+	srv, dbMock, _, secMock, accMock := newOrderServerWithSecDB(t)
 	srv.SecuritiesClient = &mockSecClient{
 		getListingById: func(ctx context.Context, in *pb_sec.GetListingByIdRequest, opts ...grpc.CallOption) (*pb_sec.GetListingByIdResponse, error) {
 			return &pb_sec.GetListingByIdResponse{
@@ -498,6 +526,10 @@ func TestCreateOrder_Happy_Client_Market(t *testing.T) {
 			}, nil
 		},
 	}
+	// CLIENT BUY → balance check passes
+	accMock.ExpectQuery("SELECT available_balance FROM accounts").WillReturnRows(
+		sqlmock.NewRows([]string{"available_balance"}).AddRow(float64(999999)),
+	)
 	// After-hours: MIC lookup fails → non-fatal
 	secMock.ExpectQuery("SELECT mic_code FROM stock_exchanges").WillReturnError(sql.ErrNoRows)
 	// CLIENT user → no actuary query
@@ -516,7 +548,7 @@ func TestCreateOrder_Happy_Client_Market(t *testing.T) {
 }
 
 func TestCreateOrder_Happy_Employee_Actuary_Pending(t *testing.T) {
-	srv, dbMock, empMock, secMock := newOrderServerWithSecDB(t)
+	srv, dbMock, empMock, secMock, _ := newOrderServerWithSecDB(t)
 	srv.SecuritiesClient = &mockSecClient{
 		getListingById: func(ctx context.Context, in *pb_sec.GetListingByIdRequest, opts ...grpc.CallOption) (*pb_sec.GetListingByIdResponse, error) {
 			return &pb_sec.GetListingByIdResponse{
@@ -544,7 +576,7 @@ func TestCreateOrder_Happy_Employee_Actuary_Pending(t *testing.T) {
 }
 
 func TestCreateOrder_Happy_Employee_Supervisor_Approved(t *testing.T) {
-	srv, dbMock, empMock, secMock := newOrderServerWithSecDB(t)
+	srv, dbMock, empMock, secMock, _ := newOrderServerWithSecDB(t)
 	srv.SecuritiesClient = &mockSecClient{
 		getListingById: func(ctx context.Context, in *pb_sec.GetListingByIdRequest, opts ...grpc.CallOption) (*pb_sec.GetListingByIdResponse, error) {
 			return &pb_sec.GetListingByIdResponse{
@@ -570,7 +602,7 @@ func TestCreateOrder_Happy_Employee_Supervisor_Approved(t *testing.T) {
 // determineOrderType coverage: LIMIT, STOP, STOP_LIMIT variants
 
 func TestCreateOrder_LimitOrder(t *testing.T) {
-	srv, dbMock, _, secMock := newOrderServerWithSecDB(t)
+	srv, dbMock, _, secMock, accMock := newOrderServerWithSecDB(t)
 	srv.SecuritiesClient = &mockSecClient{
 		getListingById: func(ctx context.Context, in *pb_sec.GetListingByIdRequest, opts ...grpc.CallOption) (*pb_sec.GetListingByIdResponse, error) {
 			return &pb_sec.GetListingByIdResponse{
@@ -578,6 +610,9 @@ func TestCreateOrder_LimitOrder(t *testing.T) {
 			}, nil
 		},
 	}
+	accMock.ExpectQuery("SELECT available_balance FROM accounts").WillReturnRows(
+		sqlmock.NewRows([]string{"available_balance"}).AddRow(float64(999999)),
+	)
 	secMock.ExpectQuery("SELECT mic_code FROM stock_exchanges").WillReturnError(sql.ErrNoRows)
 	dbMock.ExpectQuery("INSERT INTO orders").WillReturnRows(
 		sqlmock.NewRows([]string{"id"}).AddRow(int64(10)),
@@ -592,7 +627,7 @@ func TestCreateOrder_LimitOrder(t *testing.T) {
 }
 
 func TestCreateOrder_StopOrder(t *testing.T) {
-	srv, dbMock, _, secMock := newOrderServerWithSecDB(t)
+	srv, dbMock, _, secMock, accMock := newOrderServerWithSecDB(t)
 	srv.SecuritiesClient = &mockSecClient{
 		getListingById: func(ctx context.Context, in *pb_sec.GetListingByIdRequest, opts ...grpc.CallOption) (*pb_sec.GetListingByIdResponse, error) {
 			return &pb_sec.GetListingByIdResponse{
@@ -600,6 +635,9 @@ func TestCreateOrder_StopOrder(t *testing.T) {
 			}, nil
 		},
 	}
+	accMock.ExpectQuery("SELECT available_balance FROM accounts").WillReturnRows(
+		sqlmock.NewRows([]string{"available_balance"}).AddRow(float64(999999)),
+	)
 	secMock.ExpectQuery("SELECT mic_code FROM stock_exchanges").WillReturnError(sql.ErrNoRows)
 	dbMock.ExpectQuery("INSERT INTO orders").WillReturnRows(
 		sqlmock.NewRows([]string{"id"}).AddRow(int64(11)),
@@ -614,11 +652,18 @@ func TestCreateOrder_StopOrder(t *testing.T) {
 }
 
 func TestCreateOrder_StopLimitOrder(t *testing.T) {
-	srv, dbMock, _, secMock := newOrderServerWithSecDB(t)
+	srv, dbMock, _, secMock, _ := newOrderServerWithSecDB(t)
 	srv.SecuritiesClient = &mockSecClient{
 		getListingById: func(ctx context.Context, in *pb_sec.GetListingByIdRequest, opts ...grpc.CallOption) (*pb_sec.GetListingByIdResponse, error) {
 			return &pb_sec.GetListingByIdResponse{
 				Summary: &pb_sec.ListingSummary{Ask: 150.0, Bid: 148.0, ExchangeAcronym: "NYSE"},
+			}, nil
+		},
+	}
+	srv.PortfolioClient = &mockPortfolioClient{
+		getPortfolio: func(ctx context.Context, in *pb_portfolio.GetPortfolioRequest, opts ...grpc.CallOption) (*pb_portfolio.GetPortfolioResponse, error) {
+			return &pb_portfolio.GetPortfolioResponse{
+				Entries: []*pb_portfolio.PortfolioEntry{{ListingId: 5, Amount: 100}},
 			}, nil
 		},
 	}
@@ -635,10 +680,62 @@ func TestCreateOrder_StopLimitOrder(t *testing.T) {
 	assert.Equal(t, "STOP_LIMIT", resp.OrderType)
 }
 
+func TestCreateOrder_InsufficientHoldings(t *testing.T) {
+	srv, _, _, _, _ := newOrderServerWithSecDB(t)
+	srv.SecuritiesClient = &mockSecClient{
+		getListingById: func(ctx context.Context, in *pb_sec.GetListingByIdRequest, opts ...grpc.CallOption) (*pb_sec.GetListingByIdResponse, error) {
+			return &pb_sec.GetListingByIdResponse{
+				Summary: &pb_sec.ListingSummary{Ask: 150.0, Bid: 148.0, ExchangeAcronym: "NYSE"},
+			}, nil
+		},
+	}
+	srv.PortfolioClient = &mockPortfolioClient{
+		getPortfolio: func(ctx context.Context, in *pb_portfolio.GetPortfolioRequest, opts ...grpc.CallOption) (*pb_portfolio.GetPortfolioResponse, error) {
+			// Asset 5 not held at all
+			return &pb_portfolio.GetPortfolioResponse{Entries: nil}, nil
+		},
+	}
+
+	_, err := srv.CreateOrder(context.Background(), &pb.CreateOrderRequest{
+		UserId: 1, UserType: "CLIENT", AssetId: 5, Quantity: 10, AccountId: 42, Direction: "SELL",
+	})
+	require.Error(t, err)
+	assert.Equal(t, codes.FailedPrecondition, status.Code(err))
+}
+
+func TestCreateOrder_Happy_Client_Sell(t *testing.T) {
+	srv, dbMock, _, secMock, _ := newOrderServerWithSecDB(t)
+	srv.SecuritiesClient = &mockSecClient{
+		getListingById: func(ctx context.Context, in *pb_sec.GetListingByIdRequest, opts ...grpc.CallOption) (*pb_sec.GetListingByIdResponse, error) {
+			return &pb_sec.GetListingByIdResponse{
+				Summary: &pb_sec.ListingSummary{Ask: 150.0, Bid: 148.0, ExchangeAcronym: "NYSE"},
+			}, nil
+		},
+	}
+	srv.PortfolioClient = &mockPortfolioClient{
+		getPortfolio: func(ctx context.Context, in *pb_portfolio.GetPortfolioRequest, opts ...grpc.CallOption) (*pb_portfolio.GetPortfolioResponse, error) {
+			return &pb_portfolio.GetPortfolioResponse{
+				Entries: []*pb_portfolio.PortfolioEntry{{ListingId: 5, Amount: 50}},
+			}, nil
+		},
+	}
+	secMock.ExpectQuery("SELECT mic_code FROM stock_exchanges").WillReturnError(sql.ErrNoRows)
+	dbMock.ExpectQuery("INSERT INTO orders").WillReturnRows(
+		sqlmock.NewRows([]string{"id"}).AddRow(int64(16)),
+	)
+
+	resp, err := srv.CreateOrder(context.Background(), &pb.CreateOrderRequest{
+		UserId: 1, UserType: "CLIENT", AssetId: 5, Quantity: 10, AccountId: 42, Direction: "SELL",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, int64(16), resp.OrderId)
+	assert.Equal(t, "APPROVED", resp.Status)
+}
+
 // checkAfterHours coverage: MIC found but working hours call fails / no regular segment / exchange error
 
 func TestCreateOrder_AfterHours_WorkingHoursError(t *testing.T) {
-	srv, dbMock, _, secMock := newOrderServerWithSecDB(t)
+	srv, dbMock, _, secMock, accMock := newOrderServerWithSecDB(t)
 	srv.SecuritiesClient = &mockSecClient{
 		getListingById: func(ctx context.Context, in *pb_sec.GetListingByIdRequest, opts ...grpc.CallOption) (*pb_sec.GetListingByIdResponse, error) {
 			return &pb_sec.GetListingByIdResponse{
@@ -649,6 +746,10 @@ func TestCreateOrder_AfterHours_WorkingHoursError(t *testing.T) {
 			return nil, fmt.Errorf("working hours unavailable")
 		},
 	}
+	// CLIENT BUY → balance check passes
+	accMock.ExpectQuery("SELECT available_balance FROM accounts").WillReturnRows(
+		sqlmock.NewRows([]string{"available_balance"}).AddRow(float64(999999)),
+	)
 	// MIC lookup succeeds
 	secMock.ExpectQuery("SELECT mic_code FROM stock_exchanges").WillReturnRows(
 		sqlmock.NewRows([]string{"mic_code"}).AddRow("XNYS"),
@@ -665,7 +766,7 @@ func TestCreateOrder_AfterHours_WorkingHoursError(t *testing.T) {
 }
 
 func TestCreateOrder_AfterHours_NoRegularSegment(t *testing.T) {
-	srv, dbMock, _, secMock := newOrderServerWithSecDB(t)
+	srv, dbMock, _, secMock, accMock := newOrderServerWithSecDB(t)
 	srv.SecuritiesClient = &mockSecClient{
 		getListingById: func(ctx context.Context, in *pb_sec.GetListingByIdRequest, opts ...grpc.CallOption) (*pb_sec.GetListingByIdResponse, error) {
 			return &pb_sec.GetListingByIdResponse{
@@ -680,6 +781,9 @@ func TestCreateOrder_AfterHours_NoRegularSegment(t *testing.T) {
 			}, nil
 		},
 	}
+	accMock.ExpectQuery("SELECT available_balance FROM accounts").WillReturnRows(
+		sqlmock.NewRows([]string{"available_balance"}).AddRow(float64(999999)),
+	)
 	secMock.ExpectQuery("SELECT mic_code FROM stock_exchanges").WillReturnRows(
 		sqlmock.NewRows([]string{"mic_code"}).AddRow("XNYS"),
 	)
@@ -695,7 +799,7 @@ func TestCreateOrder_AfterHours_NoRegularSegment(t *testing.T) {
 }
 
 func TestCreateOrder_AfterHours_ExchangeByMICError(t *testing.T) {
-	srv, dbMock, _, secMock := newOrderServerWithSecDB(t)
+	srv, dbMock, _, secMock, accMock := newOrderServerWithSecDB(t)
 	srv.SecuritiesClient = &mockSecClient{
 		getListingById: func(ctx context.Context, in *pb_sec.GetListingByIdRequest, opts ...grpc.CallOption) (*pb_sec.GetListingByIdResponse, error) {
 			return &pb_sec.GetListingByIdResponse{
@@ -713,6 +817,9 @@ func TestCreateOrder_AfterHours_ExchangeByMICError(t *testing.T) {
 			return nil, fmt.Errorf("exchange lookup failed")
 		},
 	}
+	accMock.ExpectQuery("SELECT available_balance FROM accounts").WillReturnRows(
+		sqlmock.NewRows([]string{"available_balance"}).AddRow(float64(999999)),
+	)
 	secMock.ExpectQuery("SELECT mic_code FROM stock_exchanges").WillReturnRows(
 		sqlmock.NewRows([]string{"mic_code"}).AddRow("XNYS"),
 	)

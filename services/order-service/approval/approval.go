@@ -4,9 +4,14 @@ import "time"
 
 // NeedsApproval reports whether an agent order requires supervisor approval.
 // orderTotal is contractSize × pricePerUnit × quantity.
-func NeedsApproval(needApprovalFlag bool, usedLimit, limitAmount, orderTotal float64) bool {
+// Only BUY orders are gated by the limit; SELL orders bypass the limit checks
+// (the needApprovalFlag still applies to all directions).
+func NeedsApproval(needApprovalFlag bool, usedLimit, limitAmount, orderTotal float64, direction string) bool {
 	if needApprovalFlag {
 		return true
+	}
+	if direction != "BUY" {
+		return false
 	}
 	if usedLimit >= limitAmount {
 		return true

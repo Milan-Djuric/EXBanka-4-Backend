@@ -13,6 +13,7 @@ import (
 	pb_emp "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/employee"
 	pb_loan "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/loan"
 	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/order"
+	pb_portfolio "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/portfolio"
 	pb_sec "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/securities"
 	"google.golang.org/grpc/codes"
 	grpcstatus "google.golang.org/grpc/status"
@@ -28,6 +29,7 @@ type OrderServer struct {
 	SecuritiesClient pb_sec.SecuritiesServiceClient
 	LoanClient       pb_loan.LoanServiceClient
 	EmployeeClient   pb_emp.EmployeeServiceClient
+	PortfolioClient  pb_portfolio.PortfolioServiceClient
 }
 
 func (s *OrderServer) Ping(ctx context.Context, req *pb.PingRequest) (*pb.PingResponse, error) {
@@ -67,6 +69,27 @@ func (s *OrderServer) CreateOrder(ctx context.Context, req *pb.CreateOrderReques
 		}
 	}
 
+	// 3c. For SELL orders, reject if the user holds fewer securities than requested.
+	if req.Direction == "SELL" {
+		portfolioResp, err := s.PortfolioClient.GetPortfolio(ctx, &pb_portfolio.GetPortfolioRequest{
+			UserId:   req.UserId,
+			UserType: req.UserType,
+		})
+		if err != nil {
+			return nil, grpcstatus.Errorf(codes.Internal, "failed to fetch portfolio: %v", err)
+		}
+		var held int32
+		for _, entry := range portfolioResp.Entries {
+			if entry.ListingId == req.AssetId {
+				held = entry.Amount
+				break
+			}
+		}
+		if held < req.Quantity {
+			return nil, grpcstatus.Errorf(codes.FailedPrecondition, "insufficient holdings: have %d, need %d", held, req.Quantity)
+		}
+	}
+
 	// 4. After-hours check via working hours
 	afterHours := s.checkAfterHours(ctx, listingResp)
 
@@ -77,7 +100,7 @@ func (s *OrderServer) CreateOrder(ctx context.Context, req *pb.CreateOrderReques
 		limitAmount, usedLimit, needApprovalFlag, err := repository.GetActuaryInfo(ctx, s.EmployeeDB, req.UserId)
 		if err == nil {
 			isActuary = true
-			needsApproval = approval.NeedsApproval(needApprovalFlag, usedLimit, limitAmount, approxPrice)
+			needsApproval = approval.NeedsApproval(needApprovalFlag, usedLimit, limitAmount, approxPrice, req.Direction)
 		}
 		// sql.ErrNoRows → supervisor, isActuary stays false
 	}
@@ -118,9 +141,10 @@ func (s *OrderServer) CreateOrder(ctx context.Context, req *pb.CreateOrderReques
 		return nil, grpcstatus.Errorf(codes.Internal, "failed to insert order: %v", err)
 	}
 
-	// Deduct from agent's used limit for auto-approved orders.
+	// Deduct from agent's used limit for auto-approved BUY orders.
+	// SELL orders do not count against the limit.
 	// PENDING orders are deducted in ApproveOrder when the supervisor approves.
-	if isActuary && initialStatus == "APPROVED" {
+	if isActuary && initialStatus == "APPROVED" && req.Direction == "BUY" {
 		_ = repository.DeductActuaryUsedLimit(ctx, s.EmployeeDB, req.UserId, approxPrice)
 	}
 

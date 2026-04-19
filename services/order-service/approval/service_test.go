@@ -29,11 +29,15 @@ func newMocks(t *testing.T) (*sql.DB, sqlmock.Sqlmock, *sql.DB, sqlmock.Sqlmock)
 }
 
 func addOrderRow(rows *sqlmock.Rows, id, userID int64, userType, status string, contractSize int32, pricePerUnit float64, quantity int32) *sqlmock.Rows {
+	return addOrderRowDir(rows, id, userID, userType, status, contractSize, pricePerUnit, quantity, "BUY")
+}
+
+func addOrderRowDir(rows *sqlmock.Rows, id, userID int64, userType, status string, contractSize int32, pricePerUnit float64, quantity int32, direction string) *sqlmock.Rows {
 	ts := time.Now()
 	return rows.AddRow(
 		id, userID, userType, int64(5), "MARKET",
 		quantity, contractSize, pricePerUnit, nil, nil,
-		"BUY", status, nil, false, ts,
+		direction, status, nil, false, ts,
 		quantity, false, false, false, int64(42),
 	)
 }
@@ -116,6 +120,20 @@ func TestApproveOrder_Happy_EmployeeSupervisor(t *testing.T) {
 
 	err := ApproveOrder(context.Background(), orderDB, empDB, 1, 5)
 	require.NoError(t, err)
+}
+
+func TestApproveOrder_Happy_EmployeeActuary_Sell(t *testing.T) {
+	// SELL orders: status is approved but used_limit must NOT be deducted.
+	orderDB, orderMock, empDB, empMock := newMocks(t)
+	rows := sqlmock.NewRows(orderCols)
+	addOrderRowDir(rows, 1, 20, "EMPLOYEE", "PENDING", 2, 150.0, 5, "SELL")
+	orderMock.ExpectQuery("SELECT id").WillReturnRows(rows)
+	orderMock.ExpectExec("UPDATE orders SET status").WillReturnResult(sqlmock.NewResult(1, 1))
+	// IsActuary and DeductActuaryUsedLimit must NOT be called for SELL orders.
+
+	err := ApproveOrder(context.Background(), orderDB, empDB, 1, 5)
+	require.NoError(t, err)
+	require.NoError(t, empMock.ExpectationsWereMet())
 }
 
 // ── DeclineOrder ─────────────────────────────────────────────────────────────

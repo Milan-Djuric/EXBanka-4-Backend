@@ -10,30 +10,40 @@ import (
 // --- NeedsApproval ---
 
 func TestNeedsApproval_FlagTrue(t *testing.T) {
-	assert.True(t, NeedsApproval(true, 0, 10000, 500))
+	assert.True(t, NeedsApproval(true, 0, 10000, 500, "BUY"))
 }
 
 func TestNeedsApproval_UsedLimitExceeded(t *testing.T) {
-	assert.True(t, NeedsApproval(false, 10000, 10000, 1))
+	assert.True(t, NeedsApproval(false, 10000, 10000, 1, "BUY"))
 }
 
 func TestNeedsApproval_UsedLimitOverLimit(t *testing.T) {
-	assert.True(t, NeedsApproval(false, 11000, 10000, 1))
+	assert.True(t, NeedsApproval(false, 11000, 10000, 1, "BUY"))
 }
 
 func TestNeedsApproval_OrderExceedsRemaining(t *testing.T) {
 	// usedLimit=8000, limit=10000, remaining=2000, orderTotal=3000 → exceeds
-	assert.True(t, NeedsApproval(false, 8000, 10000, 3000))
+	assert.True(t, NeedsApproval(false, 8000, 10000, 3000, "BUY"))
 }
 
 func TestNeedsApproval_AllClear(t *testing.T) {
 	// usedLimit=0, limit=10000, orderTotal=500 → no approval needed
-	assert.False(t, NeedsApproval(false, 0, 10000, 500))
+	assert.False(t, NeedsApproval(false, 0, 10000, 500, "BUY"))
 }
 
 func TestNeedsApproval_ExactlyAtRemainingLimit(t *testing.T) {
 	// orderTotal == remaining limit → does not exceed → no approval
-	assert.False(t, NeedsApproval(false, 5000, 10000, 5000))
+	assert.False(t, NeedsApproval(false, 5000, 10000, 5000, "BUY"))
+}
+
+func TestNeedsApproval_SellNeverLimitGated(t *testing.T) {
+	// Even with an exhausted limit, SELL orders bypass the limit check
+	assert.False(t, NeedsApproval(false, 10000, 10000, 5000, "SELL"))
+}
+
+func TestNeedsApproval_SellFlagStillApplies(t *testing.T) {
+	// need_approval flag still gates SELL orders regardless of limits
+	assert.True(t, NeedsApproval(true, 0, 10000, 5000, "SELL"))
 }
 
 // --- DetermineInitialStatus ---
