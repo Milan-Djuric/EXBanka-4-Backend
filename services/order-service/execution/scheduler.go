@@ -13,6 +13,7 @@ import (
 	"github.com/RAF-SI-2025/EXBanka-4-Backend/services/order-service/models"
 	"github.com/RAF-SI-2025/EXBanka-4-Backend/services/order-service/repository"
 	pb_emp "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/employee"
+	pb_exchange "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/exchange"
 	pb_loan "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/loan"
 	pb_portfolio "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/portfolio"
 	pb_sec "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/securities"
@@ -29,6 +30,7 @@ type Scheduler struct {
 	LoanClient       pb_loan.LoanServiceClient
 	EmployeeClient   pb_emp.EmployeeServiceClient
 	PortfolioClient  pb_portfolio.PortfolioServiceClient
+	ExchangeClient   pb_exchange.ExchangeServiceClient
 
 	inProgress sync.Map // map[int64]bool — orders currently being executed
 }
@@ -295,6 +297,13 @@ func (s *Scheduler) listingCurrency(ctx context.Context, listingID int64) (strin
 // commission; EMPLOYEE (agent) orders do not.
 func (s *Scheduler) settleAccountAndCommission(ctx context.Context, order models.Order, totalPrice, commission float64, currencyCode string) error {
 	const exchangeCommRate = 0.005
+
+	// 0. Ensure today's exchange rates are seeded (lazy population via exchange-service).
+	if s.ExchangeClient != nil {
+		if _, err := s.ExchangeClient.GetExchangeRates(ctx, &pb_exchange.GetExchangeRatesRequest{}); err != nil {
+			log.Printf("order-scheduler: ensureTodayRates warning: %v", err)
+		}
+	}
 
 	// 1. Look up account currency.
 	var accountCurrencyID int64

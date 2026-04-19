@@ -9,6 +9,7 @@ import (
 	"github.com/RAF-SI-2025/EXBanka-4-Backend/services/order-service/execution"
 	"github.com/RAF-SI-2025/EXBanka-4-Backend/services/order-service/handlers"
 	pb_emp "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/employee"
+	pb_exchange "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/exchange"
 	pb_loan "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/loan"
 	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/order"
 	pb_portfolio "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/portfolio"
@@ -68,6 +69,12 @@ func main() {
 	}
 	defer func() { _ = empConn.Close() }()
 
+	exchangeConn, err := grpc.NewClient(os.Getenv("EXCHANGE_SERVICE_ADDR"), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("failed to connect to exchange-service: %v", err)
+	}
+	defer func() { _ = exchangeConn.Close() }()
+
 	portfolioConn, err := grpc.NewClient(os.Getenv("PORTFOLIO_SERVICE_ADDR"), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("failed to connect to portfolio-service: %v", err)
@@ -77,6 +84,7 @@ func main() {
 	securitiesClient := pb_sec.NewSecuritiesServiceClient(secConn)
 	loanClient := pb_loan.NewLoanServiceClient(loanConn)
 	employeeClient := pb_emp.NewEmployeeServiceClient(empConn)
+	exchangeClient := pb_exchange.NewExchangeServiceClient(exchangeConn)
 	portfolioClient := pb_portfolio.NewPortfolioServiceClient(portfolioConn)
 
 	lis, err := net.Listen("tcp", grpcPort)
@@ -108,6 +116,7 @@ func main() {
 		LoanClient:       loanClient,
 		EmployeeClient:   employeeClient,
 		PortfolioClient:  portfolioClient,
+		ExchangeClient:   exchangeClient,
 	}
 	scheduler.Start()
 
