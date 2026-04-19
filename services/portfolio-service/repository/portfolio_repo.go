@@ -28,8 +28,8 @@ func UpsertHolding(ctx context.Context, db *sql.DB, userID int64, userType strin
 	_, err := db.ExecContext(ctx, `
 		UPDATE portfolio_entry
 		SET amount = amount - $1, last_modified = NOW()
-		WHERE user_id = $2 AND listing_id = $3`,
-		qty, userID, listingID,
+		WHERE user_id = $2 AND user_type = $3 AND listing_id = $4`,
+		qty, userID, userType, listingID,
 	)
 	if err != nil {
 		return err
@@ -38,20 +38,20 @@ func UpsertHolding(ctx context.Context, db *sql.DB, userID int64, userType strin
 	// Remove entry if fully sold
 	_, err = db.ExecContext(ctx, `
 		DELETE FROM portfolio_entry
-		WHERE user_id = $1 AND listing_id = $2 AND amount <= 0`,
-		userID, listingID,
+		WHERE user_id = $1 AND user_type = $2 AND listing_id = $3 AND amount <= 0`,
+		userID, userType, listingID,
 	)
 	return err
 }
 
-// GetHoldings returns all portfolio entries for a user.
-func GetHoldings(ctx context.Context, db *sql.DB, userID int64) ([]models.PortfolioEntry, error) {
+// GetHoldings returns all portfolio entries for a user filtered by user type.
+func GetHoldings(ctx context.Context, db *sql.DB, userID int64, userType string) ([]models.PortfolioEntry, error) {
 	rows, err := db.QueryContext(ctx, `
 		SELECT id, user_id, user_type, listing_id, amount, buy_price, last_modified, is_public, public_amount, account_id
 		FROM portfolio_entry
-		WHERE user_id = $1 AND amount > 0
+		WHERE user_id = $1 AND user_type = $2 AND amount > 0
 		ORDER BY last_modified DESC`,
-		userID,
+		userID, userType,
 	)
 	if err != nil {
 		return nil, err

@@ -154,6 +154,7 @@ func (*UpdateHoldingResponse) Descriptor() ([]byte, []int) {
 type GetPortfolioRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	UserType      string                 `protobuf:"bytes,2,opt,name=user_type,json=userType,proto3" json:"user_type,omitempty"` // CLIENT or EMPLOYEE
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -193,6 +194,13 @@ func (x *GetPortfolioRequest) GetUserId() int64 {
 		return x.UserId
 	}
 	return 0
+}
+
+func (x *GetPortfolioRequest) GetUserType() string {
+	if x != nil {
+		return x.UserType
+	}
+	return ""
 }
 
 type PortfolioEntry struct {
@@ -375,6 +383,7 @@ func (x *GetPortfolioResponse) GetEntries() []*PortfolioEntry {
 type GetProfitRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	UserType      string                 `protobuf:"bytes,2,opt,name=user_type,json=userType,proto3" json:"user_type,omitempty"` // CLIENT or EMPLOYEE
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -414,6 +423,13 @@ func (x *GetProfitRequest) GetUserId() int64 {
 		return x.UserId
 	}
 	return 0
+}
+
+func (x *GetProfitRequest) GetUserType() string {
+	if x != nil {
+		return x.UserType
+	}
+	return ""
 }
 
 type GetProfitResponse struct {

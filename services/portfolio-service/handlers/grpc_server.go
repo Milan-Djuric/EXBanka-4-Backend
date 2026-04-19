@@ -9,6 +9,7 @@ import (
 	pb_sec "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/securities"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -38,8 +39,17 @@ func (s *PortfolioServer) UpdateHolding(ctx context.Context, req *pb.UpdateHoldi
 	return &pb.UpdateHoldingResponse{}, nil
 }
 
+func userTypeFromCtx(ctx context.Context) string {
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		if vals := md.Get("user-type"); len(vals) > 0 {
+			return vals[0]
+		}
+	}
+	return ""
+}
+
 func (s *PortfolioServer) GetPortfolio(ctx context.Context, req *pb.GetPortfolioRequest) (*pb.GetPortfolioResponse, error) {
-	entries, err := repository.GetHoldings(ctx, s.DB, req.UserId)
+	entries, err := repository.GetHoldings(ctx, s.DB, req.UserId, userTypeFromCtx(ctx))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "get holdings: %v", err)
 	}
@@ -73,7 +83,7 @@ func (s *PortfolioServer) GetPortfolio(ctx context.Context, req *pb.GetPortfolio
 }
 
 func (s *PortfolioServer) GetProfit(ctx context.Context, req *pb.GetProfitRequest) (*pb.GetProfitResponse, error) {
-	entries, err := repository.GetHoldings(ctx, s.DB, req.UserId)
+	entries, err := repository.GetHoldings(ctx, s.DB, req.UserId, userTypeFromCtx(ctx))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "get holdings: %v", err)
 	}

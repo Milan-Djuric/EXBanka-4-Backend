@@ -25,7 +25,8 @@ message UpdateHoldingResponse {}
 
 // GetPortfolio — returns all holdings for a user (implemented in #156)
 message GetPortfolioRequest {
-  int64 user_id = 1;
+  int64  user_id   = 1;
+  string user_type = 2; // CLIENT or EMPLOYEE
 }
 message PortfolioEntry {
   int64  id             = 1;
@@ -47,7 +48,8 @@ message GetPortfolioResponse {
 
 // GetProfit — returns total profit/loss (implemented in #156)
 message GetProfitRequest {
-  int64 user_id = 1;
+  int64  user_id   = 1;
+  string user_type = 2; // CLIENT or EMPLOYEE
 }
 message GetProfitResponse {
   double total_profit = 1;

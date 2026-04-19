@@ -8,10 +8,11 @@ import (
 	"github.com/RAF-SI-2025/EXBanka-4-Backend/services/api-gateway/middleware"
 	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/portfolio"
 	"github.com/gin-gonic/gin"
+	"google.golang.org/grpc/metadata"
 )
 
-// GetPortfolio handles GET /portfolio
-func GetPortfolio(portfolioClient pb.PortfolioServiceClient) gin.HandlerFunc {
+// GetPortfolio handles GET /portfolio and GET /client/portfolio
+func GetPortfolio(portfolioClient pb.PortfolioServiceClient, userType string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID, err := middleware.GetUserIDFromToken(c)
 		if err != nil {
@@ -21,6 +22,7 @@ func GetPortfolio(portfolioClient pb.PortfolioServiceClient) gin.HandlerFunc {
 
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
 		defer cancel()
+		ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("user-type", userType))
 
 		resp, err := portfolioClient.GetPortfolio(ctx, &pb.GetPortfolioRequest{UserId: userID})
 		if err != nil {
@@ -32,8 +34,8 @@ func GetPortfolio(portfolioClient pb.PortfolioServiceClient) gin.HandlerFunc {
 	}
 }
 
-// GetProfit handles GET /portfolio/profit
-func GetProfit(portfolioClient pb.PortfolioServiceClient) gin.HandlerFunc {
+// GetProfit handles GET /portfolio/profit and GET /client/portfolio/profit
+func GetProfit(portfolioClient pb.PortfolioServiceClient, userType string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID, err := middleware.GetUserIDFromToken(c)
 		if err != nil {
@@ -43,6 +45,7 @@ func GetProfit(portfolioClient pb.PortfolioServiceClient) gin.HandlerFunc {
 
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
 		defer cancel()
+		ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("user-type", userType))
 
 		resp, err := portfolioClient.GetProfit(ctx, &pb.GetProfitRequest{UserId: userID})
 		if err != nil {
