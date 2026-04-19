@@ -9,5 +9,5 @@ CREATE TABLE portfolio_entry (
     is_public     BOOLEAN       NOT NULL DEFAULT FALSE,
     public_amount INT           NOT NULL DEFAULT 0,
     account_id    BIGINT        NOT NULL,
-    UNIQUE(user_id, listing_id)
+    UNIQUE(user_id, user_type, listing_id)
 );

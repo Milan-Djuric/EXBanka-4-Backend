@@ -15,7 +15,7 @@ func UpsertHolding(ctx context.Context, db *sql.DB, userID int64, userType strin
 		_, err := db.ExecContext(ctx, `
 			INSERT INTO portfolio_entry (user_id, user_type, listing_id, amount, buy_price, account_id, last_modified)
 			VALUES ($1, $2, $3, $4, $5, $6, NOW())
-			ON CONFLICT (user_id, listing_id) DO UPDATE SET
+			ON CONFLICT (user_id, user_type, listing_id) DO UPDATE SET
 				buy_price     = (portfolio_entry.amount * portfolio_entry.buy_price + $4 * $5) / (portfolio_entry.amount + $4),
 				amount        = portfolio_entry.amount + $4,
 				last_modified = NOW()`,
