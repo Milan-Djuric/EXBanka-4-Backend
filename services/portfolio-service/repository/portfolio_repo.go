@@ -7,10 +7,19 @@ import (
 	"github.com/RAF-SI-2025/EXBanka-4-Backend/services/portfolio-service/models"
 )
 
+// sharedUserID returns 0 for EMPLOYEE-type users so all actuaries share one portfolio.
+func sharedUserID(userID int64, userType string) int64 {
+	if userType == "EMPLOYEE" {
+		return 0
+	}
+	return userID
+}
+
 // UpsertHolding updates portfolio holdings on each order fill.
 // BUY: creates or updates entry with weighted average buy price.
 // SELL: decrements amount; deletes entry if amount reaches zero.
 func UpsertHolding(ctx context.Context, db *sql.DB, userID int64, userType string, listingID, accountID int64, qty int32, price float64, direction string) error {
+	uid := sharedUserID(userID, userType)
 	if direction == "BUY" {
 		_, err := db.ExecContext(ctx, `
 			INSERT INTO portfolio_entry (user_id, user_type, listing_id, amount, buy_price, account_id, last_modified)
@@ -19,7 +28,7 @@ func UpsertHolding(ctx context.Context, db *sql.DB, userID int64, userType strin
 				buy_price     = (portfolio_entry.amount * portfolio_entry.buy_price + $4 * $5) / (portfolio_entry.amount + $4),
 				amount        = portfolio_entry.amount + $4,
 				last_modified = NOW()`,
-			userID, userType, listingID, qty, price, accountID,
+			uid, userType, listingID, qty, price, accountID,
 		)
 		return err
 	}
@@ -29,7 +38,7 @@ func UpsertHolding(ctx context.Context, db *sql.DB, userID int64, userType strin
 		UPDATE portfolio_entry
 		SET amount = amount - $1, last_modified = NOW()
 		WHERE user_id = $2 AND user_type = $3 AND listing_id = $4`,
-		qty, userID, userType, listingID,
+		qty, uid, userType, listingID,
 	)
 	if err != nil {
 		return err
@@ -39,7 +48,7 @@ func UpsertHolding(ctx context.Context, db *sql.DB, userID int64, userType strin
 	_, err = db.ExecContext(ctx, `
 		DELETE FROM portfolio_entry
 		WHERE user_id = $1 AND user_type = $2 AND listing_id = $3 AND amount <= 0`,
-		userID, userType, listingID,
+		uid, userType, listingID,
 	)
 	return err
 }
@@ -51,7 +60,7 @@ func GetHoldings(ctx context.Context, db *sql.DB, userID int64, userType string)
 		FROM portfolio_entry
 		WHERE user_id = $1 AND user_type = $2 AND amount > 0
 		ORDER BY last_modified DESC`,
-		userID, userType,
+		sharedUserID(userID, userType), userType,
 	)
 	if err != nil {
 		return nil, err
