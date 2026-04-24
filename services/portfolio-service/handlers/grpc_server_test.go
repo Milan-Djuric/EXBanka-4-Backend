@@ -92,14 +92,15 @@ func TestUpdateHolding_Sell_Partial(t *testing.T) {
 	srv, mock := newServer(t)
 
 	mock.ExpectExec(`UPDATE portfolio_entry`).
-		WithArgs(int32(2), int64(1), int64(10)).
+		WithArgs(int32(2), int64(1), "CLIENT", int64(10)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`DELETE FROM portfolio_entry`).
-		WithArgs(int64(1), int64(10)).
+		WithArgs(int64(1), "CLIENT", int64(10)).
 		WillReturnResult(sqlmock.NewResult(0, 0))
 
 	_, err := srv.UpdateHolding(context.Background(), &pb.UpdateHoldingRequest{
 		UserId:    1,
+		UserType:  "CLIENT",
 		ListingId: 10,
 		Quantity:  2,
 		Price:     150.0,
@@ -113,14 +114,15 @@ func TestUpdateHolding_Sell_Full(t *testing.T) {
 	srv, mock := newServer(t)
 
 	mock.ExpectExec(`UPDATE portfolio_entry`).
-		WithArgs(int32(5), int64(1), int64(10)).
+		WithArgs(int32(5), int64(1), "CLIENT", int64(10)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`DELETE FROM portfolio_entry`).
-		WithArgs(int64(1), int64(10)).
-		WillReturnResult(sqlmock.NewResult(0, 1)) // row deleted (amount hit 0)
+		WithArgs(int64(1), "CLIENT", int64(10)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	_, err := srv.UpdateHolding(context.Background(), &pb.UpdateHoldingRequest{
 		UserId:    1,
+		UserType:  "CLIENT",
 		ListingId: 10,
 		Quantity:  5,
 		Price:     150.0,
@@ -165,7 +167,7 @@ func TestGetPortfolio_WithPriceEnrichment(t *testing.T) {
 		"buy_price", "last_modified", "is_public", "public_amount", "account_id",
 	}).AddRow(1, int64(1), "CLIENT", int64(10), int32(5), float64(150.0), time.Now(), false, 0, int64(42))
 
-	mock.ExpectQuery(`SELECT`).WithArgs(int64(1)).WillReturnRows(rows)
+	mock.ExpectQuery(`SELECT`).WithArgs(int64(1), "").WillReturnRows(rows)
 
 	resp, err := srv.GetPortfolio(context.Background(), &pb.GetPortfolioRequest{UserId: 1})
 	require.NoError(t, err)
@@ -197,7 +199,7 @@ func TestGetProfit_HappyPath(t *testing.T) {
 		AddRow(1, int64(1), "CLIENT", int64(10), int32(5), float64(150.0), now, false, 0, int64(42)).
 		AddRow(2, int64(1), "CLIENT", int64(20), int32(2), float64(300.0), now, false, 0, int64(42))
 
-	mock.ExpectQuery(`SELECT`).WithArgs(int64(1)).WillReturnRows(rows)
+	mock.ExpectQuery(`SELECT`).WithArgs(int64(1), "").WillReturnRows(rows)
 
 	// Override mock to return different prices per call
 	callCount := 0
@@ -221,7 +223,7 @@ func TestGetProfit_EmptyPortfolio(t *testing.T) {
 		"id", "user_id", "user_type", "listing_id", "amount",
 		"buy_price", "last_modified", "is_public", "public_amount", "account_id",
 	})
-	mock.ExpectQuery(`SELECT`).WithArgs(int64(99)).WillReturnRows(rows)
+	mock.ExpectQuery(`SELECT`).WithArgs(int64(99), "").WillReturnRows(rows)
 
 	resp, err := srv.GetProfit(context.Background(), &pb.GetProfitRequest{UserId: 99})
 	require.NoError(t, err)
@@ -238,7 +240,7 @@ func TestGetProfit_NegativeProfit(t *testing.T) {
 		"buy_price", "last_modified", "is_public", "public_amount", "account_id",
 	}).AddRow(1, int64(1), "CLIENT", int64(5), int32(10), float64(100.0), time.Now(), false, 0, int64(42))
 
-	mock.ExpectQuery(`SELECT`).WithArgs(int64(1)).WillReturnRows(rows)
+	mock.ExpectQuery(`SELECT`).WithArgs(int64(1), "").WillReturnRows(rows)
 
 	resp, err := srv.GetProfit(context.Background(), &pb.GetProfitRequest{UserId: 1})
 	require.NoError(t, err)

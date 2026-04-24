@@ -40,7 +40,7 @@ func (s *stubPortfolioClient) SetPublicAmount(ctx context.Context, in *pb.SetPub
 // ---- GetPortfolio ----
 
 func TestGetPortfolio_NoToken(t *testing.T) {
-	w := serveHandlerFull(GetPortfolio(&stubPortfolioClient{}), "GET", "/portfolio", "/portfolio", "", "")
+	w := serveHandlerFull(GetPortfolio(&stubPortfolioClient{}, "EMPLOYEE"), "GET", "/portfolio", "/portfolio", "", "")
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
@@ -50,7 +50,7 @@ func TestGetPortfolio_GrpcError(t *testing.T) {
 			return nil, fmt.Errorf("portfolio service down")
 		},
 	}
-	w := serveHandlerFull(GetPortfolio(client), "GET", "/portfolio", "/portfolio", "", makeClientToken())
+	w := serveHandlerFull(GetPortfolio(client, "EMPLOYEE"), "GET", "/portfolio", "/portfolio", "", makeClientToken())
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
@@ -60,14 +60,14 @@ func TestGetPortfolio_Happy(t *testing.T) {
 			return &pb.GetPortfolioResponse{Entries: []*pb.PortfolioEntry{}}, nil
 		},
 	}
-	w := serveHandlerFull(GetPortfolio(client), "GET", "/portfolio", "/portfolio", "", makeClientToken())
+	w := serveHandlerFull(GetPortfolio(client, "EMPLOYEE"), "GET", "/portfolio", "/portfolio", "", makeClientToken())
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
 // ---- GetProfit ----
 
 func TestGetProfit_NoToken(t *testing.T) {
-	w := serveHandlerFull(GetProfit(&stubPortfolioClient{}), "GET", "/portfolio/profit", "/portfolio/profit", "", "")
+	w := serveHandlerFull(GetProfit(&stubPortfolioClient{}, "EMPLOYEE"), "GET", "/portfolio/profit", "/portfolio/profit", "", "")
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
@@ -77,7 +77,7 @@ func TestGetProfit_GrpcError(t *testing.T) {
 			return nil, fmt.Errorf("portfolio service down")
 		},
 	}
-	w := serveHandlerFull(GetProfit(client), "GET", "/portfolio/profit", "/portfolio/profit", "", makeClientToken())
+	w := serveHandlerFull(GetProfit(client, "EMPLOYEE"), "GET", "/portfolio/profit", "/portfolio/profit", "", makeClientToken())
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
@@ -87,6 +87,6 @@ func TestGetProfit_Happy(t *testing.T) {
 			return &pb.GetProfitResponse{TotalProfit: 12500.50}, nil
 		},
 	}
-	w := serveHandlerFull(GetProfit(client), "GET", "/portfolio/profit", "/portfolio/profit", "", makeClientToken())
+	w := serveHandlerFull(GetProfit(client, "EMPLOYEE"), "GET", "/portfolio/profit", "/portfolio/profit", "", makeClientToken())
 	assert.Equal(t, http.StatusOK, w.Code)
 }
