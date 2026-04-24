@@ -49,7 +49,11 @@ func userTypeFromCtx(ctx context.Context) string {
 }
 
 func (s *PortfolioServer) GetPortfolio(ctx context.Context, req *pb.GetPortfolioRequest) (*pb.GetPortfolioResponse, error) {
-	entries, err := repository.GetHoldings(ctx, s.DB, req.UserId, userTypeFromCtx(ctx))
+	userType := req.UserType
+	if userType == "" {
+		userType = userTypeFromCtx(ctx)
+	}
+	entries, err := repository.GetHoldings(ctx, s.DB, req.UserId, userType)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "get holdings: %v", err)
 	}
@@ -83,7 +87,11 @@ func (s *PortfolioServer) GetPortfolio(ctx context.Context, req *pb.GetPortfolio
 }
 
 func (s *PortfolioServer) GetProfit(ctx context.Context, req *pb.GetProfitRequest) (*pb.GetProfitResponse, error) {
-	entries, err := repository.GetHoldings(ctx, s.DB, req.UserId, userTypeFromCtx(ctx))
+	userType := req.UserType
+	if userType == "" {
+		userType = userTypeFromCtx(ctx)
+	}
+	entries, err := repository.GetHoldings(ctx, s.DB, req.UserId, userType)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "get holdings: %v", err)
 	}
