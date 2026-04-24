@@ -17,6 +17,7 @@ import (
 	pb_portfolio "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/portfolio"
 	pb_sec "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/securities"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	grpcstatus "google.golang.org/grpc/status"
 )
 
@@ -78,7 +79,8 @@ func (s *OrderServer) CreateOrder(ctx context.Context, req *pb.CreateOrderReques
 
 	// 3c. For SELL orders, reject if the user holds fewer securities than requested.
 	if req.Direction == "SELL" {
-		portfolioResp, err := s.PortfolioClient.GetPortfolio(ctx, &pb_portfolio.GetPortfolioRequest{
+		portfolioCtx := metadata.NewOutgoingContext(ctx, metadata.Pairs("user-type", req.UserType))
+		portfolioResp, err := s.PortfolioClient.GetPortfolio(portfolioCtx, &pb_portfolio.GetPortfolioRequest{
 			UserId:   req.UserId,
 			UserType: req.UserType,
 		})
