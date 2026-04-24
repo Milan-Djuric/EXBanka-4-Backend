@@ -150,7 +150,7 @@ EMP_PID=$!
 DB_URL="$AUTH_DB_URL" go run "$REPO_ROOT/services/auth-service/" &
 AUTH_PID=$!
 
-go run "$REPO_ROOT/services/api-gateway/" &
+PORTFOLIO_SERVICE_ADDR=localhost:50062 go run "$REPO_ROOT/services/api-gateway/" &
 GW_PID=$!
 
 (cd "$REPO_ROOT/services/email-service" && go run .) &

@@ -71,8 +71,9 @@ func TestUpdateHolding_Buy_ExistingEntry_WeightedAvg(t *testing.T) {
 	srv, mock := newServer(t)
 
 	// ON CONFLICT DO UPDATE — same INSERT statement handles both cases
+	// sharedUserID returns 0 for EMPLOYEE so all actuaries share one portfolio.
 	mock.ExpectExec(`INSERT INTO portfolio_entry`).
-		WithArgs(int64(2), "EMPLOYEE", int64(20), int32(3), float64(200.0), int64(99)).
+		WithArgs(int64(0), "EMPLOYEE", int64(20), int32(3), float64(200.0), int64(99)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	_, err := srv.UpdateHolding(context.Background(), &pb.UpdateHoldingRequest{
