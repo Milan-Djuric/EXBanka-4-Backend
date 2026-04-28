@@ -54,6 +54,9 @@ func main() {
 	// Snapshot daily prices + reset actuary limits at 23:59 every day.
 	scheduler.ScheduleEOD(securitiesDB, os.Getenv("EMPLOYEE_SERVICE_ADDR"))
 
+	// Simulate market price fluctuations every minute when test mode is enabled.
+	scheduler.StartPriceSimulation(securitiesDB)
+
 	log.Printf("securities-service gRPC server listening on %s", grpcPort)
 	if err := srv.Serve(lis); err != nil {
 		log.Fatalf("gRPC serve error: %v", err)
