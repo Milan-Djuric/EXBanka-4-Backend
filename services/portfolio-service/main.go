@@ -39,6 +39,12 @@ func main() {
 	}
 	defer func() { _ = exchangeDB.Close() }()
 
+	securitiesDB, err := portfoliodb.Connect(os.Getenv("SECURITIES_DB_URL"))
+	if err != nil {
+		log.Fatalf("failed to connect to securities_db: %v", err)
+	}
+	defer func() { _ = securitiesDB.Close() }()
+
 	secConn, err := grpc.NewClient(os.Getenv("SECURITIES_SERVICE_ADDR"), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("failed to connect to securities-service: %v", err)
@@ -66,6 +72,7 @@ func main() {
 		DB:               db,
 		AccountDB:        accountDB,
 		ExchangeDB:       exchangeDB,
+		SecuritiesDB:     securitiesDB,
 		SecuritiesClient: securitiesClient,
 		ExchangeClient:   exchangeClient,
 	})
