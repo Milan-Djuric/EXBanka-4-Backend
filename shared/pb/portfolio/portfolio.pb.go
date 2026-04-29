@@ -31,6 +31,7 @@ type UpdateHoldingRequest struct {
 	Price         float64                `protobuf:"fixed64,5,opt,name=price,proto3" json:"price,omitempty"`       // price per unit at fill time
 	Direction     string                 `protobuf:"bytes,6,opt,name=direction,proto3" json:"direction,omitempty"` // BUY or SELL
 	AccountId     int64                  `protobuf:"varint,7,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	AssetType     string                 `protobuf:"bytes,8,opt,name=asset_type,json=assetType,proto3" json:"asset_type,omitempty"` // e.g. STOCK, FOREX_PAIR, FUTURES_CONTRACT, OPTION
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -112,6 +113,13 @@ func (x *UpdateHoldingRequest) GetAccountId() int64 {
 		return x.AccountId
 	}
 	return 0
+}
+
+func (x *UpdateHoldingRequest) GetAssetType() string {
+	if x != nil {
+		return x.AssetType
+	}
+	return ""
 }
 
 type UpdateHoldingResponse struct {
@@ -573,11 +581,432 @@ func (*SetPublicAmountResponse) Descriptor() ([]byte, []int) {
 	return file_portfolio_proto_rawDescGZIP(), []int{8}
 }
 
+// Tax RPCs (#157)
+type GetMyTaxRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	UserType      string                 `protobuf:"bytes,2,opt,name=user_type,json=userType,proto3" json:"user_type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetMyTaxRequest) Reset() {
+	*x = GetMyTaxRequest{}
+	mi := &file_portfolio_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetMyTaxRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetMyTaxRequest) ProtoMessage() {}
+
+func (x *GetMyTaxRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_portfolio_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetMyTaxRequest.ProtoReflect.Descriptor instead.
+func (*GetMyTaxRequest) Descriptor() ([]byte, []int) {
+	return file_portfolio_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *GetMyTaxRequest) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *GetMyTaxRequest) GetUserType() string {
+	if x != nil {
+		return x.UserType
+	}
+	return ""
+}
+
+type GetMyTaxResponse struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	PaidThisYear    float64                `protobuf:"fixed64,1,opt,name=paid_this_year,json=paidThisYear,proto3" json:"paid_this_year,omitempty"`
+	UnpaidThisMonth float64                `protobuf:"fixed64,2,opt,name=unpaid_this_month,json=unpaidThisMonth,proto3" json:"unpaid_this_month,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *GetMyTaxResponse) Reset() {
+	*x = GetMyTaxResponse{}
+	mi := &file_portfolio_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetMyTaxResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetMyTaxResponse) ProtoMessage() {}
+
+func (x *GetMyTaxResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_portfolio_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetMyTaxResponse.ProtoReflect.Descriptor instead.
+func (*GetMyTaxResponse) Descriptor() ([]byte, []int) {
+	return file_portfolio_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *GetMyTaxResponse) GetPaidThisYear() float64 {
+	if x != nil {
+		return x.PaidThisYear
+	}
+	return 0
+}
+
+func (x *GetMyTaxResponse) GetUnpaidThisMonth() float64 {
+	if x != nil {
+		return x.UnpaidThisMonth
+	}
+	return 0
+}
+
+type GetTaxListRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	UserTypeFilter string                 `protobuf:"bytes,1,opt,name=user_type_filter,json=userTypeFilter,proto3" json:"user_type_filter,omitempty"`
+	NameFilter     string                 `protobuf:"bytes,2,opt,name=name_filter,json=nameFilter,proto3" json:"name_filter,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *GetTaxListRequest) Reset() {
+	*x = GetTaxListRequest{}
+	mi := &file_portfolio_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTaxListRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTaxListRequest) ProtoMessage() {}
+
+func (x *GetTaxListRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_portfolio_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTaxListRequest.ProtoReflect.Descriptor instead.
+func (*GetTaxListRequest) Descriptor() ([]byte, []int) {
+	return file_portfolio_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *GetTaxListRequest) GetUserTypeFilter() string {
+	if x != nil {
+		return x.UserTypeFilter
+	}
+	return ""
+}
+
+func (x *GetTaxListRequest) GetNameFilter() string {
+	if x != nil {
+		return x.NameFilter
+	}
+	return ""
+}
+
+type TaxDebtEntry struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
+	DebtRsd       float64                `protobuf:"fixed64,3,opt,name=debt_rsd,json=debtRsd,proto3" json:"debt_rsd,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TaxDebtEntry) Reset() {
+	*x = TaxDebtEntry{}
+	mi := &file_portfolio_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TaxDebtEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TaxDebtEntry) ProtoMessage() {}
+
+func (x *TaxDebtEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_portfolio_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TaxDebtEntry.ProtoReflect.Descriptor instead.
+func (*TaxDebtEntry) Descriptor() ([]byte, []int) {
+	return file_portfolio_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *TaxDebtEntry) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *TaxDebtEntry) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *TaxDebtEntry) GetDebtRsd() float64 {
+	if x != nil {
+		return x.DebtRsd
+	}
+	return 0
+}
+
+type GetTaxListResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Entries       []*TaxDebtEntry        `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetTaxListResponse) Reset() {
+	*x = GetTaxListResponse{}
+	mi := &file_portfolio_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTaxListResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTaxListResponse) ProtoMessage() {}
+
+func (x *GetTaxListResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_portfolio_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTaxListResponse.ProtoReflect.Descriptor instead.
+func (*GetTaxListResponse) Descriptor() ([]byte, []int) {
+	return file_portfolio_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *GetTaxListResponse) GetEntries() []*TaxDebtEntry {
+	if x != nil {
+		return x.Entries
+	}
+	return nil
+}
+
+type CollectTaxRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CollectTaxRequest) Reset() {
+	*x = CollectTaxRequest{}
+	mi := &file_portfolio_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CollectTaxRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CollectTaxRequest) ProtoMessage() {}
+
+func (x *CollectTaxRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_portfolio_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CollectTaxRequest.ProtoReflect.Descriptor instead.
+func (*CollectTaxRequest) Descriptor() ([]byte, []int) {
+	return file_portfolio_proto_rawDescGZIP(), []int{14}
+}
+
+type CollectTaxResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CollectTaxResponse) Reset() {
+	*x = CollectTaxResponse{}
+	mi := &file_portfolio_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CollectTaxResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CollectTaxResponse) ProtoMessage() {}
+
+func (x *CollectTaxResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_portfolio_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CollectTaxResponse.ProtoReflect.Descriptor instead.
+func (*CollectTaxResponse) Descriptor() ([]byte, []int) {
+	return file_portfolio_proto_rawDescGZIP(), []int{15}
+}
+
+type CollectTaxForUserRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	UserType      string                 `protobuf:"bytes,2,opt,name=user_type,json=userType,proto3" json:"user_type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CollectTaxForUserRequest) Reset() {
+	*x = CollectTaxForUserRequest{}
+	mi := &file_portfolio_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CollectTaxForUserRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CollectTaxForUserRequest) ProtoMessage() {}
+
+func (x *CollectTaxForUserRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_portfolio_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CollectTaxForUserRequest.ProtoReflect.Descriptor instead.
+func (*CollectTaxForUserRequest) Descriptor() ([]byte, []int) {
+	return file_portfolio_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *CollectTaxForUserRequest) GetUserId() int64 {
+	if x != nil {
+		return x.UserId
+	}
+	return 0
+}
+
+func (x *CollectTaxForUserRequest) GetUserType() string {
+	if x != nil {
+		return x.UserType
+	}
+	return ""
+}
+
+type CollectTaxForUserResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CollectTaxForUserResponse) Reset() {
+	*x = CollectTaxForUserResponse{}
+	mi := &file_portfolio_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CollectTaxForUserResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CollectTaxForUserResponse) ProtoMessage() {}
+
+func (x *CollectTaxForUserResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_portfolio_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CollectTaxForUserResponse.ProtoReflect.Descriptor instead.
+func (*CollectTaxForUserResponse) Descriptor() ([]byte, []int) {
+	return file_portfolio_proto_rawDescGZIP(), []int{17}
+}
+
 var File_portfolio_proto protoreflect.FileDescriptor
 
 const file_portfolio_proto_rawDesc = "" +
 	"\n" +
-	"\x0fportfolio.proto\x12\tportfolio\"\xda\x01\n" +
+	"\x0fportfolio.proto\x12\tportfolio\"\xf9\x01\n" +
 	"\x14UpdateHoldingRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x1b\n" +
 	"\tuser_type\x18\x02 \x01(\tR\buserType\x12\x1d\n" +
@@ -587,7 +1016,9 @@ const file_portfolio_proto_rawDesc = "" +
 	"\x05price\x18\x05 \x01(\x01R\x05price\x12\x1c\n" +
 	"\tdirection\x18\x06 \x01(\tR\tdirection\x12\x1d\n" +
 	"\n" +
-	"account_id\x18\a \x01(\x03R\taccountId\"\x17\n" +
+	"account_id\x18\a \x01(\x03R\taccountId\x12\x1d\n" +
+	"\n" +
+	"asset_type\x18\b \x01(\tR\tassetType\"\x17\n" +
 	"\x15UpdateHoldingResponse\"K\n" +
 	"\x13GetPortfolioRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x1b\n" +
@@ -621,12 +1052,40 @@ const file_portfolio_proto_rawDesc = "" +
 	"\n" +
 	"listing_id\x18\x02 \x01(\x03R\tlistingId\x12\x16\n" +
 	"\x06amount\x18\x03 \x01(\x05R\x06amount\"\x19\n" +
-	"\x17SetPublicAmountResponse2\xd9\x02\n" +
+	"\x17SetPublicAmountResponse\"G\n" +
+	"\x0fGetMyTaxRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x1b\n" +
+	"\tuser_type\x18\x02 \x01(\tR\buserType\"d\n" +
+	"\x10GetMyTaxResponse\x12$\n" +
+	"\x0epaid_this_year\x18\x01 \x01(\x01R\fpaidThisYear\x12*\n" +
+	"\x11unpaid_this_month\x18\x02 \x01(\x01R\x0funpaidThisMonth\"^\n" +
+	"\x11GetTaxListRequest\x12(\n" +
+	"\x10user_type_filter\x18\x01 \x01(\tR\x0euserTypeFilter\x12\x1f\n" +
+	"\vname_filter\x18\x02 \x01(\tR\n" +
+	"nameFilter\"V\n" +
+	"\fTaxDebtEntry\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x12\n" +
+	"\x04type\x18\x02 \x01(\tR\x04type\x12\x19\n" +
+	"\bdebt_rsd\x18\x03 \x01(\x01R\adebtRsd\"G\n" +
+	"\x12GetTaxListResponse\x121\n" +
+	"\aentries\x18\x01 \x03(\v2\x17.portfolio.TaxDebtEntryR\aentries\"\x13\n" +
+	"\x11CollectTaxRequest\"\x14\n" +
+	"\x12CollectTaxResponse\"P\n" +
+	"\x18CollectTaxForUserRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x1b\n" +
+	"\tuser_type\x18\x02 \x01(\tR\buserType\"\x1b\n" +
+	"\x19CollectTaxForUserResponse2\x94\x05\n" +
 	"\x10PortfolioService\x12R\n" +
 	"\rUpdateHolding\x12\x1f.portfolio.UpdateHoldingRequest\x1a .portfolio.UpdateHoldingResponse\x12O\n" +
 	"\fGetPortfolio\x12\x1e.portfolio.GetPortfolioRequest\x1a\x1f.portfolio.GetPortfolioResponse\x12F\n" +
 	"\tGetProfit\x12\x1b.portfolio.GetProfitRequest\x1a\x1c.portfolio.GetProfitResponse\x12X\n" +
-	"\x0fSetPublicAmount\x12!.portfolio.SetPublicAmountRequest\x1a\".portfolio.SetPublicAmountResponseB>Z<github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/portfoliob\x06proto3"
+	"\x0fSetPublicAmount\x12!.portfolio.SetPublicAmountRequest\x1a\".portfolio.SetPublicAmountResponse\x12C\n" +
+	"\bGetMyTax\x12\x1a.portfolio.GetMyTaxRequest\x1a\x1b.portfolio.GetMyTaxResponse\x12I\n" +
+	"\n" +
+	"GetTaxList\x12\x1c.portfolio.GetTaxListRequest\x1a\x1d.portfolio.GetTaxListResponse\x12I\n" +
+	"\n" +
+	"CollectTax\x12\x1c.portfolio.CollectTaxRequest\x1a\x1d.portfolio.CollectTaxResponse\x12^\n" +
+	"\x11CollectTaxForUser\x12#.portfolio.CollectTaxForUserRequest\x1a$.portfolio.CollectTaxForUserResponseB>Z<github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/portfoliob\x06proto3"
 
 var (
 	file_portfolio_proto_rawDescOnce sync.Once
@@ -640,33 +1099,51 @@ func file_portfolio_proto_rawDescGZIP() []byte {
 	return file_portfolio_proto_rawDescData
 }
 
-var file_portfolio_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_portfolio_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_portfolio_proto_goTypes = []any{
-	(*UpdateHoldingRequest)(nil),    // 0: portfolio.UpdateHoldingRequest
-	(*UpdateHoldingResponse)(nil),   // 1: portfolio.UpdateHoldingResponse
-	(*GetPortfolioRequest)(nil),     // 2: portfolio.GetPortfolioRequest
-	(*PortfolioEntry)(nil),          // 3: portfolio.PortfolioEntry
-	(*GetPortfolioResponse)(nil),    // 4: portfolio.GetPortfolioResponse
-	(*GetProfitRequest)(nil),        // 5: portfolio.GetProfitRequest
-	(*GetProfitResponse)(nil),       // 6: portfolio.GetProfitResponse
-	(*SetPublicAmountRequest)(nil),  // 7: portfolio.SetPublicAmountRequest
-	(*SetPublicAmountResponse)(nil), // 8: portfolio.SetPublicAmountResponse
+	(*UpdateHoldingRequest)(nil),      // 0: portfolio.UpdateHoldingRequest
+	(*UpdateHoldingResponse)(nil),     // 1: portfolio.UpdateHoldingResponse
+	(*GetPortfolioRequest)(nil),       // 2: portfolio.GetPortfolioRequest
+	(*PortfolioEntry)(nil),            // 3: portfolio.PortfolioEntry
+	(*GetPortfolioResponse)(nil),      // 4: portfolio.GetPortfolioResponse
+	(*GetProfitRequest)(nil),          // 5: portfolio.GetProfitRequest
+	(*GetProfitResponse)(nil),         // 6: portfolio.GetProfitResponse
+	(*SetPublicAmountRequest)(nil),    // 7: portfolio.SetPublicAmountRequest
+	(*SetPublicAmountResponse)(nil),   // 8: portfolio.SetPublicAmountResponse
+	(*GetMyTaxRequest)(nil),           // 9: portfolio.GetMyTaxRequest
+	(*GetMyTaxResponse)(nil),          // 10: portfolio.GetMyTaxResponse
+	(*GetTaxListRequest)(nil),         // 11: portfolio.GetTaxListRequest
+	(*TaxDebtEntry)(nil),              // 12: portfolio.TaxDebtEntry
+	(*GetTaxListResponse)(nil),        // 13: portfolio.GetTaxListResponse
+	(*CollectTaxRequest)(nil),         // 14: portfolio.CollectTaxRequest
+	(*CollectTaxResponse)(nil),        // 15: portfolio.CollectTaxResponse
+	(*CollectTaxForUserRequest)(nil),  // 16: portfolio.CollectTaxForUserRequest
+	(*CollectTaxForUserResponse)(nil), // 17: portfolio.CollectTaxForUserResponse
 }
 var file_portfolio_proto_depIdxs = []int32{
-	3, // 0: portfolio.GetPortfolioResponse.entries:type_name -> portfolio.PortfolioEntry
-	0, // 1: portfolio.PortfolioService.UpdateHolding:input_type -> portfolio.UpdateHoldingRequest
-	2, // 2: portfolio.PortfolioService.GetPortfolio:input_type -> portfolio.GetPortfolioRequest
-	5, // 3: portfolio.PortfolioService.GetProfit:input_type -> portfolio.GetProfitRequest
-	7, // 4: portfolio.PortfolioService.SetPublicAmount:input_type -> portfolio.SetPublicAmountRequest
-	1, // 5: portfolio.PortfolioService.UpdateHolding:output_type -> portfolio.UpdateHoldingResponse
-	4, // 6: portfolio.PortfolioService.GetPortfolio:output_type -> portfolio.GetPortfolioResponse
-	6, // 7: portfolio.PortfolioService.GetProfit:output_type -> portfolio.GetProfitResponse
-	8, // 8: portfolio.PortfolioService.SetPublicAmount:output_type -> portfolio.SetPublicAmountResponse
-	5, // [5:9] is the sub-list for method output_type
-	1, // [1:5] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	3,  // 0: portfolio.GetPortfolioResponse.entries:type_name -> portfolio.PortfolioEntry
+	12, // 1: portfolio.GetTaxListResponse.entries:type_name -> portfolio.TaxDebtEntry
+	0,  // 2: portfolio.PortfolioService.UpdateHolding:input_type -> portfolio.UpdateHoldingRequest
+	2,  // 3: portfolio.PortfolioService.GetPortfolio:input_type -> portfolio.GetPortfolioRequest
+	5,  // 4: portfolio.PortfolioService.GetProfit:input_type -> portfolio.GetProfitRequest
+	7,  // 5: portfolio.PortfolioService.SetPublicAmount:input_type -> portfolio.SetPublicAmountRequest
+	9,  // 6: portfolio.PortfolioService.GetMyTax:input_type -> portfolio.GetMyTaxRequest
+	11, // 7: portfolio.PortfolioService.GetTaxList:input_type -> portfolio.GetTaxListRequest
+	14, // 8: portfolio.PortfolioService.CollectTax:input_type -> portfolio.CollectTaxRequest
+	16, // 9: portfolio.PortfolioService.CollectTaxForUser:input_type -> portfolio.CollectTaxForUserRequest
+	1,  // 10: portfolio.PortfolioService.UpdateHolding:output_type -> portfolio.UpdateHoldingResponse
+	4,  // 11: portfolio.PortfolioService.GetPortfolio:output_type -> portfolio.GetPortfolioResponse
+	6,  // 12: portfolio.PortfolioService.GetProfit:output_type -> portfolio.GetProfitResponse
+	8,  // 13: portfolio.PortfolioService.SetPublicAmount:output_type -> portfolio.SetPublicAmountResponse
+	10, // 14: portfolio.PortfolioService.GetMyTax:output_type -> portfolio.GetMyTaxResponse
+	13, // 15: portfolio.PortfolioService.GetTaxList:output_type -> portfolio.GetTaxListResponse
+	15, // 16: portfolio.PortfolioService.CollectTax:output_type -> portfolio.CollectTaxResponse
+	17, // 17: portfolio.PortfolioService.CollectTaxForUser:output_type -> portfolio.CollectTaxForUserResponse
+	10, // [10:18] is the sub-list for method output_type
+	2,  // [2:10] is the sub-list for method input_type
+	2,  // [2:2] is the sub-list for extension type_name
+	2,  // [2:2] is the sub-list for extension extendee
+	0,  // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_portfolio_proto_init() }
@@ -680,7 +1157,7 @@ func file_portfolio_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_portfolio_proto_rawDesc), len(file_portfolio_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

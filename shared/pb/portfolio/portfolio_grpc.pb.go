@@ -19,10 +19,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	PortfolioService_UpdateHolding_FullMethodName   = "/portfolio.PortfolioService/UpdateHolding"
-	PortfolioService_GetPortfolio_FullMethodName    = "/portfolio.PortfolioService/GetPortfolio"
-	PortfolioService_GetProfit_FullMethodName       = "/portfolio.PortfolioService/GetProfit"
-	PortfolioService_SetPublicAmount_FullMethodName = "/portfolio.PortfolioService/SetPublicAmount"
+	PortfolioService_UpdateHolding_FullMethodName     = "/portfolio.PortfolioService/UpdateHolding"
+	PortfolioService_GetPortfolio_FullMethodName      = "/portfolio.PortfolioService/GetPortfolio"
+	PortfolioService_GetProfit_FullMethodName         = "/portfolio.PortfolioService/GetProfit"
+	PortfolioService_SetPublicAmount_FullMethodName   = "/portfolio.PortfolioService/SetPublicAmount"
+	PortfolioService_GetMyTax_FullMethodName          = "/portfolio.PortfolioService/GetMyTax"
+	PortfolioService_GetTaxList_FullMethodName        = "/portfolio.PortfolioService/GetTaxList"
+	PortfolioService_CollectTax_FullMethodName        = "/portfolio.PortfolioService/CollectTax"
+	PortfolioService_CollectTaxForUser_FullMethodName = "/portfolio.PortfolioService/CollectTaxForUser"
 )
 
 // PortfolioServiceClient is the client API for PortfolioService service.
@@ -33,6 +37,10 @@ type PortfolioServiceClient interface {
 	GetPortfolio(ctx context.Context, in *GetPortfolioRequest, opts ...grpc.CallOption) (*GetPortfolioResponse, error)
 	GetProfit(ctx context.Context, in *GetProfitRequest, opts ...grpc.CallOption) (*GetProfitResponse, error)
 	SetPublicAmount(ctx context.Context, in *SetPublicAmountRequest, opts ...grpc.CallOption) (*SetPublicAmountResponse, error)
+	GetMyTax(ctx context.Context, in *GetMyTaxRequest, opts ...grpc.CallOption) (*GetMyTaxResponse, error)
+	GetTaxList(ctx context.Context, in *GetTaxListRequest, opts ...grpc.CallOption) (*GetTaxListResponse, error)
+	CollectTax(ctx context.Context, in *CollectTaxRequest, opts ...grpc.CallOption) (*CollectTaxResponse, error)
+	CollectTaxForUser(ctx context.Context, in *CollectTaxForUserRequest, opts ...grpc.CallOption) (*CollectTaxForUserResponse, error)
 }
 
 type portfolioServiceClient struct {
@@ -83,6 +91,46 @@ func (c *portfolioServiceClient) SetPublicAmount(ctx context.Context, in *SetPub
 	return out, nil
 }
 
+func (c *portfolioServiceClient) GetMyTax(ctx context.Context, in *GetMyTaxRequest, opts ...grpc.CallOption) (*GetMyTaxResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetMyTaxResponse)
+	err := c.cc.Invoke(ctx, PortfolioService_GetMyTax_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *portfolioServiceClient) GetTaxList(ctx context.Context, in *GetTaxListRequest, opts ...grpc.CallOption) (*GetTaxListResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetTaxListResponse)
+	err := c.cc.Invoke(ctx, PortfolioService_GetTaxList_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *portfolioServiceClient) CollectTax(ctx context.Context, in *CollectTaxRequest, opts ...grpc.CallOption) (*CollectTaxResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CollectTaxResponse)
+	err := c.cc.Invoke(ctx, PortfolioService_CollectTax_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *portfolioServiceClient) CollectTaxForUser(ctx context.Context, in *CollectTaxForUserRequest, opts ...grpc.CallOption) (*CollectTaxForUserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CollectTaxForUserResponse)
+	err := c.cc.Invoke(ctx, PortfolioService_CollectTaxForUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PortfolioServiceServer is the server API for PortfolioService service.
 // All implementations must embed UnimplementedPortfolioServiceServer
 // for forward compatibility.
@@ -91,6 +139,10 @@ type PortfolioServiceServer interface {
 	GetPortfolio(context.Context, *GetPortfolioRequest) (*GetPortfolioResponse, error)
 	GetProfit(context.Context, *GetProfitRequest) (*GetProfitResponse, error)
 	SetPublicAmount(context.Context, *SetPublicAmountRequest) (*SetPublicAmountResponse, error)
+	GetMyTax(context.Context, *GetMyTaxRequest) (*GetMyTaxResponse, error)
+	GetTaxList(context.Context, *GetTaxListRequest) (*GetTaxListResponse, error)
+	CollectTax(context.Context, *CollectTaxRequest) (*CollectTaxResponse, error)
+	CollectTaxForUser(context.Context, *CollectTaxForUserRequest) (*CollectTaxForUserResponse, error)
 	mustEmbedUnimplementedPortfolioServiceServer()
 }
 
@@ -112,6 +164,18 @@ func (UnimplementedPortfolioServiceServer) GetProfit(context.Context, *GetProfit
 }
 func (UnimplementedPortfolioServiceServer) SetPublicAmount(context.Context, *SetPublicAmountRequest) (*SetPublicAmountResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetPublicAmount not implemented")
+}
+func (UnimplementedPortfolioServiceServer) GetMyTax(context.Context, *GetMyTaxRequest) (*GetMyTaxResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetMyTax not implemented")
+}
+func (UnimplementedPortfolioServiceServer) GetTaxList(context.Context, *GetTaxListRequest) (*GetTaxListResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetTaxList not implemented")
+}
+func (UnimplementedPortfolioServiceServer) CollectTax(context.Context, *CollectTaxRequest) (*CollectTaxResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CollectTax not implemented")
+}
+func (UnimplementedPortfolioServiceServer) CollectTaxForUser(context.Context, *CollectTaxForUserRequest) (*CollectTaxForUserResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CollectTaxForUser not implemented")
 }
 func (UnimplementedPortfolioServiceServer) mustEmbedUnimplementedPortfolioServiceServer() {}
 func (UnimplementedPortfolioServiceServer) testEmbeddedByValue()                          {}
@@ -206,6 +270,78 @@ func _PortfolioService_SetPublicAmount_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PortfolioService_GetMyTax_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMyTaxRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PortfolioServiceServer).GetMyTax(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PortfolioService_GetMyTax_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PortfolioServiceServer).GetMyTax(ctx, req.(*GetMyTaxRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PortfolioService_GetTaxList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTaxListRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PortfolioServiceServer).GetTaxList(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PortfolioService_GetTaxList_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PortfolioServiceServer).GetTaxList(ctx, req.(*GetTaxListRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PortfolioService_CollectTax_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CollectTaxRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PortfolioServiceServer).CollectTax(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PortfolioService_CollectTax_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PortfolioServiceServer).CollectTax(ctx, req.(*CollectTaxRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PortfolioService_CollectTaxForUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CollectTaxForUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PortfolioServiceServer).CollectTaxForUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PortfolioService_CollectTaxForUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PortfolioServiceServer).CollectTaxForUser(ctx, req.(*CollectTaxForUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PortfolioService_ServiceDesc is the grpc.ServiceDesc for PortfolioService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -228,6 +364,22 @@ var PortfolioService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetPublicAmount",
 			Handler:    _PortfolioService_SetPublicAmount_Handler,
+		},
+		{
+			MethodName: "GetMyTax",
+			Handler:    _PortfolioService_GetMyTax_Handler,
+		},
+		{
+			MethodName: "GetTaxList",
+			Handler:    _PortfolioService_GetTaxList_Handler,
+		},
+		{
+			MethodName: "CollectTax",
+			Handler:    _PortfolioService_CollectTax_Handler,
+		},
+		{
+			MethodName: "CollectTaxForUser",
+			Handler:    _PortfolioService_CollectTaxForUser_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

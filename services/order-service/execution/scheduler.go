@@ -212,6 +212,7 @@ func (s *Scheduler) executeOrder(order models.Order) {
 				Price:     pricePerUnit,
 				Direction: order.Direction,
 				AccountId: order.AccountID,
+				AssetType: listing.Type,
 			})
 			if err != nil {
 				log.Printf("order-scheduler: portfolio update error for order %d: %v", order.ID, err)

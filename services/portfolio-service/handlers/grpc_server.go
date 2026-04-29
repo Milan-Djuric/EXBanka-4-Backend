@@ -3,8 +3,11 @@ package handlers
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/RAF-SI-2025/EXBanka-4-Backend/services/portfolio-service/repository"
+	taxcalc "github.com/RAF-SI-2025/EXBanka-4-Backend/services/portfolio-service/tax"
+	pb_ex "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/exchange"
 	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/portfolio"
 	pb_sec "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/securities"
 	"google.golang.org/grpc"
@@ -21,7 +24,9 @@ type SecurityPriceFetcher interface {
 type PortfolioServer struct {
 	pb.UnimplementedPortfolioServiceServer
 	DB               *sql.DB
+	AccountDB        *sql.DB
 	SecuritiesClient SecurityPriceFetcher
+	ExchangeClient   pb_ex.ExchangeServiceClient
 }
 
 func (s *PortfolioServer) UpdateHolding(ctx context.Context, req *pb.UpdateHoldingRequest) (*pb.UpdateHoldingResponse, error) {
@@ -32,10 +37,19 @@ func (s *PortfolioServer) UpdateHolding(ctx context.Context, req *pb.UpdateHoldi
 		return nil, status.Error(codes.InvalidArgument, "direction must be BUY or SELL")
 	}
 
-	err := repository.UpsertHolding(ctx, s.DB, req.UserId, req.UserType, req.ListingId, req.AccountId, req.Quantity, req.Price, req.Direction)
+	buyPrice, err := repository.UpsertHolding(ctx, s.DB, req.UserId, req.UserType, req.ListingId, req.AccountId, req.Quantity, req.Price, req.Direction)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "upsert holding: %v", err)
 	}
+
+	if req.Direction == "SELL" && req.AssetType == "STOCK" && buyPrice > 0 {
+		profit := (req.Price - buyPrice) * float64(req.Quantity)
+		if taxOwed := taxcalc.CalculateTax(profit); taxOwed > 0 {
+			now := time.Now()
+			_ = repository.InsertTaxRecord(ctx, s.DB, req.UserId, req.UserType, taxOwed, int(now.Month()), now.Year())
+		}
+	}
+
 	return &pb.UpdateHoldingResponse{}, nil
 }
 
@@ -111,4 +125,51 @@ func (s *PortfolioServer) GetProfit(ctx context.Context, req *pb.GetProfitReques
 
 func (s *PortfolioServer) SetPublicAmount(_ context.Context, _ *pb.SetPublicAmountRequest) (*pb.SetPublicAmountResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "implemented in issue #147")
+}
+
+func (s *PortfolioServer) GetMyTax(ctx context.Context, req *pb.GetMyTaxRequest) (*pb.GetMyTaxResponse, error) {
+	userType := req.UserType
+	if userType == "" {
+		userType = userTypeFromCtx(ctx)
+	}
+	now := time.Now()
+	paid, unpaid, err := repository.GetMyTax(ctx, s.DB, req.UserId, userType, now.Year(), int(now.Month()))
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "get my tax: %v", err)
+	}
+	return &pb.GetMyTaxResponse{PaidThisYear: paid, UnpaidThisMonth: unpaid}, nil
+}
+
+func (s *PortfolioServer) GetTaxList(ctx context.Context, _ *pb.GetTaxListRequest) (*pb.GetTaxListResponse, error) {
+	debts, err := repository.GetTaxDebtList(ctx, s.DB)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "get tax list: %v", err)
+	}
+	entries := make([]*pb.TaxDebtEntry, 0, len(debts))
+	for _, d := range debts {
+		entries = append(entries, &pb.TaxDebtEntry{
+			UserId:  d.UserID,
+			Type:    d.UserType,
+			DebtRsd: d.DebtRSD,
+		})
+	}
+	return &pb.GetTaxListResponse{Entries: entries}, nil
+}
+
+func (s *PortfolioServer) CollectTax(ctx context.Context, _ *pb.CollectTaxRequest) (*pb.CollectTaxResponse, error) {
+	if err := taxcalc.CollectUnpaid(ctx, s.DB, s.AccountDB, s.ExchangeClient, 0, ""); err != nil {
+		return nil, status.Errorf(codes.Internal, "collect tax: %v", err)
+	}
+	return &pb.CollectTaxResponse{}, nil
+}
+
+func (s *PortfolioServer) CollectTaxForUser(ctx context.Context, req *pb.CollectTaxForUserRequest) (*pb.CollectTaxForUserResponse, error) {
+	userType := req.UserType
+	if userType == "" {
+		userType = userTypeFromCtx(ctx)
+	}
+	if err := taxcalc.CollectUnpaid(ctx, s.DB, s.AccountDB, s.ExchangeClient, req.UserId, userType); err != nil {
+		return nil, status.Errorf(codes.Internal, "collect tax for user: %v", err)
+	}
+	return &pb.CollectTaxForUserResponse{}, nil
 }

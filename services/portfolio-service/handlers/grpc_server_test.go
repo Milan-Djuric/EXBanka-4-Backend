@@ -6,10 +6,10 @@ import (
 	"time"
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/portfolio"
 	pb_sec "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/securities"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 )
 
@@ -70,7 +70,6 @@ func TestUpdateHolding_Buy_NewEntry(t *testing.T) {
 func TestUpdateHolding_Buy_ExistingEntry_WeightedAvg(t *testing.T) {
 	srv, mock := newServer(t)
 
-	// ON CONFLICT DO UPDATE — same INSERT statement handles both cases
 	// sharedUserID returns 0 for EMPLOYEE so all actuaries share one portfolio.
 	mock.ExpectExec(`INSERT INTO portfolio_entry`).
 		WithArgs(int64(0), "EMPLOYEE", int64(20), int32(3), float64(200.0), int64(99)).
@@ -89,15 +88,22 @@ func TestUpdateHolding_Buy_ExistingEntry_WeightedAvg(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestUpdateHolding_Sell_Partial(t *testing.T) {
+func TestUpdateHolding_Sell_WithTax(t *testing.T) {
+	// buy at 100, sell at 150 → profit=50*2=100, tax=15
 	srv, mock := newServer(t)
 
+	mock.ExpectQuery(`SELECT buy_price FROM portfolio_entry`).
+		WithArgs(int64(1), "CLIENT", int64(10)).
+		WillReturnRows(sqlmock.NewRows([]string{"buy_price"}).AddRow(100.0))
 	mock.ExpectExec(`UPDATE portfolio_entry`).
 		WithArgs(int32(2), int64(1), "CLIENT", int64(10)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectExec(`DELETE FROM portfolio_entry`).
 		WithArgs(int64(1), "CLIENT", int64(10)).
 		WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec(`INSERT INTO tax_record`).
+		WithArgs(int64(1), "CLIENT", sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
+		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	_, err := srv.UpdateHolding(context.Background(), &pb.UpdateHoldingRequest{
 		UserId:    1,
@@ -106,14 +112,19 @@ func TestUpdateHolding_Sell_Partial(t *testing.T) {
 		Quantity:  2,
 		Price:     150.0,
 		Direction: "SELL",
+		AssetType: "STOCK",
 	})
 	require.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestUpdateHolding_Sell_Full(t *testing.T) {
+func TestUpdateHolding_Sell_Loss_NoTax(t *testing.T) {
+	// buy at 200, sell at 150 → loss, no tax record
 	srv, mock := newServer(t)
 
+	mock.ExpectQuery(`SELECT buy_price FROM portfolio_entry`).
+		WithArgs(int64(1), "CLIENT", int64(10)).
+		WillReturnRows(sqlmock.NewRows([]string{"buy_price"}).AddRow(200.0))
 	mock.ExpectExec(`UPDATE portfolio_entry`).
 		WithArgs(int32(5), int64(1), "CLIENT", int64(10)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
@@ -128,6 +139,34 @@ func TestUpdateHolding_Sell_Full(t *testing.T) {
 		Quantity:  5,
 		Price:     150.0,
 		Direction: "SELL",
+		AssetType: "STOCK",
+	})
+	require.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestUpdateHolding_Sell_Forex_NoTax(t *testing.T) {
+	// profitable sell but FOREX_PAIR — no tax record should be inserted
+	srv, mock := newServer(t)
+
+	mock.ExpectQuery(`SELECT buy_price FROM portfolio_entry`).
+		WithArgs(int64(1), "CLIENT", int64(10)).
+		WillReturnRows(sqlmock.NewRows([]string{"buy_price"}).AddRow(100.0))
+	mock.ExpectExec(`UPDATE portfolio_entry`).
+		WithArgs(int32(2), int64(1), "CLIENT", int64(10)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(`DELETE FROM portfolio_entry`).
+		WithArgs(int64(1), "CLIENT", int64(10)).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+
+	_, err := srv.UpdateHolding(context.Background(), &pb.UpdateHoldingRequest{
+		UserId:    1,
+		UserType:  "CLIENT",
+		ListingId: 10,
+		Quantity:  2,
+		Price:     150.0,
+		Direction: "SELL",
+		AssetType: "FOREX_PAIR",
 	})
 	require.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -186,9 +225,6 @@ func TestGetPortfolio_WithPriceEnrichment(t *testing.T) {
 // ── GetProfit ─────────────────────────────────────────────────────────────────
 
 func TestGetProfit_HappyPath(t *testing.T) {
-	// Two holdings: AAPL bought at 150 (5 shares, current 200) = +250
-	//               MSFT bought at 300 (2 shares, current 280) = -40
-	// total profit = 210
 	sec := &mockSecClient{price: 200.0, ticker: "AAPL", assetType: "STOCK"}
 	srv, mock := newServerWithSec(t, sec)
 
@@ -202,7 +238,6 @@ func TestGetProfit_HappyPath(t *testing.T) {
 
 	mock.ExpectQuery(`SELECT`).WithArgs(int64(1), "").WillReturnRows(rows)
 
-	// Override mock to return different prices per call
 	callCount := 0
 	srv.SecuritiesClient = &callCountMockSecClient{
 		prices: []float64{200.0, 280.0},
@@ -247,6 +282,40 @@ func TestGetProfit_NegativeProfit(t *testing.T) {
 	require.NoError(t, err)
 	// (80 - 100) * 10 = -200
 	assert.InDelta(t, -200.0, resp.TotalProfit, 0.001)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// ── GetMyTax ──────────────────────────────────────────────────────────────────
+
+func TestGetMyTax_HappyPath(t *testing.T) {
+	srv, mock := newServer(t)
+
+	mock.ExpectQuery(`SELECT`).
+		WithArgs(int64(1), "CLIENT", sqlmock.AnyArg(), sqlmock.AnyArg()).
+		WillReturnRows(sqlmock.NewRows([]string{"paid", "unpaid"}).AddRow(4500.0, 2250.0))
+
+	resp, err := srv.GetMyTax(context.Background(), &pb.GetMyTaxRequest{UserId: 1, UserType: "CLIENT"})
+	require.NoError(t, err)
+	assert.InDelta(t, 4500.0, resp.PaidThisYear, 0.001)
+	assert.InDelta(t, 2250.0, resp.UnpaidThisMonth, 0.001)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+// ── GetTaxList ────────────────────────────────────────────────────────────────
+
+func TestGetTaxList_ReturnsDebts(t *testing.T) {
+	srv, mock := newServer(t)
+
+	mock.ExpectQuery(`SELECT user_id, user_type, SUM`).
+		WillReturnRows(sqlmock.NewRows([]string{"user_id", "user_type", "sum"}).
+			AddRow(int64(1), "CLIENT", 1500.0).
+			AddRow(int64(2), "EMPLOYEE", 750.0))
+
+	resp, err := srv.GetTaxList(context.Background(), &pb.GetTaxListRequest{})
+	require.NoError(t, err)
+	require.Len(t, resp.Entries, 2)
+	assert.Equal(t, int64(1), resp.Entries[0].UserId)
+	assert.InDelta(t, 1500.0, resp.Entries[0].DebtRsd, 0.001)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
