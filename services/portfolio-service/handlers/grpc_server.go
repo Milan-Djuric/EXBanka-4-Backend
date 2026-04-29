@@ -3,6 +3,8 @@ package handlers
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"log"
 	"time"
 
 	"github.com/RAF-SI-2025/EXBanka-4-Backend/services/portfolio-service/repository"
@@ -26,6 +28,7 @@ type PortfolioServer struct {
 	DB               *sql.DB
 	AccountDB        *sql.DB
 	ExchangeDB       *sql.DB
+	SecuritiesDB     *sql.DB
 	SecuritiesClient SecurityPriceFetcher
 	ExchangeClient   pb_ex.ExchangeServiceClient
 }
@@ -45,7 +48,12 @@ func (s *PortfolioServer) UpdateHolding(ctx context.Context, req *pb.UpdateHoldi
 
 	if req.Direction == "SELL" && req.AssetType == "STOCK" && buyPrice > 0 {
 		profit := (req.Price - buyPrice) * float64(req.Quantity)
-		if taxOwed := taxcalc.CalculateTax(profit); taxOwed > 0 {
+		profitRSD, err := s.convertToRSD(ctx, profit, req.ListingId)
+		if err != nil {
+			log.Printf("tax: currency conversion for listing %d: %v — using raw value", req.ListingId, err)
+			profitRSD = profit
+		}
+		if taxOwed := taxcalc.CalculateTax(profitRSD); taxOwed > 0 {
 			now := time.Now()
 			_ = repository.InsertTaxRecord(ctx, s.DB, req.UserId, req.UserType, taxOwed, int(now.Month()), now.Year())
 		}
@@ -173,4 +181,35 @@ func (s *PortfolioServer) CollectTaxForUser(ctx context.Context, req *pb.Collect
 		return nil, status.Errorf(codes.Internal, "collect tax for user: %v", err)
 	}
 	return &pb.CollectTaxForUserResponse{}, nil
+}
+
+// convertToRSD converts amount (denominated in the listing's exchange currency) to RSD
+// using the middle rate from the exchange service. Returns amount unchanged if currency is RSD.
+func (s *PortfolioServer) convertToRSD(ctx context.Context, amount float64, listingID int64) (float64, error) {
+	var currency string
+	if err := s.SecuritiesDB.QueryRowContext(ctx, `
+		SELECT e.currency
+		FROM listing l
+		JOIN stock_exchanges e ON l.exchange_id = e.id
+		WHERE l.id = $1`, listingID,
+	).Scan(&currency); err != nil {
+		return 0, fmt.Errorf("listing currency lookup: %w", err)
+	}
+
+	if currency == "RSD" {
+		return amount, nil
+	}
+
+	resp, err := s.ExchangeClient.GetExchangeRates(ctx, &pb_ex.GetExchangeRatesRequest{})
+	if err != nil {
+		return 0, fmt.Errorf("fetch exchange rates: %w", err)
+	}
+
+	for _, r := range resp.Rates {
+		if r.CurrencyCode == currency {
+			return taxcalc.ConvertToRSD(amount, r.MiddleRate), nil
+		}
+	}
+
+	return 0, fmt.Errorf("no middle rate found for currency %s", currency)
 }
