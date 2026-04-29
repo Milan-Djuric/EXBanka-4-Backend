@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	clientpb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/client"
@@ -57,6 +58,37 @@ func TestGetTaxList_GrpcError(t *testing.T) {
 		"GET", "/tax", "/tax", "", makeClientToken(),
 	)
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+func TestGetTaxList_NameFilter(t *testing.T) {
+	portfolioClient := &stubPortfolioClient{
+		getTaxListFn: func(_ context.Context, _ *pb.GetTaxListRequest, _ ...grpc.CallOption) (*pb.GetTaxListResponse, error) {
+			return &pb.GetTaxListResponse{
+				Entries: []*pb.TaxDebtEntry{
+					{UserId: 10, Type: "CLIENT", DebtRsd: 1500.0},
+					{UserId: 11, Type: "CLIENT", DebtRsd: 800.0},
+				},
+			}, nil
+		},
+	}
+	empClient := &stubEmpClient{
+		getByIdFn: func(_ context.Context, _ *pb_emp.GetEmployeeByIdRequest, _ ...grpc.CallOption) (*pb_emp.GetEmployeeByIdResponse, error) {
+			return nil, fmt.Errorf("not found")
+		},
+	}
+	cliClient := &stubClientSvcClient{
+		getByIdFn: func(_ context.Context, req *clientpb.GetClientByIdRequest, _ ...grpc.CallOption) (*clientpb.GetClientByIdResponse, error) {
+			names := map[int64]string{10: "Ana Anić", 11: "Bojan Bojić"}
+			parts := strings.SplitN(names[req.Id], " ", 2)
+			return &clientpb.GetClientByIdResponse{
+				Client: &clientpb.Client{FirstName: parts[0], LastName: parts[1]},
+			}, nil
+		},
+	}
+	w := serveHandlerFull(GetTaxList(portfolioClient, empClient, cliClient), "GET", "/tax", "/tax?name=ana", "", makeClientToken())
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "Ana Anić")
+	assert.NotContains(t, w.Body.String(), "Bojan")
 }
 
 func TestGetTaxList_Happy_ClientEntry(t *testing.T) {

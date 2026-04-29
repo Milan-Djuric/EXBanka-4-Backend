@@ -41,6 +41,10 @@ func TestCollectUnpaid_RSD_SingleRecord(t *testing.T) {
 	require.NoError(t, err)
 	defer accountDB.Close()
 
+	exchangeDB, eMock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer exchangeDB.Close()
+
 	// unpaid records query
 	pMock.ExpectQuery(`SELECT id, user_id, user_type, amount_rsd, month, year, is_paid, paid_at`).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "user_type", "amount_rsd", "month", "year", "is_paid", "paid_at"}).
@@ -51,10 +55,15 @@ func TestCollectUnpaid_RSD_SingleRecord(t *testing.T) {
 		WithArgs(int64(10), "CLIENT").
 		WillReturnRows(sqlmock.NewRows([]string{"account_id"}).AddRow(int64(42)))
 
-	// currency lookup in accountDB
-	aMock.ExpectQuery(`SELECT currency_code FROM accounts`).
+	// currency_id lookup in accountDB
+	aMock.ExpectQuery(`SELECT currency_id FROM accounts`).
 		WithArgs(int64(42)).
-		WillReturnRows(sqlmock.NewRows([]string{"currency_code"}).AddRow("RSD"))
+		WillReturnRows(sqlmock.NewRows([]string{"currency_id"}).AddRow(int64(1)))
+
+	// currency code lookup in exchangeDB
+	eMock.ExpectQuery(`SELECT code FROM currencies`).
+		WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows([]string{"code"}).AddRow("RSD"))
 
 	// deduct from account
 	aMock.ExpectExec(`UPDATE accounts`).
@@ -66,10 +75,16 @@ func TestCollectUnpaid_RSD_SingleRecord(t *testing.T) {
 		WithArgs(int64(1)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	err = CollectUnpaid(context.Background(), portfolioDB, accountDB, &mockExchangeClient{}, 0, "")
+	// credit state account
+	aMock.ExpectExec(`UPDATE accounts`).
+		WithArgs(100.0).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	err = CollectUnpaid(context.Background(), portfolioDB, accountDB, exchangeDB, &mockExchangeClient{}, 0, "")
 	require.NoError(t, err)
 	assert.NoError(t, pMock.ExpectationsWereMet())
 	assert.NoError(t, aMock.ExpectationsWereMet())
+	assert.NoError(t, eMock.ExpectationsWereMet())
 }
 
 func TestCollectUnpaid_ForeignCurrency_ConvertsToRSD(t *testing.T) {
@@ -80,6 +95,10 @@ func TestCollectUnpaid_ForeignCurrency_ConvertsToRSD(t *testing.T) {
 	accountDB, aMock, err := sqlmock.New()
 	require.NoError(t, err)
 	defer accountDB.Close()
+
+	exchangeDB, eMock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer exchangeDB.Close()
 
 	exchangeClient := &mockExchangeClient{
 		rates: []*pb_ex.ExchangeRate{
@@ -95,9 +114,15 @@ func TestCollectUnpaid_ForeignCurrency_ConvertsToRSD(t *testing.T) {
 		WithArgs(int64(11), "CLIENT").
 		WillReturnRows(sqlmock.NewRows([]string{"account_id"}).AddRow(int64(55)))
 
-	aMock.ExpectQuery(`SELECT currency_code FROM accounts`).
+	// currency_id lookup in accountDB
+	aMock.ExpectQuery(`SELECT currency_id FROM accounts`).
 		WithArgs(int64(55)).
-		WillReturnRows(sqlmock.NewRows([]string{"currency_code"}).AddRow("USD"))
+		WillReturnRows(sqlmock.NewRows([]string{"currency_id"}).AddRow(int64(4)))
+
+	// currency code lookup in exchangeDB
+	eMock.ExpectQuery(`SELECT code FROM currencies`).
+		WithArgs(int64(4)).
+		WillReturnRows(sqlmock.NewRows([]string{"code"}).AddRow("USD"))
 
 	// 220 RSD / 110 middle rate = 2 USD
 	aMock.ExpectExec(`UPDATE accounts`).
@@ -108,10 +133,16 @@ func TestCollectUnpaid_ForeignCurrency_ConvertsToRSD(t *testing.T) {
 		WithArgs(int64(2)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	err = CollectUnpaid(context.Background(), portfolioDB, accountDB, exchangeClient, 0, "")
+	// credit state account with original RSD amount
+	aMock.ExpectExec(`UPDATE accounts`).
+		WithArgs(220.0).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	err = CollectUnpaid(context.Background(), portfolioDB, accountDB, exchangeDB, exchangeClient, 0, "")
 	require.NoError(t, err)
 	assert.NoError(t, pMock.ExpectationsWereMet())
 	assert.NoError(t, aMock.ExpectationsWereMet())
+	assert.NoError(t, eMock.ExpectationsWereMet())
 }
 
 func TestCollectUnpaid_NoRecords(t *testing.T) {
@@ -123,10 +154,14 @@ func TestCollectUnpaid_NoRecords(t *testing.T) {
 	require.NoError(t, err)
 	defer accountDB.Close()
 
+	exchangeDB, _, err := sqlmock.New()
+	require.NoError(t, err)
+	defer exchangeDB.Close()
+
 	pMock.ExpectQuery(`SELECT id, user_id, user_type, amount_rsd, month, year, is_paid, paid_at`).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "user_id", "user_type", "amount_rsd", "month", "year", "is_paid", "paid_at"}))
 
-	err = CollectUnpaid(context.Background(), portfolioDB, accountDB, &mockExchangeClient{}, 0, "")
+	err = CollectUnpaid(context.Background(), portfolioDB, accountDB, exchangeDB, &mockExchangeClient{}, 0, "")
 	require.NoError(t, err)
 	assert.NoError(t, pMock.ExpectationsWereMet())
 }

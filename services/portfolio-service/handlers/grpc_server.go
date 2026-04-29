@@ -25,6 +25,7 @@ type PortfolioServer struct {
 	pb.UnimplementedPortfolioServiceServer
 	DB               *sql.DB
 	AccountDB        *sql.DB
+	ExchangeDB       *sql.DB
 	SecuritiesClient SecurityPriceFetcher
 	ExchangeClient   pb_ex.ExchangeServiceClient
 }
@@ -140,8 +141,8 @@ func (s *PortfolioServer) GetMyTax(ctx context.Context, req *pb.GetMyTaxRequest)
 	return &pb.GetMyTaxResponse{PaidThisYear: paid, UnpaidThisMonth: unpaid}, nil
 }
 
-func (s *PortfolioServer) GetTaxList(ctx context.Context, _ *pb.GetTaxListRequest) (*pb.GetTaxListResponse, error) {
-	debts, err := repository.GetTaxDebtList(ctx, s.DB)
+func (s *PortfolioServer) GetTaxList(ctx context.Context, req *pb.GetTaxListRequest) (*pb.GetTaxListResponse, error) {
+	debts, err := repository.GetTaxDebtList(ctx, s.DB, req.UserTypeFilter)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "get tax list: %v", err)
 	}
@@ -157,7 +158,7 @@ func (s *PortfolioServer) GetTaxList(ctx context.Context, _ *pb.GetTaxListReques
 }
 
 func (s *PortfolioServer) CollectTax(ctx context.Context, _ *pb.CollectTaxRequest) (*pb.CollectTaxResponse, error) {
-	if err := taxcalc.CollectUnpaid(ctx, s.DB, s.AccountDB, s.ExchangeClient, 0, ""); err != nil {
+	if err := taxcalc.CollectUnpaid(ctx, s.DB, s.AccountDB, s.ExchangeDB, s.ExchangeClient, 0, ""); err != nil {
 		return nil, status.Errorf(codes.Internal, "collect tax: %v", err)
 	}
 	return &pb.CollectTaxResponse{}, nil
@@ -168,7 +169,7 @@ func (s *PortfolioServer) CollectTaxForUser(ctx context.Context, req *pb.Collect
 	if userType == "" {
 		userType = userTypeFromCtx(ctx)
 	}
-	if err := taxcalc.CollectUnpaid(ctx, s.DB, s.AccountDB, s.ExchangeClient, req.UserId, userType); err != nil {
+	if err := taxcalc.CollectUnpaid(ctx, s.DB, s.AccountDB, s.ExchangeDB, s.ExchangeClient, req.UserId, userType); err != nil {
 		return nil, status.Errorf(codes.Internal, "collect tax for user: %v", err)
 	}
 	return &pb.CollectTaxForUserResponse{}, nil

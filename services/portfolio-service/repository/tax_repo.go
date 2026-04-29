@@ -67,14 +67,17 @@ func GetMyTax(ctx context.Context, db *sql.DB, userID int64, userType string, ye
 	return
 }
 
-// GetTaxDebtList returns all users with unpaid tax, summed in RSD.
-func GetTaxDebtList(ctx context.Context, db *sql.DB) ([]TaxDebt, error) {
+// GetTaxDebtList returns all users who have any tax record, with their total unpaid
+// debt in RSD. Pass userTypeFilter="" to return all user types.
+func GetTaxDebtList(ctx context.Context, db *sql.DB, userTypeFilter string) ([]TaxDebt, error) {
 	rows, err := db.QueryContext(ctx, `
-		SELECT user_id, user_type, SUM(amount_rsd)
+		SELECT user_id, user_type,
+		       SUM(CASE WHEN is_paid = FALSE THEN amount_rsd ELSE 0 END) AS debt_rsd
 		FROM tax_record
-		WHERE is_paid = FALSE
+		WHERE ($1 = '' OR user_type = $1)
 		GROUP BY user_id, user_type
-		ORDER BY user_id`)
+		ORDER BY user_id`,
+		userTypeFilter)
 	if err != nil {
 		return nil, err
 	}
