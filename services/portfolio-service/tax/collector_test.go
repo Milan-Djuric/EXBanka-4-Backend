@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
+	pb_ex "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/exchange"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	pb_ex "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/exchange"
 	"google.golang.org/grpc"
 )
 

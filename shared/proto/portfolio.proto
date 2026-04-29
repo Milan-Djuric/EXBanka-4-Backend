@@ -24,6 +24,7 @@ message UpdateHoldingRequest {
   double price      = 5; // price per unit at fill time
   string direction  = 6; // BUY or SELL
   int64  account_id = 7;
+  string asset_type  = 8; // e.g. STOCK, FOREX_PAIR, FUTURES_CONTRACT, OPTION
 }
 message UpdateHoldingResponse {}
 

@@ -31,6 +31,7 @@ type UpdateHoldingRequest struct {
 	Price         float64                `protobuf:"fixed64,5,opt,name=price,proto3" json:"price,omitempty"`       // price per unit at fill time
 	Direction     string                 `protobuf:"bytes,6,opt,name=direction,proto3" json:"direction,omitempty"` // BUY or SELL
 	AccountId     int64                  `protobuf:"varint,7,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	AssetType     string                 `protobuf:"bytes,8,opt,name=asset_type,json=assetType,proto3" json:"asset_type,omitempty"` // e.g. STOCK, FOREX_PAIR, FUTURES_CONTRACT, OPTION
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -112,6 +113,13 @@ func (x *UpdateHoldingRequest) GetAccountId() int64 {
 		return x.AccountId
 	}
 	return 0
+}
+
+func (x *UpdateHoldingRequest) GetAssetType() string {
+	if x != nil {
+		return x.AssetType
+	}
+	return ""
 }
 
 type UpdateHoldingResponse struct {
@@ -998,7 +1006,7 @@ var File_portfolio_proto protoreflect.FileDescriptor
 
 const file_portfolio_proto_rawDesc = "" +
 	"\n" +
-	"\x0fportfolio.proto\x12\tportfolio\"\xda\x01\n" +
+	"\x0fportfolio.proto\x12\tportfolio\"\xf9\x01\n" +
 	"\x14UpdateHoldingRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x1b\n" +
 	"\tuser_type\x18\x02 \x01(\tR\buserType\x12\x1d\n" +
@@ -1008,7 +1016,9 @@ const file_portfolio_proto_rawDesc = "" +
 	"\x05price\x18\x05 \x01(\x01R\x05price\x12\x1c\n" +
 	"\tdirection\x18\x06 \x01(\tR\tdirection\x12\x1d\n" +
 	"\n" +
-	"account_id\x18\a \x01(\x03R\taccountId\"\x17\n" +
+	"account_id\x18\a \x01(\x03R\taccountId\x12\x1d\n" +
+	"\n" +
+	"asset_type\x18\b \x01(\tR\tassetType\"\x17\n" +
 	"\x15UpdateHoldingResponse\"K\n" +
 	"\x13GetPortfolioRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x1b\n" +

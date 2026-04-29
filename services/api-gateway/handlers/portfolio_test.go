@@ -14,12 +14,12 @@ import (
 // ---- stub client ----
 
 type stubPortfolioClient struct {
-	getPortfolioFn       func(context.Context, *pb.GetPortfolioRequest, ...grpc.CallOption) (*pb.GetPortfolioResponse, error)
-	getProfitFn          func(context.Context, *pb.GetProfitRequest, ...grpc.CallOption) (*pb.GetProfitResponse, error)
-	getMyTaxFn           func(context.Context, *pb.GetMyTaxRequest, ...grpc.CallOption) (*pb.GetMyTaxResponse, error)
-	getTaxListFn         func(context.Context, *pb.GetTaxListRequest, ...grpc.CallOption) (*pb.GetTaxListResponse, error)
-	collectTaxFn         func(context.Context, *pb.CollectTaxRequest, ...grpc.CallOption) (*pb.CollectTaxResponse, error)
-	collectTaxForUserFn  func(context.Context, *pb.CollectTaxForUserRequest, ...grpc.CallOption) (*pb.CollectTaxForUserResponse, error)
+	getPortfolioFn      func(context.Context, *pb.GetPortfolioRequest, ...grpc.CallOption) (*pb.GetPortfolioResponse, error)
+	getProfitFn         func(context.Context, *pb.GetProfitRequest, ...grpc.CallOption) (*pb.GetProfitResponse, error)
+	getMyTaxFn          func(context.Context, *pb.GetMyTaxRequest, ...grpc.CallOption) (*pb.GetMyTaxResponse, error)
+	getTaxListFn        func(context.Context, *pb.GetTaxListRequest, ...grpc.CallOption) (*pb.GetTaxListResponse, error)
+	collectTaxFn        func(context.Context, *pb.CollectTaxRequest, ...grpc.CallOption) (*pb.CollectTaxResponse, error)
+	collectTaxForUserFn func(context.Context, *pb.CollectTaxForUserRequest, ...grpc.CallOption) (*pb.CollectTaxForUserResponse, error)
 }
 
 func (s *stubPortfolioClient) UpdateHolding(ctx context.Context, in *pb.UpdateHoldingRequest, opts ...grpc.CallOption) (*pb.UpdateHoldingResponse, error) {

@@ -7,8 +7,8 @@ import (
 
 	"github.com/RAF-SI-2025/EXBanka-4-Backend/services/portfolio-service/repository"
 	taxcalc "github.com/RAF-SI-2025/EXBanka-4-Backend/services/portfolio-service/tax"
-	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/portfolio"
 	pb_ex "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/exchange"
+	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/portfolio"
 	pb_sec "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/securities"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -42,7 +42,7 @@ func (s *PortfolioServer) UpdateHolding(ctx context.Context, req *pb.UpdateHoldi
 		return nil, status.Errorf(codes.Internal, "upsert holding: %v", err)
 	}
 
-	if req.Direction == "SELL" && buyPrice > 0 {
+	if req.Direction == "SELL" && req.AssetType == "STOCK" && buyPrice > 0 {
 		profit := (req.Price - buyPrice) * float64(req.Quantity)
 		if taxOwed := taxcalc.CalculateTax(profit); taxOwed > 0 {
 			now := time.Now()

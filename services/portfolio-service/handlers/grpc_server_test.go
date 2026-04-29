@@ -6,10 +6,10 @@ import (
 	"time"
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/portfolio"
 	pb_sec "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/securities"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 )
 
@@ -112,6 +112,7 @@ func TestUpdateHolding_Sell_WithTax(t *testing.T) {
 		Quantity:  2,
 		Price:     150.0,
 		Direction: "SELL",
+		AssetType: "STOCK",
 	})
 	require.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -138,6 +139,34 @@ func TestUpdateHolding_Sell_Loss_NoTax(t *testing.T) {
 		Quantity:  5,
 		Price:     150.0,
 		Direction: "SELL",
+		AssetType: "STOCK",
+	})
+	require.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestUpdateHolding_Sell_Forex_NoTax(t *testing.T) {
+	// profitable sell but FOREX_PAIR — no tax record should be inserted
+	srv, mock := newServer(t)
+
+	mock.ExpectQuery(`SELECT buy_price FROM portfolio_entry`).
+		WithArgs(int64(1), "CLIENT", int64(10)).
+		WillReturnRows(sqlmock.NewRows([]string{"buy_price"}).AddRow(100.0))
+	mock.ExpectExec(`UPDATE portfolio_entry`).
+		WithArgs(int32(2), int64(1), "CLIENT", int64(10)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(`DELETE FROM portfolio_entry`).
+		WithArgs(int64(1), "CLIENT", int64(10)).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+
+	_, err := srv.UpdateHolding(context.Background(), &pb.UpdateHoldingRequest{
+		UserId:    1,
+		UserType:  "CLIENT",
+		ListingId: 10,
+		Quantity:  2,
+		Price:     150.0,
+		Direction: "SELL",
+		AssetType: "FOREX_PAIR",
 	})
 	require.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())

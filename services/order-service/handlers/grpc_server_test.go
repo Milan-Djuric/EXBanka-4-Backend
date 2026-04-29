@@ -166,6 +166,18 @@ func (m *mockPortfolioClient) GetProfit(ctx context.Context, in *pb_portfolio.Ge
 func (m *mockPortfolioClient) SetPublicAmount(ctx context.Context, in *pb_portfolio.SetPublicAmountRequest, opts ...grpc.CallOption) (*pb_portfolio.SetPublicAmountResponse, error) {
 	return nil, fmt.Errorf("not mocked")
 }
+func (m *mockPortfolioClient) GetMyTax(ctx context.Context, in *pb_portfolio.GetMyTaxRequest, opts ...grpc.CallOption) (*pb_portfolio.GetMyTaxResponse, error) {
+	return nil, fmt.Errorf("not mocked")
+}
+func (m *mockPortfolioClient) GetTaxList(ctx context.Context, in *pb_portfolio.GetTaxListRequest, opts ...grpc.CallOption) (*pb_portfolio.GetTaxListResponse, error) {
+	return nil, fmt.Errorf("not mocked")
+}
+func (m *mockPortfolioClient) CollectTax(ctx context.Context, in *pb_portfolio.CollectTaxRequest, opts ...grpc.CallOption) (*pb_portfolio.CollectTaxResponse, error) {
+	return nil, fmt.Errorf("not mocked")
+}
+func (m *mockPortfolioClient) CollectTaxForUser(ctx context.Context, in *pb_portfolio.CollectTaxForUserRequest, opts ...grpc.CallOption) (*pb_portfolio.CollectTaxForUserResponse, error) {
+	return nil, fmt.Errorf("not mocked")
+}
 
 // ─────────────────────────────────────────────
 // Ping

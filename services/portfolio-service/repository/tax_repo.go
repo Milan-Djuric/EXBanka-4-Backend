@@ -18,9 +18,9 @@ type TaxRecord struct {
 }
 
 type TaxDebt struct {
-	UserID    int64
-	UserType  string
-	DebtRSD   float64
+	UserID   int64
+	UserType string
+	DebtRSD  float64
 }
 
 func InsertTaxRecord(ctx context.Context, db *sql.DB, userID int64, userType string, amountRSD float64, month, year int) error {

@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"testing"
 
-	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/order"
 	pb_emp "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/employee"
+	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/order"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -17,13 +17,13 @@ import (
 // ---- stub client ----
 
 type stubOrderClient struct {
-	createOrderFn        func(context.Context, *pb.CreateOrderRequest, ...grpc.CallOption) (*pb.CreateOrderResponse, error)
-	listOrdersFn         func(context.Context, *pb.ListOrdersRequest, ...grpc.CallOption) (*pb.ListOrdersResponse, error)
-	getOrderByIdFn       func(context.Context, *pb.GetOrderByIdRequest, ...grpc.CallOption) (*pb.GetOrderByIdResponse, error)
-	approveOrderFn       func(context.Context, *pb.ApproveOrderRequest, ...grpc.CallOption) (*pb.ApproveOrderResponse, error)
-	declineOrderFn       func(context.Context, *pb.DeclineOrderRequest, ...grpc.CallOption) (*pb.DeclineOrderResponse, error)
-	cancelOrderFn        func(context.Context, *pb.CancelOrderRequest, ...grpc.CallOption) (*pb.CancelOrderResponse, error)
-	cancelPortionsFn     func(context.Context, *pb.CancelOrderPortionsRequest, ...grpc.CallOption) (*pb.CancelOrderPortionsResponse, error)
+	createOrderFn    func(context.Context, *pb.CreateOrderRequest, ...grpc.CallOption) (*pb.CreateOrderResponse, error)
+	listOrdersFn     func(context.Context, *pb.ListOrdersRequest, ...grpc.CallOption) (*pb.ListOrdersResponse, error)
+	getOrderByIdFn   func(context.Context, *pb.GetOrderByIdRequest, ...grpc.CallOption) (*pb.GetOrderByIdResponse, error)
+	approveOrderFn   func(context.Context, *pb.ApproveOrderRequest, ...grpc.CallOption) (*pb.ApproveOrderResponse, error)
+	declineOrderFn   func(context.Context, *pb.DeclineOrderRequest, ...grpc.CallOption) (*pb.DeclineOrderResponse, error)
+	cancelOrderFn    func(context.Context, *pb.CancelOrderRequest, ...grpc.CallOption) (*pb.CancelOrderResponse, error)
+	cancelPortionsFn func(context.Context, *pb.CancelOrderPortionsRequest, ...grpc.CallOption) (*pb.CancelOrderPortionsResponse, error)
 }
 
 func (s *stubOrderClient) Ping(ctx context.Context, in *pb.PingRequest, opts ...grpc.CallOption) (*pb.PingResponse, error) {
