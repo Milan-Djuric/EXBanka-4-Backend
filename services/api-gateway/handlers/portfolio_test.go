@@ -14,8 +14,12 @@ import (
 // ---- stub client ----
 
 type stubPortfolioClient struct {
-	getPortfolioFn    func(context.Context, *pb.GetPortfolioRequest, ...grpc.CallOption) (*pb.GetPortfolioResponse, error)
-	getProfitFn       func(context.Context, *pb.GetProfitRequest, ...grpc.CallOption) (*pb.GetProfitResponse, error)
+	getPortfolioFn       func(context.Context, *pb.GetPortfolioRequest, ...grpc.CallOption) (*pb.GetPortfolioResponse, error)
+	getProfitFn          func(context.Context, *pb.GetProfitRequest, ...grpc.CallOption) (*pb.GetProfitResponse, error)
+	getMyTaxFn           func(context.Context, *pb.GetMyTaxRequest, ...grpc.CallOption) (*pb.GetMyTaxResponse, error)
+	getTaxListFn         func(context.Context, *pb.GetTaxListRequest, ...grpc.CallOption) (*pb.GetTaxListResponse, error)
+	collectTaxFn         func(context.Context, *pb.CollectTaxRequest, ...grpc.CallOption) (*pb.CollectTaxResponse, error)
+	collectTaxForUserFn  func(context.Context, *pb.CollectTaxForUserRequest, ...grpc.CallOption) (*pb.CollectTaxForUserResponse, error)
 }
 
 func (s *stubPortfolioClient) UpdateHolding(ctx context.Context, in *pb.UpdateHoldingRequest, opts ...grpc.CallOption) (*pb.UpdateHoldingResponse, error) {
@@ -34,6 +38,30 @@ func (s *stubPortfolioClient) GetProfit(ctx context.Context, in *pb.GetProfitReq
 	return nil, fmt.Errorf("not implemented")
 }
 func (s *stubPortfolioClient) SetPublicAmount(ctx context.Context, in *pb.SetPublicAmountRequest, opts ...grpc.CallOption) (*pb.SetPublicAmountResponse, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+func (s *stubPortfolioClient) GetMyTax(ctx context.Context, in *pb.GetMyTaxRequest, opts ...grpc.CallOption) (*pb.GetMyTaxResponse, error) {
+	if s.getMyTaxFn != nil {
+		return s.getMyTaxFn(ctx, in, opts...)
+	}
+	return nil, fmt.Errorf("not implemented")
+}
+func (s *stubPortfolioClient) GetTaxList(ctx context.Context, in *pb.GetTaxListRequest, opts ...grpc.CallOption) (*pb.GetTaxListResponse, error) {
+	if s.getTaxListFn != nil {
+		return s.getTaxListFn(ctx, in, opts...)
+	}
+	return nil, fmt.Errorf("not implemented")
+}
+func (s *stubPortfolioClient) CollectTax(ctx context.Context, in *pb.CollectTaxRequest, opts ...grpc.CallOption) (*pb.CollectTaxResponse, error) {
+	if s.collectTaxFn != nil {
+		return s.collectTaxFn(ctx, in, opts...)
+	}
+	return nil, fmt.Errorf("not implemented")
+}
+func (s *stubPortfolioClient) CollectTaxForUser(ctx context.Context, in *pb.CollectTaxForUserRequest, opts ...grpc.CallOption) (*pb.CollectTaxForUserResponse, error) {
+	if s.collectTaxForUserFn != nil {
+		return s.collectTaxForUserFn(ctx, in, opts...)
+	}
 	return nil, fmt.Errorf("not implemented")
 }
 

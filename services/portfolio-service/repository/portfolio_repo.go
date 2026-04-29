@@ -18,10 +18,11 @@ func sharedUserID(userID int64, userType string) int64 {
 // UpsertHolding updates portfolio holdings on each order fill.
 // BUY: creates or updates entry with weighted average buy price.
 // SELL: decrements amount; deletes entry if amount reaches zero.
-func UpsertHolding(ctx context.Context, db *sql.DB, userID int64, userType string, listingID, accountID int64, qty int32, price float64, direction string) error {
+// Returns the buy_price at the time of the operation (non-zero only on SELL, used by the caller to calculate tax).
+func UpsertHolding(ctx context.Context, db *sql.DB, userID int64, userType string, listingID, accountID int64, qty int32, price float64, direction string) (buyPrice float64, err error) {
 	uid := sharedUserID(userID, userType)
 	if direction == "BUY" {
-		_, err := db.ExecContext(ctx, `
+		_, err = db.ExecContext(ctx, `
 			INSERT INTO portfolio_entry (user_id, user_type, listing_id, amount, buy_price, account_id, last_modified)
 			VALUES ($1, $2, $3, $4, $5, $6, NOW())
 			ON CONFLICT (user_id, user_type, listing_id) DO UPDATE SET
@@ -30,18 +31,26 @@ func UpsertHolding(ctx context.Context, db *sql.DB, userID int64, userType strin
 				last_modified = NOW()`,
 			uid, userType, listingID, qty, price, accountID,
 		)
-		return err
+		return 0, err
 	}
 
-	// SELL: decrement amount
-	_, err := db.ExecContext(ctx, `
+	// SELL: read current buy_price before decrementing
+	row := db.QueryRowContext(ctx,
+		`SELECT buy_price FROM portfolio_entry WHERE user_id = $1 AND user_type = $2 AND listing_id = $3`,
+		uid, userType, listingID,
+	)
+	if scanErr := row.Scan(&buyPrice); scanErr != nil {
+		buyPrice = 0
+	}
+
+	_, err = db.ExecContext(ctx, `
 		UPDATE portfolio_entry
 		SET amount = amount - $1, last_modified = NOW()
 		WHERE user_id = $2 AND user_type = $3 AND listing_id = $4`,
 		qty, uid, userType, listingID,
 	)
 	if err != nil {
-		return err
+		return buyPrice, err
 	}
 
 	// Remove entry if fully sold
@@ -50,7 +59,7 @@ func UpsertHolding(ctx context.Context, db *sql.DB, userID int64, userType strin
 		WHERE user_id = $1 AND user_type = $2 AND listing_id = $3 AND amount <= 0`,
 		uid, userType, listingID,
 	)
-	return err
+	return buyPrice, err
 }
 
 // GetHoldings returns all portfolio entries for a user filtered by user type.

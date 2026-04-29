@@ -9,6 +9,10 @@ service PortfolioService {
   rpc GetPortfolio(GetPortfolioRequest)   returns (GetPortfolioResponse);
   rpc GetProfit(GetProfitRequest)         returns (GetProfitResponse);
   rpc SetPublicAmount(SetPublicAmountRequest) returns (SetPublicAmountResponse);
+  rpc GetMyTax(GetMyTaxRequest)                       returns (GetMyTaxResponse);
+  rpc GetTaxList(GetTaxListRequest)                   returns (GetTaxListResponse);
+  rpc CollectTax(CollectTaxRequest)                   returns (CollectTaxResponse);
+  rpc CollectTaxForUser(CollectTaxForUserRequest)     returns (CollectTaxForUserResponse);
 }
 
 // UpdateHolding — called by order-service on each partial fill
@@ -62,3 +66,35 @@ message SetPublicAmountRequest {
   int32 amount     = 3;
 }
 message SetPublicAmountResponse {}
+
+// Tax RPCs (#157)
+message GetMyTaxRequest {
+  int64  user_id   = 1;
+  string user_type = 2;
+}
+message GetMyTaxResponse {
+  double paid_this_year    = 1;
+  double unpaid_this_month = 2;
+}
+
+message GetTaxListRequest {
+  string user_type_filter = 1;
+  string name_filter      = 2;
+}
+message TaxDebtEntry {
+  int64  user_id  = 1;
+  string type     = 2;
+  double debt_rsd = 3;
+}
+message GetTaxListResponse {
+  repeated TaxDebtEntry entries = 1;
+}
+
+message CollectTaxRequest {}
+message CollectTaxResponse {}
+
+message CollectTaxForUserRequest {
+  int64  user_id   = 1;
+  string user_type = 2;
+}
+message CollectTaxForUserResponse {}

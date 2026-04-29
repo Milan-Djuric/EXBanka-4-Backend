@@ -212,6 +212,11 @@ func main() {
 	r.GET("/portfolio/profit", middleware.RequireRole("AGENT", "SUPERVISOR"), handlers.GetProfit(portfolioClient, "EMPLOYEE"))
 	r.GET("/client/portfolio", handlers.GetPortfolio(portfolioClient, "CLIENT"))
 	r.GET("/client/portfolio/profit", handlers.GetProfit(portfolioClient, "CLIENT"))
+	r.GET("/tax", middleware.RequireRole("SUPERVISOR"), handlers.GetTaxList(portfolioClient, employeeClient, clientClient))
+	r.GET("/tax/my", middleware.RequireRole("AGENT", "SUPERVISOR"), handlers.GetMyTax(portfolioClient, "EMPLOYEE"))
+	r.GET("/client/tax/my", handlers.GetMyTax(portfolioClient, "CLIENT"))
+	r.POST("/tax/collect", middleware.RequireRole("SUPERVISOR"), handlers.CollectTax(portfolioClient))
+	r.POST("/tax/collect/:userId", middleware.RequireRole("SUPERVISOR"), handlers.CollectTaxForUser(portfolioClient))
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	if err := r.Run(":8083"); err != nil {
 		log.Fatalf("server error: %v", err)
