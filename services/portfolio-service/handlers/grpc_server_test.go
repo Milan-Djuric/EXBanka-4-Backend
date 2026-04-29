@@ -306,8 +306,9 @@ func TestGetMyTax_HappyPath(t *testing.T) {
 func TestGetTaxList_ReturnsDebts(t *testing.T) {
 	srv, mock := newServer(t)
 
-	mock.ExpectQuery(`SELECT user_id, user_type, SUM`).
-		WillReturnRows(sqlmock.NewRows([]string{"user_id", "user_type", "sum"}).
+	mock.ExpectQuery(`SELECT user_id, user_type`).
+		WithArgs("").
+		WillReturnRows(sqlmock.NewRows([]string{"user_id", "user_type", "debt_rsd"}).
 			AddRow(int64(1), "CLIENT", 1500.0).
 			AddRow(int64(2), "EMPLOYEE", 750.0))
 

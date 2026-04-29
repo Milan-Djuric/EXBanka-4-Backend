@@ -90,21 +90,57 @@ func TestGetMyTax(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestGetTaxDebtList(t *testing.T) {
+func TestGetTaxDebtList_NoFilter(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
 	defer db.Close()
 
-	mock.ExpectQuery(`SELECT user_id, user_type, SUM`).
-		WillReturnRows(sqlmock.NewRows([]string{"user_id", "user_type", "sum"}).
+	mock.ExpectQuery(`SELECT user_id, user_type`).
+		WithArgs("").
+		WillReturnRows(sqlmock.NewRows([]string{"user_id", "user_type", "debt_rsd"}).
 			AddRow(int64(1), "CLIENT", 1500.0).
 			AddRow(int64(2), "EMPLOYEE", 750.0))
 
-	debts, err := GetTaxDebtList(context.Background(), db)
+	debts, err := GetTaxDebtList(context.Background(), db, "")
 	require.NoError(t, err)
 	require.Len(t, debts, 2)
 	assert.Equal(t, int64(1), debts[0].UserID)
 	assert.InDelta(t, 1500.0, debts[0].DebtRSD, 0.001)
 	assert.Equal(t, "EMPLOYEE", debts[1].UserType)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestGetTaxDebtList_UserTypeFilter(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	mock.ExpectQuery(`SELECT user_id, user_type`).
+		WithArgs("CLIENT").
+		WillReturnRows(sqlmock.NewRows([]string{"user_id", "user_type", "debt_rsd"}).
+			AddRow(int64(1), "CLIENT", 1500.0))
+
+	debts, err := GetTaxDebtList(context.Background(), db, "CLIENT")
+	require.NoError(t, err)
+	require.Len(t, debts, 1)
+	assert.Equal(t, "CLIENT", debts[0].UserType)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestGetTaxDebtList_IncludesPaidUsers(t *testing.T) {
+	// A user with all taxes paid should still appear with debt_rsd = 0
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	mock.ExpectQuery(`SELECT user_id, user_type`).
+		WithArgs("").
+		WillReturnRows(sqlmock.NewRows([]string{"user_id", "user_type", "debt_rsd"}).
+			AddRow(int64(3), "CLIENT", 0.0))
+
+	debts, err := GetTaxDebtList(context.Background(), db, "")
+	require.NoError(t, err)
+	require.Len(t, debts, 1)
+	assert.InDelta(t, 0.0, debts[0].DebtRSD, 0.001)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }

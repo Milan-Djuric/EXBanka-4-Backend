@@ -33,6 +33,12 @@ func main() {
 	}
 	defer func() { _ = accountDB.Close() }()
 
+	exchangeDB, err := portfoliodb.Connect(os.Getenv("EXCHANGE_DB_URL"))
+	if err != nil {
+		log.Fatalf("failed to connect to exchange_db: %v", err)
+	}
+	defer func() { _ = exchangeDB.Close() }()
+
 	secConn, err := grpc.NewClient(os.Getenv("SECURITIES_SERVICE_ADDR"), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("failed to connect to securities-service: %v", err)
@@ -48,7 +54,7 @@ func main() {
 	securitiesClient := pb_sec.NewSecuritiesServiceClient(secConn)
 	exchangeClient := pb_ex.NewExchangeServiceClient(exConn)
 
-	go runMonthlyTaxJob(db, accountDB, exchangeClient)
+	go runMonthlyTaxJob(db, accountDB, exchangeDB, exchangeClient)
 
 	lis, err := net.Listen("tcp", grpcPort)
 	if err != nil {
@@ -59,6 +65,7 @@ func main() {
 	pb.RegisterPortfolioServiceServer(srv, &handlers.PortfolioServer{
 		DB:               db,
 		AccountDB:        accountDB,
+		ExchangeDB:       exchangeDB,
 		SecuritiesClient: securitiesClient,
 		ExchangeClient:   exchangeClient,
 	})
@@ -70,7 +77,7 @@ func main() {
 }
 
 // runMonthlyTaxJob sleeps until the last day of each month at 23:59 and collects all unpaid tax.
-func runMonthlyTaxJob(portfolioDB, accountDB *sql.DB, exchangeClient pb_ex.ExchangeServiceClient) {
+func runMonthlyTaxJob(portfolioDB, accountDB, exchangeDB *sql.DB, exchangeClient pb_ex.ExchangeServiceClient) {
 	for {
 		now := time.Now()
 		// Last day of current month at 23:59
@@ -84,7 +91,7 @@ func runMonthlyTaxJob(portfolioDB, accountDB *sql.DB, exchangeClient pb_ex.Excha
 		time.Sleep(time.Until(lastDay))
 
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-		if err := taxcollector.CollectUnpaid(ctx, portfolioDB, accountDB, exchangeClient, 0, ""); err != nil {
+		if err := taxcollector.CollectUnpaid(ctx, portfolioDB, accountDB, exchangeDB, exchangeClient, 0, ""); err != nil {
 			log.Printf("monthly tax job error: %v", err)
 		} else {
 			log.Printf("monthly tax collection completed")

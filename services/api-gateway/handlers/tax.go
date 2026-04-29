@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/RAF-SI-2025/EXBanka-4-Backend/services/api-gateway/middleware"
@@ -47,6 +48,16 @@ func GetTaxList(portfolioClient pb.PortfolioServiceClient, employeeClient pb_emp
 				Type:     e.Type,
 				DebtRSD:  e.DebtRsd,
 			})
+		}
+
+		if nameFilter := c.Query("name"); nameFilter != "" {
+			filtered := entries[:0]
+			for _, e := range entries {
+				if strings.Contains(strings.ToLower(e.FullName), strings.ToLower(nameFilter)) {
+					filtered = append(filtered, e)
+				}
+			}
+			entries = filtered
 		}
 
 		c.JSON(http.StatusOK, entries)
