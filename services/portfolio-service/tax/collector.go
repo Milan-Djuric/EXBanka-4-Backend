@@ -69,12 +69,16 @@ func CollectUnpaid(ctx context.Context, portfolioDB, accountDB, exchangeDB *sql.
 }
 
 func getAccountForUser(ctx context.Context, db *sql.DB, userID int64, userType string) (int64, error) {
+	uid := userID
+	if userType == "EMPLOYEE" {
+		uid = 0
+	}
 	var accountID int64
 	err := db.QueryRowContext(ctx, `
 		SELECT account_id FROM portfolio_entry
 		WHERE user_id = $1 AND user_type = $2
 		LIMIT 1`,
-		userID, userType,
+		uid, userType,
 	).Scan(&accountID)
 	return accountID, err
 }

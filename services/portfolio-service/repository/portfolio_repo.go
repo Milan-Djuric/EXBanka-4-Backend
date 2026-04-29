@@ -49,16 +49,6 @@ func UpsertHolding(ctx context.Context, db *sql.DB, userID int64, userType strin
 		WHERE user_id = $2 AND user_type = $3 AND listing_id = $4`,
 		qty, uid, userType, listingID,
 	)
-	if err != nil {
-		return buyPrice, err
-	}
-
-	// Remove entry if fully sold
-	_, err = db.ExecContext(ctx, `
-		DELETE FROM portfolio_entry
-		WHERE user_id = $1 AND user_type = $2 AND listing_id = $3 AND amount <= 0`,
-		uid, userType, listingID,
-	)
 	return buyPrice, err
 }
 
