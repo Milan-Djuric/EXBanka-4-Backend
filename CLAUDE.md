@@ -8,7 +8,7 @@ Go-based microservices backend for EXBanka. Services communicate via gRPC. The A
 - One `go.mod` per service: `services/<name>/go.mod`
 - Shared protobuf bindings: `shared/go.mod` → `github.com/RAF-SI-2025/EXBanka-4-Backend/shared`
 - Service module paths: `github.com/RAF-SI-2025/EXBanka-4-Backend/services/<name>`
-- Modules in `go.work`: `./services/account-service`, `./services/api-gateway`, `./services/auth-service`, `./services/card-service`, `./services/client-service`, `./services/email-service`, `./services/employee-service`, `./services/exchange-service`, `./services/loan-service`, `./services/order-service`, `./services/payment-service`, `./services/portfolio-service`, `./services/securities-service`, `./shared`
+- Modules in `go.work`: `./services/account-service`, `./services/api-gateway`, `./services/auth-service`, `./services/card-service`, `./services/client-service`, `./services/email-service`, `./services/employee-service`, `./services/exchange-service`, `./services/fund-service`, `./services/loan-service`, `./services/order-service`, `./services/otc-service`, `./services/payment-service`, `./services/portfolio-service`, `./services/securities-service`, `./shared`
 
 ## Repository structure
 ```
@@ -36,6 +36,8 @@ docs/            # Architecture docs, runbooks (placeholder)
 | `securities-service` | 50060 | 5441 |
 | `order-service` | 50061 | 5442 |
 | `portfolio-service` | 50062 | 5443 |
+| `otc-service` | 50063 | 5444 |
+| `fund-service` | 50064 | 5445 |
 | `api-gateway` | **8083** (HTTP) | none |
 
 ## Service layout conventions
@@ -243,6 +245,25 @@ CORS is enabled for `http://localhost:5173` and `http://localhost:3000` (GET, PO
 | PUT | `/api/twofactor/:id/reject` |
 | POST | `/api/mobile/push-token` |
 | DELETE | `/api/mobile/push-token` |
+
+### OTC Negotiations
+| Method | Path | Auth |
+|---|---|---|
+| POST | `/otc/negotiations` | CLIENT, EMPLOYEE |
+| GET | `/otc/negotiations` | CLIENT, EMPLOYEE |
+| GET | `/otc/negotiations/:id` | CLIENT, EMPLOYEE |
+| PUT | `/otc/negotiations/:id/counter` | CLIENT, EMPLOYEE |
+| PUT | `/otc/negotiations/:id/accept` | CLIENT, EMPLOYEE |
+| PUT | `/otc/negotiations/:id/reject` | CLIENT, EMPLOYEE |
+
+### Investment Funds
+| Method | Path | Auth |
+|---|---|---|
+| POST | `/investment/funds` | SUPERVISOR |
+| GET | `/investment/funds` | CLIENT, EMPLOYEE |
+| GET | `/investment/funds/:id` | CLIENT, EMPLOYEE |
+| PUT | `/investment/funds/:id` | SUPERVISOR |
+| DELETE | `/investment/funds/:id` | SUPERVISOR |
 
 ### Docs
 | Method | Path |

@@ -1,0 +1,304 @@
+package handlers
+
+import (
+	"context"
+	"net/http"
+	"strconv"
+	"time"
+
+	"github.com/RAF-SI-2025/EXBanka-4-Backend/services/api-gateway/middleware"
+	pb "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/otc"
+	"github.com/gin-gonic/gin"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
+
+func negotiationToJSON(n *pb.NegotiationResponse) gin.H {
+	return gin.H{
+		"id":             n.Id,
+		"ticker":         n.Ticker,
+		"sellerId":       n.SellerId,
+		"sellerType":     n.SellerType,
+		"sellerName":     n.SellerName,
+		"buyerId":        n.BuyerId,
+		"buyerType":      n.BuyerType,
+		"buyerName":      n.BuyerName,
+		"amount":         n.Amount,
+		"pricePerStock":  n.PricePerStock,
+		"settlementDate": n.SettlementDate,
+		"premium":        n.Premium,
+		"currency":       n.Currency,
+		"lastModified":   n.LastModified,
+		"modifiedById":   n.ModifiedById,
+		"modifiedByType": n.ModifiedByType,
+		"modifiedByName": n.ModifiedByName,
+		"status":         n.Status,
+	}
+}
+
+func mapOtcError(c *gin.Context, err error) {
+	switch status.Code(err) {
+	case codes.PermissionDenied:
+		c.JSON(http.StatusForbidden, gin.H{"error": status.Convert(err).Message()})
+	case codes.NotFound:
+		c.JSON(http.StatusNotFound, gin.H{"error": status.Convert(err).Message()})
+	case codes.AlreadyExists:
+		c.JSON(http.StatusConflict, gin.H{"error": status.Convert(err).Message()})
+	case codes.InvalidArgument:
+		c.JSON(http.StatusBadRequest, gin.H{"error": status.Convert(err).Message()})
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{"error": status.Convert(err).Message()})
+	}
+}
+
+// CreateNegotiation godoc
+// @Summary      Create an OTC negotiation
+// @Tags         otc
+// @Accept       json
+// @Produce      json
+// @Success      201  {object}  map[string]interface{}
+// @Router       /otc/negotiations [post]
+func CreateNegotiation(client pb.OtcServiceClient) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		callerID, err := middleware.GetUserIDFromToken(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "could not extract identity from token"})
+			return
+		}
+		callerType := middleware.GetCallerRoleFromToken(c)
+
+		var req struct {
+			SellerId       int64   `json:"sellerId"       binding:"required"`
+			SellerType     string  `json:"sellerType"     binding:"required"`
+			Ticker         string  `json:"ticker"         binding:"required"`
+			Amount         int32   `json:"amount"         binding:"required"`
+			PricePerStock  float64 `json:"pricePerStock"  binding:"required"`
+			SettlementDate string  `json:"settlementDate" binding:"required"`
+			Premium        float64 `json:"premium"`
+			Currency       string  `json:"currency"       binding:"required"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+		defer cancel()
+
+		resp, err := client.CreateNegotiation(ctx, &pb.CreateNegotiationRequest{
+			BuyerId:        callerID,
+			BuyerType:      callerType,
+			SellerId:       req.SellerId,
+			SellerType:     req.SellerType,
+			Ticker:         req.Ticker,
+			Amount:         req.Amount,
+			PricePerStock:  req.PricePerStock,
+			SettlementDate: req.SettlementDate,
+			Premium:        req.Premium,
+			Currency:       req.Currency,
+		})
+		if err != nil {
+			mapOtcError(c, err)
+			return
+		}
+
+		c.JSON(http.StatusCreated, negotiationToJSON(resp))
+	}
+}
+
+// ListNegotiations godoc
+// @Summary      List OTC negotiations for the caller
+// @Tags         otc
+// @Produce      json
+// @Success      200  {array}  map[string]interface{}
+// @Router       /otc/negotiations [get]
+func ListNegotiations(client pb.OtcServiceClient) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		callerID, err := middleware.GetUserIDFromToken(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "could not extract identity from token"})
+			return
+		}
+		callerType := middleware.GetCallerRoleFromToken(c)
+
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+		defer cancel()
+
+		resp, err := client.ListNegotiations(ctx, &pb.ListNegotiationsRequest{
+			CallerId:   callerID,
+			CallerType: callerType,
+		})
+		if err != nil {
+			mapOtcError(c, err)
+			return
+		}
+
+		result := make([]gin.H, 0, len(resp.Negotiations))
+		for _, n := range resp.Negotiations {
+			result = append(result, negotiationToJSON(n))
+		}
+		c.JSON(http.StatusOK, result)
+	}
+}
+
+// GetNegotiation godoc
+// @Summary      Get a single OTC negotiation
+// @Tags         otc
+// @Produce      json
+// @Param        id  path  int  true  "Negotiation ID"
+// @Success      200  {object}  map[string]interface{}
+// @Router       /otc/negotiations/{id} [get]
+func GetNegotiation(client pb.OtcServiceClient) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if _, err := middleware.GetUserIDFromToken(c); err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "could not extract identity from token"})
+			return
+		}
+
+		negID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid negotiation id"})
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+		defer cancel()
+
+		resp, err := client.GetNegotiation(ctx, &pb.GetNegotiationRequest{NegotiationId: negID})
+		if err != nil {
+			mapOtcError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, negotiationToJSON(resp))
+	}
+}
+
+// CounterOffer godoc
+// @Summary      Submit a counter-offer on an OTC negotiation
+// @Tags         otc
+// @Accept       json
+// @Produce      json
+// @Param        id  path  int  true  "Negotiation ID"
+// @Success      200  {object}  map[string]interface{}
+// @Router       /otc/negotiations/{id}/counter [put]
+func CounterOffer(client pb.OtcServiceClient) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		callerID, err := middleware.GetUserIDFromToken(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "could not extract identity from token"})
+			return
+		}
+		callerType := middleware.GetCallerRoleFromToken(c)
+
+		negID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid negotiation id"})
+			return
+		}
+
+		var req struct {
+			Amount         int32   `json:"amount"         binding:"required"`
+			PricePerStock  float64 `json:"pricePerStock"  binding:"required"`
+			SettlementDate string  `json:"settlementDate" binding:"required"`
+			Premium        float64 `json:"premium"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+		defer cancel()
+
+		resp, err := client.CounterOffer(ctx, &pb.CounterOfferRequest{
+			NegotiationId:  negID,
+			CallerId:       callerID,
+			CallerType:     callerType,
+			Amount:         req.Amount,
+			PricePerStock:  req.PricePerStock,
+			SettlementDate: req.SettlementDate,
+			Premium:        req.Premium,
+		})
+		if err != nil {
+			mapOtcError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, negotiationToJSON(resp))
+	}
+}
+
+// AcceptNegotiation godoc
+// @Summary      Accept an OTC negotiation
+// @Tags         otc
+// @Produce      json
+// @Param        id  path  int  true  "Negotiation ID"
+// @Success      200  {object}  map[string]interface{}
+// @Router       /otc/negotiations/{id}/accept [put]
+func AcceptNegotiation(client pb.OtcServiceClient) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		callerID, err := middleware.GetUserIDFromToken(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "could not extract identity from token"})
+			return
+		}
+		callerType := middleware.GetCallerRoleFromToken(c)
+
+		negID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid negotiation id"})
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+		defer cancel()
+
+		resp, err := client.AcceptNegotiation(ctx, &pb.AcceptNegotiationRequest{
+			NegotiationId: negID,
+			CallerId:      callerID,
+			CallerType:    callerType,
+		})
+		if err != nil {
+			mapOtcError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, negotiationToJSON(resp))
+	}
+}
+
+// RejectNegotiation godoc
+// @Summary      Reject an OTC negotiation
+// @Tags         otc
+// @Produce      json
+// @Param        id  path  int  true  "Negotiation ID"
+// @Success      200  {object}  map[string]interface{}
+// @Router       /otc/negotiations/{id}/reject [put]
+func RejectNegotiation(client pb.OtcServiceClient) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		callerID, err := middleware.GetUserIDFromToken(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "could not extract identity from token"})
+			return
+		}
+		callerType := middleware.GetCallerRoleFromToken(c)
+
+		negID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid negotiation id"})
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+		defer cancel()
+
+		resp, err := client.RejectNegotiation(ctx, &pb.RejectNegotiationRequest{
+			NegotiationId: negID,
+			CallerId:      callerID,
+			CallerType:    callerType,
+		})
+		if err != nil {
+			mapOtcError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, negotiationToJSON(resp))
+	}
+}

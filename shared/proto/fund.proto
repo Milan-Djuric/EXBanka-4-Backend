@@ -1,0 +1,65 @@
+syntax = "proto3";
+package fund;
+option go_package = "github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/fund";
+
+service FundService {
+  rpc Ping(PingRequest) returns (PingResponse);
+  rpc CreateFund(CreateFundRequest) returns (FundResponse);
+  rpc ListFunds(ListFundsRequest) returns (ListFundsResponse);
+  rpc GetFund(GetFundRequest) returns (FundResponse);
+  rpc UpdateFund(UpdateFundRequest) returns (FundResponse);
+  rpc DeleteFund(DeleteFundRequest) returns (DeleteFundResponse);
+}
+
+message PingRequest {}
+message PingResponse { string message = 1; }
+
+message CreateFundRequest {
+  string name                  = 1;
+  string description           = 2;
+  double minimum_contribution  = 3;
+  int64  manager_id            = 4;
+  int64  created_by_id         = 5; // employee ID of creator
+}
+
+message UpdateFundRequest {
+  int64  id                   = 1;
+  string name                 = 2;
+  string description          = 3;
+  double minimum_contribution = 4;
+  int64  manager_id           = 5;
+}
+
+message DeleteFundRequest {
+  int64 id = 1;
+}
+
+message DeleteFundResponse {}
+
+message ListFundsRequest {
+  int64 manager_id_filter = 1; // 0 = no filter
+}
+
+message GetFundRequest {
+  int64 id = 1;
+}
+
+message FundResponse {
+  int64  id                   = 1;
+  string name                 = 2;
+  string description          = 3;
+  double minimum_contribution = 4;
+  int64  manager_id           = 5;
+  string manager_name         = 6;
+  double liquid_assets        = 7;
+  double fund_value           = 8;
+  double profit               = 9;
+  string account_number       = 10;
+  string created_at           = 11;
+  bool   active               = 12;
+  int64  account_id           = 13;
+}
+
+message ListFundsResponse {
+  repeated FundResponse funds = 1;
+}

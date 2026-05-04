@@ -45,6 +45,18 @@ func newServerWithSec(t *testing.T, sec SecurityPriceFetcher) (*PortfolioServer,
 	return srv, mock
 }
 
+// newServerWithSecDB returns a server with both the main DB mock and a SecuritiesDB mock.
+// Use this for SELL+STOCK tests where convertToRSD queries SecuritiesDB for the listing currency.
+func newServerWithSecDB(t *testing.T) (*PortfolioServer, sqlmock.Sqlmock, sqlmock.Sqlmock) {
+	t.Helper()
+	srv, mainMock := newServer(t)
+	secDB, secMock, err := sqlmock.New()
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = secDB.Close() })
+	srv.SecuritiesDB = secDB
+	return srv, mainMock, secMock
+}
+
 // ── UpdateHolding ─────────────────────────────────────────────────────────────
 
 func TestUpdateHolding_Buy_NewEntry(t *testing.T) {
@@ -90,7 +102,7 @@ func TestUpdateHolding_Buy_ExistingEntry_WeightedAvg(t *testing.T) {
 
 func TestUpdateHolding_Sell_WithTax(t *testing.T) {
 	// buy at 100, sell at 150 → profit=50*2=100, tax=15
-	srv, mock := newServer(t)
+	srv, mock, secMock := newServerWithSecDB(t)
 
 	mock.ExpectQuery(`SELECT buy_price FROM portfolio_entry`).
 		WithArgs(int64(1), "CLIENT", int64(10)).
@@ -101,6 +113,10 @@ func TestUpdateHolding_Sell_WithTax(t *testing.T) {
 	mock.ExpectExec(`DELETE FROM portfolio_entry`).
 		WithArgs(int64(1), "CLIENT", int64(10)).
 		WillReturnResult(sqlmock.NewResult(0, 0))
+	// convertToRSD looks up the listing's currency from SecuritiesDB
+	secMock.ExpectQuery(`SELECT e.currency`).
+		WithArgs(int64(10)).
+		WillReturnRows(sqlmock.NewRows([]string{"currency"}).AddRow("RSD"))
 	mock.ExpectExec(`INSERT INTO tax_record`).
 		WithArgs(int64(1), "CLIENT", sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(1, 1))
@@ -116,11 +132,12 @@ func TestUpdateHolding_Sell_WithTax(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
+	assert.NoError(t, secMock.ExpectationsWereMet())
 }
 
 func TestUpdateHolding_Sell_Loss_NoTax(t *testing.T) {
 	// buy at 200, sell at 150 → loss, no tax record
-	srv, mock := newServer(t)
+	srv, mock, secMock := newServerWithSecDB(t)
 
 	mock.ExpectQuery(`SELECT buy_price FROM portfolio_entry`).
 		WithArgs(int64(1), "CLIENT", int64(10)).
@@ -131,6 +148,10 @@ func TestUpdateHolding_Sell_Loss_NoTax(t *testing.T) {
 	mock.ExpectExec(`DELETE FROM portfolio_entry`).
 		WithArgs(int64(1), "CLIENT", int64(10)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
+	// convertToRSD is still called (profit is negative, but conversion happens before the tax>0 check)
+	secMock.ExpectQuery(`SELECT e.currency`).
+		WithArgs(int64(10)).
+		WillReturnRows(sqlmock.NewRows([]string{"currency"}).AddRow("RSD"))
 
 	_, err := srv.UpdateHolding(context.Background(), &pb.UpdateHoldingRequest{
 		UserId:    1,
@@ -143,6 +164,7 @@ func TestUpdateHolding_Sell_Loss_NoTax(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
+	assert.NoError(t, secMock.ExpectationsWereMet())
 }
 
 func TestUpdateHolding_Sell_Forex_NoTax(t *testing.T) {
