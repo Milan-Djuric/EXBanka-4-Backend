@@ -31,13 +31,13 @@ func makeEmployeeToken() string {
 // ---- stub OTC client ----
 
 type stubOtcClient struct {
-	pingFn                func(context.Context, *pb.PingRequest, ...grpc.CallOption) (*pb.PingResponse, error)
-	createNegotiationFn   func(context.Context, *pb.CreateNegotiationRequest, ...grpc.CallOption) (*pb.NegotiationResponse, error)
-	listNegotiationsFn    func(context.Context, *pb.ListNegotiationsRequest, ...grpc.CallOption) (*pb.ListNegotiationsResponse, error)
-	getNegotiationFn      func(context.Context, *pb.GetNegotiationRequest, ...grpc.CallOption) (*pb.NegotiationResponse, error)
-	counterOfferFn        func(context.Context, *pb.CounterOfferRequest, ...grpc.CallOption) (*pb.NegotiationResponse, error)
-	acceptNegotiationFn   func(context.Context, *pb.AcceptNegotiationRequest, ...grpc.CallOption) (*pb.NegotiationResponse, error)
-	rejectNegotiationFn   func(context.Context, *pb.RejectNegotiationRequest, ...grpc.CallOption) (*pb.NegotiationResponse, error)
+	pingFn              func(context.Context, *pb.PingRequest, ...grpc.CallOption) (*pb.PingResponse, error)
+	createNegotiationFn func(context.Context, *pb.CreateNegotiationRequest, ...grpc.CallOption) (*pb.NegotiationResponse, error)
+	listNegotiationsFn  func(context.Context, *pb.ListNegotiationsRequest, ...grpc.CallOption) (*pb.ListNegotiationsResponse, error)
+	getNegotiationFn    func(context.Context, *pb.GetNegotiationRequest, ...grpc.CallOption) (*pb.NegotiationResponse, error)
+	counterOfferFn      func(context.Context, *pb.CounterOfferRequest, ...grpc.CallOption) (*pb.NegotiationResponse, error)
+	acceptNegotiationFn func(context.Context, *pb.AcceptNegotiationRequest, ...grpc.CallOption) (*pb.NegotiationResponse, error)
+	rejectNegotiationFn func(context.Context, *pb.RejectNegotiationRequest, ...grpc.CallOption) (*pb.NegotiationResponse, error)
 }
 
 func (s *stubOtcClient) Ping(ctx context.Context, in *pb.PingRequest, opts ...grpc.CallOption) (*pb.PingResponse, error) {
