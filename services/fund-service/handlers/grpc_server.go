@@ -36,6 +36,7 @@ func (s *FundServer) CreateFund(ctx context.Context, req *pb.CreateFundRequest) 
 	accountResp, err := s.AccountClient.CreateAccount(ctx, &pb_account.CreateAccountRequest{
 		ClientId:       0,
 		AccountType:    "BANK",
+		AccountSubtype: "FUND",
 		CurrencyCode:   "RSD",
 		InitialBalance: 0,
 		AccountName:    "Fund: " + req.Name,
