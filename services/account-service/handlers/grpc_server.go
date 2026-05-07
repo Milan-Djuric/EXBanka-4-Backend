@@ -254,17 +254,21 @@ func accountTypeCode(accountType string) string {
 }
 
 func (s *AccountServer) CreateAccount(ctx context.Context, req *pb.CreateAccountRequest) (*pb.CreateAccountResponse, error) {
-	// 1. Validate client exists and fetch contact info for email
+	// 1. Validate client exists and fetch contact info for email.
+	// Skip for ClientId == 0 (BANK/fund accounts that have no client owner).
 	var clientID int64
 	var clientEmail, clientFirstName string
-	err := s.ClientDB.QueryRowContext(ctx,
-		`SELECT id, email, first_name FROM clients WHERE id = $1`, req.ClientId).
-		Scan(&clientID, &clientEmail, &clientFirstName)
-	if err == sql.ErrNoRows {
-		return nil, status.Errorf(codes.NotFound, "client with id %d not found", req.ClientId)
-	}
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to verify client: %v", err)
+	var err error
+	if req.ClientId != 0 {
+		err = s.ClientDB.QueryRowContext(ctx,
+			`SELECT id, email, first_name FROM clients WHERE id = $1`, req.ClientId).
+			Scan(&clientID, &clientEmail, &clientFirstName)
+		if err == sql.ErrNoRows {
+			return nil, status.Errorf(codes.NotFound, "client with id %d not found", req.ClientId)
+		}
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to verify client: %v", err)
+		}
 	}
 
 	// 2. Validate currency exists and get its id
@@ -401,7 +405,7 @@ func (s *AccountServer) GetBankAccounts(ctx context.Context, _ *pb.GetBankAccoun
 	rows, err := s.DB.QueryContext(ctx, `
 		SELECT id, account_number, account_name, balance, available_balance, currency_id
 		FROM accounts
-		WHERE owner_id = 0 AND account_type = 'BANK'
+		WHERE owner_id = 0 AND account_type = 'BANK' AND COALESCE(account_subtype, '') != 'FUND'
 		ORDER BY currency_id`)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to query bank accounts: %v", err)
