@@ -605,6 +605,158 @@ func (x *ListFundsResponse) GetFunds() []*FundResponse {
 	return nil
 }
 
+type InvestFundRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	FundId          int64                  `protobuf:"varint,1,opt,name=fund_id,json=fundId,proto3" json:"fund_id,omitempty"`
+	ClientId        int64                  `protobuf:"varint,2,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	ClientType      string                 `protobuf:"bytes,3,opt,name=client_type,json=clientType,proto3" json:"client_type,omitempty"` // "CLIENT" or "BANK"
+	SourceAccountId int64                  `protobuf:"varint,4,opt,name=source_account_id,json=sourceAccountId,proto3" json:"source_account_id,omitempty"`
+	Amount          float64                `protobuf:"fixed64,5,opt,name=amount,proto3" json:"amount,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *InvestFundRequest) Reset() {
+	*x = InvestFundRequest{}
+	mi := &file_fund_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InvestFundRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InvestFundRequest) ProtoMessage() {}
+
+func (x *InvestFundRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_fund_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InvestFundRequest.ProtoReflect.Descriptor instead.
+func (*InvestFundRequest) Descriptor() ([]byte, []int) {
+	return file_fund_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *InvestFundRequest) GetFundId() int64 {
+	if x != nil {
+		return x.FundId
+	}
+	return 0
+}
+
+func (x *InvestFundRequest) GetClientId() int64 {
+	if x != nil {
+		return x.ClientId
+	}
+	return 0
+}
+
+func (x *InvestFundRequest) GetClientType() string {
+	if x != nil {
+		return x.ClientType
+	}
+	return ""
+}
+
+func (x *InvestFundRequest) GetSourceAccountId() int64 {
+	if x != nil {
+		return x.SourceAccountId
+	}
+	return 0
+}
+
+func (x *InvestFundRequest) GetAmount() float64 {
+	if x != nil {
+		return x.Amount
+	}
+	return 0
+}
+
+type WithdrawFundRequest struct {
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	FundId               int64                  `protobuf:"varint,1,opt,name=fund_id,json=fundId,proto3" json:"fund_id,omitempty"`
+	ClientId             int64                  `protobuf:"varint,2,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	ClientType           string                 `protobuf:"bytes,3,opt,name=client_type,json=clientType,proto3" json:"client_type,omitempty"`
+	DestinationAccountId int64                  `protobuf:"varint,4,opt,name=destination_account_id,json=destinationAccountId,proto3" json:"destination_account_id,omitempty"`
+	Amount               float64                `protobuf:"fixed64,5,opt,name=amount,proto3" json:"amount,omitempty"` // 0 = full position
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *WithdrawFundRequest) Reset() {
+	*x = WithdrawFundRequest{}
+	mi := &file_fund_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WithdrawFundRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WithdrawFundRequest) ProtoMessage() {}
+
+func (x *WithdrawFundRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_fund_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WithdrawFundRequest.ProtoReflect.Descriptor instead.
+func (*WithdrawFundRequest) Descriptor() ([]byte, []int) {
+	return file_fund_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *WithdrawFundRequest) GetFundId() int64 {
+	if x != nil {
+		return x.FundId
+	}
+	return 0
+}
+
+func (x *WithdrawFundRequest) GetClientId() int64 {
+	if x != nil {
+		return x.ClientId
+	}
+	return 0
+}
+
+func (x *WithdrawFundRequest) GetClientType() string {
+	if x != nil {
+		return x.ClientType
+	}
+	return ""
+}
+
+func (x *WithdrawFundRequest) GetDestinationAccountId() int64 {
+	if x != nil {
+		return x.DestinationAccountId
+	}
+	return 0
+}
+
+func (x *WithdrawFundRequest) GetAmount() float64 {
+	if x != nil {
+		return x.Amount
+	}
+	return 0
+}
+
 var File_fund_proto protoreflect.FileDescriptor
 
 const file_fund_proto_rawDesc = "" +
@@ -655,7 +807,21 @@ const file_fund_proto_rawDesc = "" +
 	"\n" +
 	"account_id\x18\r \x01(\x03R\taccountId\"=\n" +
 	"\x11ListFundsResponse\x12(\n" +
-	"\x05funds\x18\x01 \x03(\v2\x12.fund.FundResponseR\x05funds2\xe6\x02\n" +
+	"\x05funds\x18\x01 \x03(\v2\x12.fund.FundResponseR\x05funds\"\xae\x01\n" +
+	"\x11InvestFundRequest\x12\x17\n" +
+	"\afund_id\x18\x01 \x01(\x03R\x06fundId\x12\x1b\n" +
+	"\tclient_id\x18\x02 \x01(\x03R\bclientId\x12\x1f\n" +
+	"\vclient_type\x18\x03 \x01(\tR\n" +
+	"clientType\x12*\n" +
+	"\x11source_account_id\x18\x04 \x01(\x03R\x0fsourceAccountId\x12\x16\n" +
+	"\x06amount\x18\x05 \x01(\x01R\x06amount\"\xba\x01\n" +
+	"\x13WithdrawFundRequest\x12\x17\n" +
+	"\afund_id\x18\x01 \x01(\x03R\x06fundId\x12\x1b\n" +
+	"\tclient_id\x18\x02 \x01(\x03R\bclientId\x12\x1f\n" +
+	"\vclient_type\x18\x03 \x01(\tR\n" +
+	"clientType\x124\n" +
+	"\x16destination_account_id\x18\x04 \x01(\x03R\x14destinationAccountId\x12\x16\n" +
+	"\x06amount\x18\x05 \x01(\x01R\x06amount2\xe0\x03\n" +
 	"\vFundService\x12-\n" +
 	"\x04Ping\x12\x11.fund.PingRequest\x1a\x12.fund.PingResponse\x129\n" +
 	"\n" +
@@ -665,7 +831,10 @@ const file_fund_proto_rawDesc = "" +
 	"\n" +
 	"UpdateFund\x12\x17.fund.UpdateFundRequest\x1a\x12.fund.FundResponse\x12?\n" +
 	"\n" +
-	"DeleteFund\x12\x17.fund.DeleteFundRequest\x1a\x18.fund.DeleteFundResponseB9Z7github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/fundb\x06proto3"
+	"DeleteFund\x12\x17.fund.DeleteFundRequest\x1a\x18.fund.DeleteFundResponse\x129\n" +
+	"\n" +
+	"InvestFund\x12\x17.fund.InvestFundRequest\x1a\x12.fund.FundResponse\x12=\n" +
+	"\fWithdrawFund\x12\x19.fund.WithdrawFundRequest\x1a\x12.fund.FundResponseB9Z7github.com/RAF-SI-2025/EXBanka-4-Backend/shared/pb/fundb\x06proto3"
 
 var (
 	file_fund_proto_rawDescOnce sync.Once
@@ -679,38 +848,44 @@ func file_fund_proto_rawDescGZIP() []byte {
 	return file_fund_proto_rawDescData
 }
 
-var file_fund_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_fund_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_fund_proto_goTypes = []any{
-	(*PingRequest)(nil),        // 0: fund.PingRequest
-	(*PingResponse)(nil),       // 1: fund.PingResponse
-	(*CreateFundRequest)(nil),  // 2: fund.CreateFundRequest
-	(*UpdateFundRequest)(nil),  // 3: fund.UpdateFundRequest
-	(*DeleteFundRequest)(nil),  // 4: fund.DeleteFundRequest
-	(*DeleteFundResponse)(nil), // 5: fund.DeleteFundResponse
-	(*ListFundsRequest)(nil),   // 6: fund.ListFundsRequest
-	(*GetFundRequest)(nil),     // 7: fund.GetFundRequest
-	(*FundResponse)(nil),       // 8: fund.FundResponse
-	(*ListFundsResponse)(nil),  // 9: fund.ListFundsResponse
+	(*PingRequest)(nil),         // 0: fund.PingRequest
+	(*PingResponse)(nil),        // 1: fund.PingResponse
+	(*CreateFundRequest)(nil),   // 2: fund.CreateFundRequest
+	(*UpdateFundRequest)(nil),   // 3: fund.UpdateFundRequest
+	(*DeleteFundRequest)(nil),   // 4: fund.DeleteFundRequest
+	(*DeleteFundResponse)(nil),  // 5: fund.DeleteFundResponse
+	(*ListFundsRequest)(nil),    // 6: fund.ListFundsRequest
+	(*GetFundRequest)(nil),      // 7: fund.GetFundRequest
+	(*FundResponse)(nil),        // 8: fund.FundResponse
+	(*ListFundsResponse)(nil),   // 9: fund.ListFundsResponse
+	(*InvestFundRequest)(nil),   // 10: fund.InvestFundRequest
+	(*WithdrawFundRequest)(nil), // 11: fund.WithdrawFundRequest
 }
 var file_fund_proto_depIdxs = []int32{
-	8, // 0: fund.ListFundsResponse.funds:type_name -> fund.FundResponse
-	0, // 1: fund.FundService.Ping:input_type -> fund.PingRequest
-	2, // 2: fund.FundService.CreateFund:input_type -> fund.CreateFundRequest
-	6, // 3: fund.FundService.ListFunds:input_type -> fund.ListFundsRequest
-	7, // 4: fund.FundService.GetFund:input_type -> fund.GetFundRequest
-	3, // 5: fund.FundService.UpdateFund:input_type -> fund.UpdateFundRequest
-	4, // 6: fund.FundService.DeleteFund:input_type -> fund.DeleteFundRequest
-	1, // 7: fund.FundService.Ping:output_type -> fund.PingResponse
-	8, // 8: fund.FundService.CreateFund:output_type -> fund.FundResponse
-	9, // 9: fund.FundService.ListFunds:output_type -> fund.ListFundsResponse
-	8, // 10: fund.FundService.GetFund:output_type -> fund.FundResponse
-	8, // 11: fund.FundService.UpdateFund:output_type -> fund.FundResponse
-	5, // 12: fund.FundService.DeleteFund:output_type -> fund.DeleteFundResponse
-	7, // [7:13] is the sub-list for method output_type
-	1, // [1:7] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	8,  // 0: fund.ListFundsResponse.funds:type_name -> fund.FundResponse
+	0,  // 1: fund.FundService.Ping:input_type -> fund.PingRequest
+	2,  // 2: fund.FundService.CreateFund:input_type -> fund.CreateFundRequest
+	6,  // 3: fund.FundService.ListFunds:input_type -> fund.ListFundsRequest
+	7,  // 4: fund.FundService.GetFund:input_type -> fund.GetFundRequest
+	3,  // 5: fund.FundService.UpdateFund:input_type -> fund.UpdateFundRequest
+	4,  // 6: fund.FundService.DeleteFund:input_type -> fund.DeleteFundRequest
+	10, // 7: fund.FundService.InvestFund:input_type -> fund.InvestFundRequest
+	11, // 8: fund.FundService.WithdrawFund:input_type -> fund.WithdrawFundRequest
+	1,  // 9: fund.FundService.Ping:output_type -> fund.PingResponse
+	8,  // 10: fund.FundService.CreateFund:output_type -> fund.FundResponse
+	9,  // 11: fund.FundService.ListFunds:output_type -> fund.ListFundsResponse
+	8,  // 12: fund.FundService.GetFund:output_type -> fund.FundResponse
+	8,  // 13: fund.FundService.UpdateFund:output_type -> fund.FundResponse
+	5,  // 14: fund.FundService.DeleteFund:output_type -> fund.DeleteFundResponse
+	8,  // 15: fund.FundService.InvestFund:output_type -> fund.FundResponse
+	8,  // 16: fund.FundService.WithdrawFund:output_type -> fund.FundResponse
+	9,  // [9:17] is the sub-list for method output_type
+	1,  // [1:9] is the sub-list for method input_type
+	1,  // [1:1] is the sub-list for extension type_name
+	1,  // [1:1] is the sub-list for extension extendee
+	0,  // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_fund_proto_init() }
@@ -724,7 +899,7 @@ func file_fund_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_fund_proto_rawDesc), len(file_fund_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -41,6 +41,8 @@ func mapFundError(c *gin.Context, err error) {
 		c.JSON(http.StatusConflict, gin.H{"error": status.Convert(err).Message()})
 	case codes.InvalidArgument:
 		c.JSON(http.StatusBadRequest, gin.H{"error": status.Convert(err).Message()})
+	case codes.FailedPrecondition:
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": status.Convert(err).Message()})
 	default:
 		c.JSON(http.StatusInternalServerError, gin.H{"error": status.Convert(err).Message()})
 	}
@@ -237,5 +239,99 @@ func DeleteFund(client pb.FundServiceClient) gin.HandlerFunc {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"message": "fund deleted"})
+	}
+}
+
+func InvestFund(client pb.FundServiceClient) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID, err := middleware.GetUserIDFromToken(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "could not extract identity from token"})
+			return
+		}
+
+		callerRole := middleware.GetCallerRoleFromToken(c)
+		clientType := "CLIENT"
+		if callerRole == "EMPLOYEE" {
+			clientType = "BANK"
+		}
+
+		fundID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid fund id"})
+			return
+		}
+
+		var req struct {
+			SourceAccountId int64   `json:"sourceAccountId" binding:"required"`
+			Amount          float64 `json:"amount"          binding:"required"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
+		defer cancel()
+
+		resp, err := client.InvestFund(ctx, &pb.InvestFundRequest{
+			FundId:          fundID,
+			ClientId:        userID,
+			ClientType:      clientType,
+			SourceAccountId: req.SourceAccountId,
+			Amount:          req.Amount,
+		})
+		if err != nil {
+			mapFundError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, fundToJSON(resp))
+	}
+}
+
+func WithdrawFund(client pb.FundServiceClient) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID, err := middleware.GetUserIDFromToken(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "could not extract identity from token"})
+			return
+		}
+
+		callerRole := middleware.GetCallerRoleFromToken(c)
+		clientType := "CLIENT"
+		if callerRole == "EMPLOYEE" {
+			clientType = "BANK"
+		}
+
+		fundID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid fund id"})
+			return
+		}
+
+		var req struct {
+			DestinationAccountId int64   `json:"destinationAccountId" binding:"required"`
+			Amount               float64 `json:"amount"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
+		defer cancel()
+
+		resp, err := client.WithdrawFund(ctx, &pb.WithdrawFundRequest{
+			FundId:               fundID,
+			ClientId:             userID,
+			ClientType:           clientType,
+			DestinationAccountId: req.DestinationAccountId,
+			Amount:               req.Amount,
+		})
+		if err != nil {
+			mapFundError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, fundToJSON(resp))
 	}
 }

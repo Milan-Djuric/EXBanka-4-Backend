@@ -216,6 +216,220 @@ func (s *FundServer) fetchFundByID(ctx context.Context, id int64, includeAccount
 	return &f, nil
 }
 
+func (s *FundServer) InvestFund(ctx context.Context, req *pb.InvestFundRequest) (*pb.FundResponse, error) {
+	if req.Amount <= 0 {
+		return nil, status.Error(codes.InvalidArgument, "amount must be greater than 0")
+	}
+
+	var minimumContribution float64
+	var active bool
+	err := s.DB.QueryRowContext(ctx,
+		`SELECT minimum_contribution, active FROM investment_funds WHERE id = $1`, req.FundId,
+	).Scan(&minimumContribution, &active)
+	if err == sql.ErrNoRows {
+		return nil, status.Error(codes.NotFound, "fund not found")
+	} else if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to fetch fund: %v", err)
+	}
+	if !active {
+		return nil, status.Error(codes.NotFound, "fund not found")
+	}
+	if req.Amount < minimumContribution {
+		return nil, status.Errorf(codes.InvalidArgument, "amount %.2f is below minimum contribution %.2f", req.Amount, minimumContribution)
+	}
+
+	var availableBalance float64
+	err = s.AccountDB.QueryRowContext(ctx,
+		`SELECT available_balance FROM accounts WHERE id = $1`, req.SourceAccountId,
+	).Scan(&availableBalance)
+	if err == sql.ErrNoRows {
+		return nil, status.Error(codes.NotFound, "source account not found")
+	} else if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to fetch account: %v", err)
+	}
+	if availableBalance < req.Amount {
+		return nil, status.Error(codes.FailedPrecondition, "insufficient account balance")
+	}
+
+	_, err = s.AccountDB.ExecContext(ctx,
+		`UPDATE accounts SET balance = balance - $1, available_balance = available_balance - $1 WHERE id = $2`,
+		req.Amount, req.SourceAccountId,
+	)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to debit account: %v", err)
+	}
+
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		// compensate
+		_, _ = s.AccountDB.ExecContext(ctx,
+			`UPDATE accounts SET balance = balance + $1, available_balance = available_balance + $1 WHERE id = $2`,
+			req.Amount, req.SourceAccountId,
+		)
+		return nil, status.Errorf(codes.Internal, "failed to begin transaction: %v", err)
+	}
+
+	_, err = tx.ExecContext(ctx,
+		`UPDATE investment_funds SET liquid_assets = liquid_assets + $1 WHERE id = $2`,
+		req.Amount, req.FundId,
+	)
+	if err != nil {
+		_ = tx.Rollback()
+		_, _ = s.AccountDB.ExecContext(ctx,
+			`UPDATE accounts SET balance = balance + $1, available_balance = available_balance + $1 WHERE id = $2`,
+			req.Amount, req.SourceAccountId,
+		)
+		return nil, status.Errorf(codes.Internal, "failed to update fund liquid assets: %v", err)
+	}
+
+	_, err = tx.ExecContext(ctx, `
+		INSERT INTO client_fund_positions (client_id, client_type, fund_id, total_invested_amount)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (client_id, client_type, fund_id) DO UPDATE
+		SET total_invested_amount = client_fund_positions.total_invested_amount + EXCLUDED.total_invested_amount,
+		    last_modified_at = NOW()`,
+		req.ClientId, req.ClientType, req.FundId, req.Amount,
+	)
+	if err != nil {
+		_ = tx.Rollback()
+		_, _ = s.AccountDB.ExecContext(ctx,
+			`UPDATE accounts SET balance = balance + $1, available_balance = available_balance + $1 WHERE id = $2`,
+			req.Amount, req.SourceAccountId,
+		)
+		return nil, status.Errorf(codes.Internal, "failed to upsert position: %v", err)
+	}
+
+	_, err = tx.ExecContext(ctx,
+		`INSERT INTO client_fund_transactions (client_id, client_type, fund_id, amount, is_inflow, status) VALUES ($1, $2, $3, $4, true, 'COMPLETED')`,
+		req.ClientId, req.ClientType, req.FundId, req.Amount,
+	)
+	if err != nil {
+		_ = tx.Rollback()
+		_, _ = s.AccountDB.ExecContext(ctx,
+			`UPDATE accounts SET balance = balance + $1, available_balance = available_balance + $1 WHERE id = $2`,
+			req.Amount, req.SourceAccountId,
+		)
+		return nil, status.Errorf(codes.Internal, "failed to insert transaction: %v", err)
+	}
+
+	if err = tx.Commit(); err != nil {
+		_, _ = s.AccountDB.ExecContext(ctx,
+			`UPDATE accounts SET balance = balance + $1, available_balance = available_balance + $1 WHERE id = $2`,
+			req.Amount, req.SourceAccountId,
+		)
+		return nil, status.Errorf(codes.Internal, "failed to commit: %v", err)
+	}
+
+	return s.fetchFundByID(ctx, req.FundId, true)
+}
+
+func (s *FundServer) WithdrawFund(ctx context.Context, req *pb.WithdrawFundRequest) (*pb.FundResponse, error) {
+	var liquidAssets float64
+	var active bool
+	err := s.DB.QueryRowContext(ctx,
+		`SELECT liquid_assets, active FROM investment_funds WHERE id = $1`, req.FundId,
+	).Scan(&liquidAssets, &active)
+	if err == sql.ErrNoRows {
+		return nil, status.Error(codes.NotFound, "fund not found")
+	} else if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to fetch fund: %v", err)
+	}
+	if !active {
+		return nil, status.Error(codes.NotFound, "fund not found")
+	}
+
+	var positionAmount float64
+	err = s.DB.QueryRowContext(ctx,
+		`SELECT total_invested_amount FROM client_fund_positions WHERE fund_id = $1 AND client_id = $2 AND client_type = $3`,
+		req.FundId, req.ClientId, req.ClientType,
+	).Scan(&positionAmount)
+	if err == sql.ErrNoRows {
+		return nil, status.Error(codes.NotFound, "no position in this fund")
+	} else if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to fetch position: %v", err)
+	}
+
+	amount := req.Amount
+	if amount == 0 {
+		amount = positionAmount
+	}
+	if amount <= 0 {
+		return nil, status.Error(codes.InvalidArgument, "nothing to withdraw")
+	}
+	if amount > positionAmount {
+		return nil, status.Errorf(codes.InvalidArgument, "withdrawal amount %.2f exceeds position %.2f", amount, positionAmount)
+	}
+	if amount > liquidAssets {
+		return nil, status.Error(codes.FailedPrecondition, "insufficient fund liquidity")
+	}
+
+	_, err = s.AccountDB.ExecContext(ctx,
+		`UPDATE accounts SET balance = balance + $1, available_balance = available_balance + $1 WHERE id = $2`,
+		amount, req.DestinationAccountId,
+	)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to credit account: %v", err)
+	}
+
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		_, _ = s.AccountDB.ExecContext(ctx,
+			`UPDATE accounts SET balance = balance - $1, available_balance = available_balance - $1 WHERE id = $2`,
+			amount, req.DestinationAccountId,
+		)
+		return nil, status.Errorf(codes.Internal, "failed to begin transaction: %v", err)
+	}
+
+	_, err = tx.ExecContext(ctx,
+		`UPDATE investment_funds SET liquid_assets = liquid_assets - $1 WHERE id = $2`,
+		amount, req.FundId,
+	)
+	if err != nil {
+		_ = tx.Rollback()
+		_, _ = s.AccountDB.ExecContext(ctx,
+			`UPDATE accounts SET balance = balance - $1, available_balance = available_balance - $1 WHERE id = $2`,
+			amount, req.DestinationAccountId,
+		)
+		return nil, status.Errorf(codes.Internal, "failed to update fund liquid assets: %v", err)
+	}
+
+	_, err = tx.ExecContext(ctx,
+		`UPDATE client_fund_positions SET total_invested_amount = total_invested_amount - $1, last_modified_at = NOW() WHERE fund_id = $2 AND client_id = $3 AND client_type = $4`,
+		amount, req.FundId, req.ClientId, req.ClientType,
+	)
+	if err != nil {
+		_ = tx.Rollback()
+		_, _ = s.AccountDB.ExecContext(ctx,
+			`UPDATE accounts SET balance = balance - $1, available_balance = available_balance - $1 WHERE id = $2`,
+			amount, req.DestinationAccountId,
+		)
+		return nil, status.Errorf(codes.Internal, "failed to update position: %v", err)
+	}
+
+	_, err = tx.ExecContext(ctx,
+		`INSERT INTO client_fund_transactions (client_id, client_type, fund_id, amount, is_inflow, status) VALUES ($1, $2, $3, $4, false, 'COMPLETED')`,
+		req.ClientId, req.ClientType, req.FundId, amount,
+	)
+	if err != nil {
+		_ = tx.Rollback()
+		_, _ = s.AccountDB.ExecContext(ctx,
+			`UPDATE accounts SET balance = balance - $1, available_balance = available_balance - $1 WHERE id = $2`,
+			amount, req.DestinationAccountId,
+		)
+		return nil, status.Errorf(codes.Internal, "failed to insert transaction: %v", err)
+	}
+
+	if err = tx.Commit(); err != nil {
+		_, _ = s.AccountDB.ExecContext(ctx,
+			`UPDATE accounts SET balance = balance - $1, available_balance = available_balance - $1 WHERE id = $2`,
+			amount, req.DestinationAccountId,
+		)
+		return nil, status.Errorf(codes.Internal, "failed to commit: %v", err)
+	}
+
+	return s.fetchFundByID(ctx, req.FundId, true)
+}
+
 // isUniqueViolation checks if the error is a PostgreSQL unique constraint violation (error code 23505).
 func isUniqueViolation(err error) bool {
 	return strings.Contains(err.Error(), "23505") || strings.Contains(err.Error(), "unique constraint")

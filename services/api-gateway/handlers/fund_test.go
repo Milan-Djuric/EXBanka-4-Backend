@@ -37,6 +37,8 @@ type stubFundClient struct {
 	getFundFn      func(context.Context, *pb.GetFundRequest, ...grpc.CallOption) (*pb.FundResponse, error)
 	updateFundFn   func(context.Context, *pb.UpdateFundRequest, ...grpc.CallOption) (*pb.FundResponse, error)
 	deleteFundFn   func(context.Context, *pb.DeleteFundRequest, ...grpc.CallOption) (*pb.DeleteFundResponse, error)
+	investFundFn   func(context.Context, *pb.InvestFundRequest, ...grpc.CallOption) (*pb.FundResponse, error)
+	withdrawFundFn func(context.Context, *pb.WithdrawFundRequest, ...grpc.CallOption) (*pb.FundResponse, error)
 }
 
 func (s *stubFundClient) Ping(ctx context.Context, in *pb.PingRequest, opts ...grpc.CallOption) (*pb.PingResponse, error) {
@@ -72,6 +74,18 @@ func (s *stubFundClient) UpdateFund(ctx context.Context, in *pb.UpdateFundReques
 func (s *stubFundClient) DeleteFund(ctx context.Context, in *pb.DeleteFundRequest, opts ...grpc.CallOption) (*pb.DeleteFundResponse, error) {
 	if s.deleteFundFn != nil {
 		return s.deleteFundFn(ctx, in, opts...)
+	}
+	return nil, fmt.Errorf("not implemented")
+}
+func (s *stubFundClient) InvestFund(ctx context.Context, in *pb.InvestFundRequest, opts ...grpc.CallOption) (*pb.FundResponse, error) {
+	if s.investFundFn != nil {
+		return s.investFundFn(ctx, in, opts...)
+	}
+	return nil, fmt.Errorf("not implemented")
+}
+func (s *stubFundClient) WithdrawFund(ctx context.Context, in *pb.WithdrawFundRequest, opts ...grpc.CallOption) (*pb.FundResponse, error) {
+	if s.withdrawFundFn != nil {
+		return s.withdrawFundFn(ctx, in, opts...)
 	}
 	return nil, fmt.Errorf("not implemented")
 }
