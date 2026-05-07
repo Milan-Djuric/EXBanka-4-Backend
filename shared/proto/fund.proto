@@ -9,6 +9,8 @@ service FundService {
   rpc GetFund(GetFundRequest) returns (FundResponse);
   rpc UpdateFund(UpdateFundRequest) returns (FundResponse);
   rpc DeleteFund(DeleteFundRequest) returns (DeleteFundResponse);
+  rpc InvestFund(InvestFundRequest) returns (FundResponse);
+  rpc WithdrawFund(WithdrawFundRequest) returns (FundResponse);
 }
 
 message PingRequest {}
@@ -62,4 +64,20 @@ message FundResponse {
 
 message ListFundsResponse {
   repeated FundResponse funds = 1;
+}
+
+message InvestFundRequest {
+  int64  fund_id           = 1;
+  int64  client_id         = 2;
+  string client_type       = 3; // "CLIENT" or "BANK"
+  int64  source_account_id = 4;
+  double amount            = 5;
+}
+
+message WithdrawFundRequest {
+  int64  fund_id                = 1;
+  int64  client_id              = 2;
+  string client_type            = 3;
+  int64  destination_account_id = 4;
+  double amount                 = 5; // 0 = full position
 }

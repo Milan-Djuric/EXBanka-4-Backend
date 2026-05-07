@@ -19,12 +19,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	FundService_Ping_FullMethodName       = "/fund.FundService/Ping"
-	FundService_CreateFund_FullMethodName = "/fund.FundService/CreateFund"
-	FundService_ListFunds_FullMethodName  = "/fund.FundService/ListFunds"
-	FundService_GetFund_FullMethodName    = "/fund.FundService/GetFund"
-	FundService_UpdateFund_FullMethodName = "/fund.FundService/UpdateFund"
-	FundService_DeleteFund_FullMethodName = "/fund.FundService/DeleteFund"
+	FundService_Ping_FullMethodName         = "/fund.FundService/Ping"
+	FundService_CreateFund_FullMethodName   = "/fund.FundService/CreateFund"
+	FundService_ListFunds_FullMethodName    = "/fund.FundService/ListFunds"
+	FundService_GetFund_FullMethodName      = "/fund.FundService/GetFund"
+	FundService_UpdateFund_FullMethodName   = "/fund.FundService/UpdateFund"
+	FundService_DeleteFund_FullMethodName   = "/fund.FundService/DeleteFund"
+	FundService_InvestFund_FullMethodName   = "/fund.FundService/InvestFund"
+	FundService_WithdrawFund_FullMethodName = "/fund.FundService/WithdrawFund"
 )
 
 // FundServiceClient is the client API for FundService service.
@@ -37,6 +39,8 @@ type FundServiceClient interface {
 	GetFund(ctx context.Context, in *GetFundRequest, opts ...grpc.CallOption) (*FundResponse, error)
 	UpdateFund(ctx context.Context, in *UpdateFundRequest, opts ...grpc.CallOption) (*FundResponse, error)
 	DeleteFund(ctx context.Context, in *DeleteFundRequest, opts ...grpc.CallOption) (*DeleteFundResponse, error)
+	InvestFund(ctx context.Context, in *InvestFundRequest, opts ...grpc.CallOption) (*FundResponse, error)
+	WithdrawFund(ctx context.Context, in *WithdrawFundRequest, opts ...grpc.CallOption) (*FundResponse, error)
 }
 
 type fundServiceClient struct {
@@ -107,6 +111,26 @@ func (c *fundServiceClient) DeleteFund(ctx context.Context, in *DeleteFundReques
 	return out, nil
 }
 
+func (c *fundServiceClient) InvestFund(ctx context.Context, in *InvestFundRequest, opts ...grpc.CallOption) (*FundResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(FundResponse)
+	err := c.cc.Invoke(ctx, FundService_InvestFund_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *fundServiceClient) WithdrawFund(ctx context.Context, in *WithdrawFundRequest, opts ...grpc.CallOption) (*FundResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(FundResponse)
+	err := c.cc.Invoke(ctx, FundService_WithdrawFund_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // FundServiceServer is the server API for FundService service.
 // All implementations must embed UnimplementedFundServiceServer
 // for forward compatibility.
@@ -117,6 +141,8 @@ type FundServiceServer interface {
 	GetFund(context.Context, *GetFundRequest) (*FundResponse, error)
 	UpdateFund(context.Context, *UpdateFundRequest) (*FundResponse, error)
 	DeleteFund(context.Context, *DeleteFundRequest) (*DeleteFundResponse, error)
+	InvestFund(context.Context, *InvestFundRequest) (*FundResponse, error)
+	WithdrawFund(context.Context, *WithdrawFundRequest) (*FundResponse, error)
 	mustEmbedUnimplementedFundServiceServer()
 }
 
@@ -144,6 +170,12 @@ func (UnimplementedFundServiceServer) UpdateFund(context.Context, *UpdateFundReq
 }
 func (UnimplementedFundServiceServer) DeleteFund(context.Context, *DeleteFundRequest) (*DeleteFundResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteFund not implemented")
+}
+func (UnimplementedFundServiceServer) InvestFund(context.Context, *InvestFundRequest) (*FundResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method InvestFund not implemented")
+}
+func (UnimplementedFundServiceServer) WithdrawFund(context.Context, *WithdrawFundRequest) (*FundResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method WithdrawFund not implemented")
 }
 func (UnimplementedFundServiceServer) mustEmbedUnimplementedFundServiceServer() {}
 func (UnimplementedFundServiceServer) testEmbeddedByValue()                     {}
@@ -274,6 +306,42 @@ func _FundService_DeleteFund_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _FundService_InvestFund_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InvestFundRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FundServiceServer).InvestFund(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FundService_InvestFund_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FundServiceServer).InvestFund(ctx, req.(*InvestFundRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _FundService_WithdrawFund_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(WithdrawFundRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FundServiceServer).WithdrawFund(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FundService_WithdrawFund_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FundServiceServer).WithdrawFund(ctx, req.(*WithdrawFundRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // FundService_ServiceDesc is the grpc.ServiceDesc for FundService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -304,6 +372,14 @@ var FundService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteFund",
 			Handler:    _FundService_DeleteFund_Handler,
+		},
+		{
+			MethodName: "InvestFund",
+			Handler:    _FundService_InvestFund_Handler,
+		},
+		{
+			MethodName: "WithdrawFund",
+			Handler:    _FundService_WithdrawFund_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
